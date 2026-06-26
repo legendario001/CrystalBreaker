@@ -544,19 +544,22 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
                                 PlaceCharacterEvent:FireServer()
                         end
                 else
-                        if RemoveFromPedestalEvent then
-                                RemoveFromPedestalEvent:FireServer()
+                        -- COFRE PRIMERO (prioridad, son temporales y desaparecen)
+                        if PickupChestEvent then
+                                PickupChestEvent:FireServer()
                         end
                         task.wait(0.1)
                         if not isCarrying then
-                                if PickupDroppedEvent then
-                                        PickupDroppedEvent:FireServer()
+                                -- Pedestal segundo
+                                if RemoveFromPedestalEvent then
+                                        RemoveFromPedestalEvent:FireServer()
                                 end
                         end
                         task.wait(0.1)
                         if not isCarrying then
-                                if PickupChestEvent then
-                                        PickupChestEvent:FireServer()
+                                -- Soltado del suelo ultimo
+                                if PickupDroppedEvent then
+                                        PickupDroppedEvent:FireServer()
                                 end
                         end
                 end
