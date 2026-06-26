@@ -15,6 +15,15 @@ local rarityColors = {
         Blanco = Color3.fromRGB(220, 220, 220)
 }
 
+-- Dinero generado cada 2 segundos segun rareza
+local rarityMoneyRate = {
+        Morado = 10,
+        Rojo = 7,
+        Amarillo = 5,
+        Azul = 3,
+        Blanco = 1
+}
+
 -- ============================================
 -- Obtener todas las BaseParts de un modelo
 -- ============================================
@@ -414,6 +423,126 @@ function ModelManager.clearPedestal(pedestal)
         end
 
         ModelManager.showEmptyLabel(pedestal)
+end
+
+-- ============================================
+-- Obtener la tasa de dinero segun rareza
+-- ============================================
+function ModelManager.getMoneyRate(rarity)
+        return rarityMoneyRate[rarity] or 1
+end
+
+-- ============================================
+-- Crear pila de dinero frente al pedestal
+-- Aparece en el suelo, entre las dos filas de pedestales
+-- Muestra contador acumulado con estilo bonito
+-- ============================================
+function ModelManager.createMoneyPile(pedestal, rarity)
+        local platform = pedestal:FindFirstChild("Platform")
+        if not platform then return nil end
+
+        -- Eliminar pila anterior si existe
+        ModelManager.removeMoneyPile(pedestal)
+
+        -- Calcular posicion: frente al pedestal hacia el centro de la base
+        local baseFolder = pedestal.Parent
+        local base = baseFolder and baseFolder.Parent
+
+        local pileX = platform.Position.X
+        local pileZ = platform.Position.Z
+        local pileY = 1.5 -- un poco arriba del suelo
+
+        if base then
+                local baseFloor = base:FindFirstChild("BaseFloor")
+                if baseFloor then
+                        local baseX = baseFloor.Position.X
+                        -- Mover la pila 5 studs hacia el centro desde el pedestal
+                        if platform.Position.X < baseX then
+                                pileX = platform.Position.X + 5
+                        else
+                                pileX = platform.Position.X - 5
+                        end
+                end
+        end
+
+        local rarityColor = rarityColors[rarity] or Color3.fromRGB(220, 220, 220)
+
+        -- Parte visual: moneda/cristal en el suelo
+        local moneyPile = Instance.new("Part")
+        moneyPile.Name = "MoneyPile"
+        moneyPile.Size = Vector3.new(2, 0.5, 2)
+        moneyPile.Shape = Enum.PartType.Cylinder
+        moneyPile.Orientation = Vector3.new(0, 0, 90)
+        moneyPile.Position = Vector3.new(pileX, pileY, pileZ)
+        moneyPile.Anchored = true
+        moneyPile.CanCollide = false
+        moneyPile.Material = Enum.Material.SmoothPlastic
+        moneyPile.Color = rarityColor
+        moneyPile.Transparency = 0.3
+        moneyPile.Parent = pedestal
+
+        -- Valor acumulado
+        local moneyValue = Instance.new("IntValue")
+        moneyValue.Name = "MoneyValue"
+        moneyValue.Value = 0
+        moneyValue.Parent = moneyPile
+
+        -- Rareza para saber la tasa
+        local rarityTag = Instance.new("StringValue")
+        rarityTag.Name = "Rarity"
+        rarityTag.Value = rarity
+        rarityTag.Parent = moneyPile
+
+        -- Billboard con contador de dinero
+        local bb = Instance.new("BillboardGui")
+        bb.Name = "MoneyGui"
+        bb.Size = UDim2.new(3, 0, 1.2, 0)
+        bb.StudsOffset = Vector3.new(0, 1.5, 0)
+        bb.AlwaysOnTop = false
+        bb.MaxDistance = 40
+        bb.Parent = moneyPile
+
+        local bg = Instance.new("Frame")
+        bg.Size = UDim2.new(1, 0, 1, 0)
+        bg.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+        bg.BackgroundTransparency = 0.4
+        bg.BorderSizePixel = 0
+        bg.Parent = bb
+        Instance.new("UICorner", bg).CornerRadius = UDim.new(0, 8)
+
+        local bgStroke = Instance.new("UIStroke")
+        bgStroke.Color = Color3.fromRGB(255, 215, 0)
+        bgStroke.Thickness = 2
+        bgStroke.Transparency = 0.2
+        bgStroke.Parent = bg
+
+        -- Icono de moneda + cantidad
+        local moneyLabel = Instance.new("TextLabel")
+        moneyLabel.Name = "MoneyLabel"
+        moneyLabel.Size = UDim2.new(1, 0, 1, 0)
+        moneyLabel.BackgroundTransparency = 1
+        moneyLabel.Text = "$0"
+        moneyLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
+        moneyLabel.TextScaled = true
+        moneyLabel.Font = Enum.Font.GothamBlack
+        moneyLabel.Parent = bg
+
+        -- Brillo en el texto
+        local textStroke = Instance.new("UIStroke")
+        textStroke.Color = Color3.fromRGB(50, 50, 0)
+        textStroke.Thickness = 1
+        textStroke.Transparency = 0.5
+        textStroke.Parent = moneyLabel
+
+        return moneyPile
+end
+
+-- ============================================
+-- Eliminar pila de dinero de un pedestal
+-- ============================================
+function ModelManager.removeMoneyPile(pedestal)
+        local old = pedestal:FindFirstChild("MoneyPile")
+        if old then old:Destroy() end
 end
 
 return ModelManager
