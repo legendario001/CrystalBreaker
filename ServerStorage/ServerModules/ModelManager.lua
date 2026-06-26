@@ -279,10 +279,17 @@ function ModelManager.createLabels(pedestal, charName, rarity)
                 end
         end
 
+        -- IMPORTANTE: StudsOffset es desde el CENTRO de la parte, no desde arriba
+        -- Para que el label quede SOBRE la cabeza, necesitamos:
+        --   mitad de la altura de la parte (Size.Y/2) + un margen extra
         local labelParent = highestPart
-        local labelStudsOffset = Vector3.new(0, 2, 0)
+        local labelStudsOffset = Vector3.new(0, 2, 0) -- default
 
-        if not labelParent then
+        if labelParent then
+                -- Calcular offset dinamico: mitad de la parte + 2 studs de margen
+                local halfHeight = labelParent.Size.Y / 2
+                labelStudsOffset = Vector3.new(0, halfHeight + 2, 0)
+        else
                 local platform = pedestal:FindFirstChild("Platform")
                 if platform then
                         labelParent = platform
