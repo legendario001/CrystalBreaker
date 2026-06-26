@@ -2,7 +2,7 @@
 -- BallThrower (LocalScript) - StarterPlayerScripts
 -- 1 = equipar/desequipar pelota
 -- Click = lanzar pelota
--- E = recoger cofre / recoger de pedestal / colocar personaje
+-- E = recoger cofre / recoger de pedestal / recoger soltado / colocar personaje
 -- G = soltar personaje
 -- ============================================
 
@@ -23,6 +23,7 @@ local PickupChestEvent = ReplicatedStorage:WaitForChild("PickupChest", 15)
 local PlaceCharacterEvent = ReplicatedStorage:WaitForChild("PlaceCharacter", 15)
 local DropCharacterEvent = ReplicatedStorage:WaitForChild("DropCharacter", 15)
 local RemoveFromPedestalEvent = ReplicatedStorage:WaitForChild("RemoveFromPedestal", 15)
+local PickupDroppedEvent = ReplicatedStorage:WaitForChild("PickupDropped", 15)
 
 -- ============================================
 -- GUI MODERNA
@@ -344,6 +345,29 @@ local function throwBall()
 end
 
 -- ============================================
+-- Verificar si hay un DropTimer cerca para recoger
+-- ============================================
+local function isNearDroppedChar()
+	local char = player.Character
+	if not char then return false end
+	local root = char:FindFirstChild("HumanoidRootPart")
+	if not root then return false end
+
+	for _, obj in ipairs(workspace:GetChildren()) do
+		if obj.Name == "DropTimer" then
+			local owner = obj:FindFirstChild("Owner")
+			if owner and owner.Value == player then
+				local d = (obj.Position - root.Position).Magnitude
+				if d < 15 then
+					return true
+				end
+			end
+		end
+	end
+	return false
+end
+
+-- ============================================
 -- INPUTS
 -- ============================================
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
@@ -371,12 +395,20 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 				PlaceCharacterEvent:FireServer()
 			end
 		else
-			-- Intentar recoger de pedestal primero, sino recoger cofre
+			-- Intentar recoger de pedestal primero
 			if RemoveFromPedestalEvent then
 				RemoveFromPedestalEvent:FireServer()
 			end
 			task.wait(0.1)
 			if not isCarrying then
+				-- Intentar recoger personaje soltado del suelo
+				if PickupDroppedEvent then
+					PickupDroppedEvent:FireServer()
+				end
+			end
+			task.wait(0.1)
+			if not isCarrying then
+				-- Intentar recoger cofre
 				if PickupChestEvent then
 					PickupChestEvent:FireServer()
 				end
