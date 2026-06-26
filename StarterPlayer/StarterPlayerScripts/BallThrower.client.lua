@@ -4,10 +4,12 @@
 -- Click = lanzar pelota
 -- E = recoger cofre / recoger de pedestal / recoger soltado / colocar personaje
 -- G = soltar personaje
+-- F = mejorar personaje (cuando estas cerca del boton)
 -- ============================================
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local player = Players.LocalPlayer
@@ -214,327 +216,439 @@ moneyLabel.TextXAlignment = Enum.TextXAlignment.Left
 moneyLabel.Parent = moneyPanel
 
 -- ============================================
+-- HINT DE MEJORA (F) - aparece cuando estas cerca de un UpgradeButton
+-- ============================================
+local upgradeHint = Instance.new("Frame")
+upgradeHint.Name = "UpgradeHint"
+upgradeHint.Size = UDim2.new(0, 250, 0, 55)
+upgradeHint.Position = UDim2.new(0.5, -125, 0.7, 0)
+upgradeHint.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+upgradeHint.BackgroundTransparency = 0.15
+upgradeHint.BorderSizePixel = 0
+upgradeHint.Visible = false
+upgradeHint.Parent = screenGui
+Instance.new("UICorner", upgradeHint).CornerRadius = UDim.new(0, 16)
+
+local hintStroke = Instance.new("UIStroke")
+hintStroke.Color = Color3.fromRGB(255, 215, 0)
+hintStroke.Thickness = 2
+hintStroke.Transparency = 0.2
+hintStroke.Parent = upgradeHint
+
+local hintKeyBg = Instance.new("Frame")
+hintKeyBg.Size = UDim2.new(0, 40, 0, 40)
+hintKeyBg.Position = UDim2.new(0, 10, 0, 7.5)
+hintKeyBg.BackgroundColor3 = Color3.fromRGB(255, 215, 0)
+hintKeyBg.BorderSizePixel = 0
+hintKeyBg.Parent = upgradeHint
+Instance.new("UICorner", hintKeyBg).CornerRadius = UDim.new(0, 8)
+
+local hintKeyText = Instance.new("TextLabel")
+hintKeyText.Size = UDim2.new(1, 0, 1, 0)
+hintKeyText.BackgroundTransparency = 1
+hintKeyText.Text = "F"
+hintKeyText.TextColor3 = Color3.fromRGB(0, 0, 0)
+hintKeyText.TextScaled = true
+hintKeyText.Font = Enum.Font.GothamBlack
+hintKeyText.Parent = hintKeyBg
+
+local hintText = Instance.new("TextLabel")
+hintText.Size = UDim2.new(0, 185, 0, 40)
+hintText.Position = UDim2.new(0, 58, 0, 7.5)
+hintText.BackgroundTransparency = 1
+hintText.Text = "Mejorar personaje"
+hintText.TextColor3 = Color3.fromRGB(255, 215, 0)
+hintText.TextScaled = true
+hintText.Font = Enum.Font.GothamBold
+hintText.TextXAlignment = Enum.TextXAlignment.Left
+hintText.Parent = upgradeHint
+
+-- Variable para rastrear si estamos cerca de un boton de mejora
+local nearUpgradeButton = false
+
+-- ============================================
 -- FUNCIONES DE ESTADO
 -- ============================================
 local function updateUI()
-        if isCarrying then
-                bottomBar.Visible = false
-                carryPanel.Visible = true
-        else
-                bottomBar.Visible = true
-                carryPanel.Visible = false
-        end
+	if isCarrying then
+		bottomBar.Visible = false
+		carryPanel.Visible = true
+	else
+		bottomBar.Visible = true
+		carryPanel.Visible = false
+	end
 end
 
 local function updateButton()
-        if ballEquipped then
-                ballButton.BackgroundColor3 = Color3.fromRGB(100, 200, 255)
-                ballIcon.TextColor3 = Color3.fromRGB(0, 0, 0)
-                keyLabel.TextColor3 = Color3.fromRGB(100, 200, 255)
-                keyLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-                btnStroke.Color = Color3.fromRGB(150, 230, 255)
-        else
-                ballButton.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
-                ballIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
-                keyLabel.TextColor3 = Color3.fromRGB(0, 0, 0)
-                keyLabel.BackgroundColor3 = Color3.fromRGB(100, 200, 255)
-                btnStroke.Color = Color3.fromRGB(100, 200, 255)
-        end
+	if ballEquipped then
+		ballButton.BackgroundColor3 = Color3.fromRGB(100, 200, 255)
+		ballIcon.TextColor3 = Color3.fromRGB(0, 0, 0)
+		keyLabel.TextColor3 = Color3.fromRGB(100, 200, 255)
+		keyLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+		btnStroke.Color = Color3.fromRGB(150, 230, 255)
+	else
+		ballButton.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+		ballIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
+		keyLabel.TextColor3 = Color3.fromRGB(0, 0, 0)
+		keyLabel.BackgroundColor3 = Color3.fromRGB(100, 200, 255)
+		btnStroke.Color = Color3.fromRGB(100, 200, 255)
+	end
 end
 
 -- Detectar si esta cargando un personaje
 local function checkCarrying()
-        local char = player.Character
-        if char then
-                local tool = char:FindFirstChild("Carrying")
-                if tool then
-                        isCarrying = true
-                        updateUI()
-                        return
-                end
-        end
-        local bp = player:FindFirstChild("Backpack")
-        if bp then
-                local tool = bp:FindFirstChild("Carrying")
-                if tool then
-                        isCarrying = true
-                        updateUI()
-                        return
-                end
-        end
-        if isCarrying then
-                isCarrying = false
-                updateUI()
-        end
+	local char = player.Character
+	if char then
+		local tool = char:FindFirstChild("Carrying")
+		if tool then
+			isCarrying = true
+			updateUI()
+			return
+		end
+	end
+	local bp = player:FindFirstChild("Backpack")
+	if bp then
+		local tool = bp:FindFirstChild("Carrying")
+		if tool then
+			isCarrying = true
+			updateUI()
+			return
+		end
+	end
+	if isCarrying then
+		isCarrying = false
+		updateUI()
+	end
 end
 
 task.spawn(function()
-        while true do
-                task.wait(0.5)
-                checkCarrying()
-        end
+	while true do
+		task.wait(0.5)
+		checkCarrying()
+	end
+end)
+
+-- ============================================
+-- DETECCION DE PROXIMIDAD - UpgradeButton
+-- Muestra/oculta el hint de mejora con F
+-- ============================================
+task.spawn(function()
+	while true do
+		task.wait(0.2)
+
+		if isCarrying then
+			nearUpgradeButton = false
+			upgradeHint.Visible = false
+			continue
+		end
+
+		local char = player.Character
+		if not char then
+			nearUpgradeButton = false
+			upgradeHint.Visible = false
+			continue
+		end
+		local root = char:FindFirstChild("HumanoidRootPart")
+		if not root then
+			nearUpgradeButton = false
+			upgradeHint.Visible = false
+			continue
+		end
+
+		local playerPos = root.Position
+		local found = false
+
+		-- Buscar UpgradeButtons en el workspace
+		local map = workspace:FindFirstChild("Map")
+		if map then
+			local bases = map:FindFirstChild("Bases")
+			if bases then
+				for _, base in ipairs(bases:GetChildren()) do
+					local pedestals = base:FindFirstChild("Pedestals")
+					if pedestals then
+						for _, ped in ipairs(pedestals:GetChildren()) do
+							local btn = ped:FindFirstChild("UpgradeButton")
+							if btn then
+								local dist = (btn.Position - playerPos).Magnitude
+								if dist < 10 then
+									found = true
+									break
+								end
+							end
+						end
+					end
+					if found then break end
+				end
+			end
+		end
+
+		nearUpgradeButton = found
+		upgradeHint.Visible = found
+	end
 end)
 
 -- ============================================
 -- SISTEMA DE PELOTA
 -- ============================================
 local function equipBall()
-        if ballEquipped then return end
-        if isCarrying then return end
-        local char = player.Character
-        if not char then return end
+	if ballEquipped then return end
+	if isCarrying then return end
+	local char = player.Character
+	if not char then return end
 
-        local old = char:FindFirstChild("CrystalBall")
-        if old then old:Destroy() end
-        local bp = player:FindFirstChild("Backpack")
-        if bp then
-                local oldBp = bp:FindFirstChild("CrystalBall")
-                if oldBp then oldBp:Destroy() end
-        end
+	local old = char:FindFirstChild("CrystalBall")
+	if old then old:Destroy() end
+	local bp = player:FindFirstChild("Backpack")
+	if bp then
+		local oldBp = bp:FindFirstChild("CrystalBall")
+		if oldBp then oldBp:Destroy() end
+	end
 
-        local tool = Instance.new("Tool")
-        tool.Name = "CrystalBall"
-        tool.RequiresHandle = true
-        tool.CanBeDropped = false
+	local tool = Instance.new("Tool")
+	tool.Name = "CrystalBall"
+	tool.RequiresHandle = true
+	tool.CanBeDropped = false
 
-        local handle = Instance.new("Part")
-        handle.Name = "Handle"
-        handle.Size = Vector3.new(1.5, 1.5, 1.5)
-        handle.Shape = Enum.PartType.Ball
-        handle.Color = Color3.fromRGB(100, 200, 255)
-        handle.Material = Enum.Material.SmoothPlastic
-        handle.Anchored = false
-        handle.CanCollide = false
-        handle.Massless = true
-        handle.Parent = tool
+	local handle = Instance.new("Part")
+	handle.Name = "Handle"
+	handle.Size = Vector3.new(1.5, 1.5, 1.5)
+	handle.Shape = Enum.PartType.Ball
+	handle.Color = Color3.fromRGB(100, 200, 255)
+	handle.Material = Enum.Material.SmoothPlastic
+	handle.Anchored = false
+	handle.CanCollide = false
+	handle.Massless = true
+	handle.Parent = tool
 
-        tool.Parent = char
-        ballEquipped = true
-        updateButton()
+	tool.Parent = char
+	ballEquipped = true
+	updateButton()
 end
 
 local function unequipBall()
-        if not ballEquipped then return end
-        local char = player.Character
-        if char then
-                local tool = char:FindFirstChild("CrystalBall")
-                if tool then tool:Destroy() end
-        end
-        local bp = player:FindFirstChild("Backpack")
-        if bp then
-                local tool = bp:FindFirstChild("CrystalBall")
-                if tool then tool:Destroy() end
-        end
-        ballEquipped = false
-        updateButton()
+	if not ballEquipped then return end
+	local char = player.Character
+	if char then
+		local tool = char:FindFirstChild("CrystalBall")
+		if tool then tool:Destroy() end
+	end
+	local bp = player:FindFirstChild("Backpack")
+	if bp then
+		local tool = bp:FindFirstChild("CrystalBall")
+		if tool then tool:Destroy() end
+	end
+	ballEquipped = false
+	updateButton()
 end
 
 local function throwBall()
-        if not ballEquipped then return end
-        if isCarrying then return end
-        if throwDebounce then return end
-        throwDebounce = true
+	if not ballEquipped then return end
+	if isCarrying then return end
+	if throwDebounce then return end
+	throwDebounce = true
 
-        local char = player.Character
-        if not char then
-                throwDebounce = false
-                return
-        end
+	local char = player.Character
+	if not char then
+		throwDebounce = false
+		return
+	end
 
-        local root = char:FindFirstChild("HumanoidRootPart")
-        local humanoid = char:FindFirstChild("Humanoid")
-        if not root then
-                throwDebounce = false
-                return
-        end
+	local root = char:FindFirstChild("HumanoidRootPart")
+	local humanoid = char:FindFirstChild("Humanoid")
+	if not root then
+		throwDebounce = false
+		return
+	end
 
-        if humanoid then
-                local animator = humanoid:FindFirstChildOfClass("Animator")
-                if animator then
-                        local anim = Instance.new("Animation")
-                        anim.AnimationId = "rbxassetid://90927250635352"
-                        local track = animator:LoadAnimation(anim)
-                        track:Play()
-                end
-        end
+	if humanoid then
+		local animator = humanoid:FindFirstChildOfClass("Animator")
+		if animator then
+			local anim = Instance.new("Animation")
+			anim.AnimationId = "rbxassetid://90927250635352"
+			local track = animator:LoadAnimation(anim)
+			track:Play()
+		end
+	end
 
-        local ball = Instance.new("Part")
-        ball.Name = "ThrownBall"
-        ball.Size = Vector3.new(1.5, 1.5, 1.5)
-        ball.Shape = Enum.PartType.Ball
-        ball.Color = Color3.fromRGB(100, 200, 255)
-        ball.Material = Enum.Material.SmoothPlastic
-        ball.Anchored = false
-        ball.CanCollide = true
-        ball.Massless = false
-        ball.Position = root.Position + root.CFrame.LookVector * 3 + Vector3.new(0, 3, 0)
-        ball.Parent = workspace
+	local ball = Instance.new("Part")
+	ball.Name = "ThrownBall"
+	ball.Size = Vector3.new(1.5, 1.5, 1.5)
+	ball.Shape = Enum.PartType.Ball
+	ball.Color = Color3.fromRGB(100, 200, 255)
+	ball.Material = Enum.Material.SmoothPlastic
+	ball.Anchored = false
+	ball.CanCollide = true
+	ball.Massless = false
+	ball.Position = root.Position + root.CFrame.LookVector * 3 + Vector3.new(0, 3, 0)
+	ball.Parent = workspace
 
-        local bounceForce = Instance.new("VectorForce")
-        bounceForce.RelativeTo = Enum.ActuatorRelativeTo.World
-        local attachment = Instance.new("Attachment")
-        attachment.Parent = ball
-        bounceForce.Attachment0 = attachment
-        bounceForce.Force = Vector3.new(0, 0, 0)
-        bounceForce.Parent = ball
+	local bounceForce = Instance.new("VectorForce")
+	bounceForce.RelativeTo = Enum.ActuatorRelativeTo.World
+	local attachment = Instance.new("Attachment")
+	attachment.Parent = ball
+	bounceForce.Attachment0 = attachment
+	bounceForce.Force = Vector3.new(0, 0, 0)
+	bounceForce.Parent = ball
 
-        ball.CustomPhysicalProperties = PhysicalProperties.new(0.5, 0.3, 1.0, 0.3, 1.0)
+	ball.CustomPhysicalProperties = PhysicalProperties.new(0.5, 0.3, 1.0, 0.3, 1.0)
 
-        local direction = (mouse.Hit.Position - ball.Position).Unit
-        local launchSpeed = 100
-        ball.AssemblyLinearVelocity = direction * launchSpeed + Vector3.new(0, 20, 0)
+	local direction = (mouse.Hit.Position - ball.Position).Unit
+	local launchSpeed = 100
+	ball.AssemblyLinearVelocity = direction * launchSpeed + Vector3.new(0, 20, 0)
 
-        if ThrowBallEvent then
-                ThrowBallEvent:FireServer(mouse.Hit.Position)
-        end
+	if ThrowBallEvent then
+		ThrowBallEvent:FireServer(mouse.Hit.Position)
+	end
 
-        task.delay(5, function()
-                if ball and ball.Parent then ball:Destroy() end
-        end)
+	task.delay(5, function()
+		if ball and ball.Parent then ball:Destroy() end
+	end)
 
-        task.wait(0.3)
-        throwDebounce = false
+	task.wait(0.3)
+	throwDebounce = false
 end
 
 -- ============================================
 -- Verificar si hay un DropTimer cerca para recoger
 -- ============================================
 local function isNearDroppedChar()
-        local char = player.Character
-        if not char then return false end
-        local root = char:FindFirstChild("HumanoidRootPart")
-        if not root then return false end
+	local char = player.Character
+	if not char then return false end
+	local root = char:FindFirstChild("HumanoidRootPart")
+	if not root then return false end
 
-        for _, obj in ipairs(workspace:GetChildren()) do
-                if obj.Name == "DropTimer" then
-                        local owner = obj:FindFirstChild("Owner")
-                        if owner and owner.Value == player then
-                                local d = (obj.Position - root.Position).Magnitude
-                                if d < 15 then
-                                        return true
-                                end
-                        end
-                end
-        end
-        return false
+	for _, obj in ipairs(workspace:GetChildren()) do
+		if obj.Name == "DropTimer" then
+			local owner = obj:FindFirstChild("Owner")
+			if owner and owner.Value == player then
+				local d = (obj.Position - root.Position).Magnitude
+				if d < 15 then
+					return true
+				end
+			end
+		end
+	end
+	return false
 end
 
 -- ============================================
 -- INPUTS
 -- ============================================
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-        if gameProcessed then return end
+	if gameProcessed then return end
 
-        if input.KeyCode == Enum.KeyCode.One then
-                if isCarrying then return end
-                if inputDebounce then return end
-                inputDebounce = true
-                if ballEquipped then
-                        unequipBall()
-                else
-                        equipBall()
-                end
-                task.wait(0.3)
-                inputDebounce = false
+	if input.KeyCode == Enum.KeyCode.One then
+		if isCarrying then return end
+		if inputDebounce then return end
+		inputDebounce = true
+		if ballEquipped then
+			unequipBall()
+		else
+			equipBall()
+		end
+		task.wait(0.3)
+		inputDebounce = false
 
-        elseif input.KeyCode == Enum.KeyCode.E then
-                if inputDebounce then return end
-                inputDebounce = true
+	elseif input.KeyCode == Enum.KeyCode.E then
+		if inputDebounce then return end
+		inputDebounce = true
 
-                if isCarrying then
-                        -- Colocar personaje en pedestal cercano
-                        if PlaceCharacterEvent then
-                                PlaceCharacterEvent:FireServer()
-                        end
-                else
-                        -- Intentar recoger de pedestal primero
-                        if RemoveFromPedestalEvent then
-                                RemoveFromPedestalEvent:FireServer()
-                        end
-                        task.wait(0.1)
-                        if not isCarrying then
-                                -- Intentar recoger personaje soltado del suelo
-                                if PickupDroppedEvent then
-                                        PickupDroppedEvent:FireServer()
-                                end
-                        end
-                        task.wait(0.1)
-                        if not isCarrying then
-                                -- Intentar recoger cofre
-                                if PickupChestEvent then
-                                        PickupChestEvent:FireServer()
-                                end
-                        end
-                end
+		if isCarrying then
+			-- Colocar personaje en pedestal cercano
+			if PlaceCharacterEvent then
+				PlaceCharacterEvent:FireServer()
+			end
+		else
+			-- Intentar recoger de pedestal primero
+			if RemoveFromPedestalEvent then
+				RemoveFromPedestalEvent:FireServer()
+			end
+			task.wait(0.1)
+			if not isCarrying then
+				-- Intentar recoger personaje soltado del suelo
+				if PickupDroppedEvent then
+					PickupDroppedEvent:FireServer()
+				end
+			end
+			task.wait(0.1)
+			if not isCarrying then
+				-- Intentar recoger cofre
+				if PickupChestEvent then
+					PickupChestEvent:FireServer()
+				end
+			end
+		end
 
-                task.wait(0.3)
-                inputDebounce = false
+		task.wait(0.3)
+		inputDebounce = false
 
-        elseif input.KeyCode == Enum.KeyCode.G then
-                if isCarrying then
-                        if DropCharacterEvent then
-                                DropCharacterEvent:FireServer()
-                        end
-                end
+	elseif input.KeyCode == Enum.KeyCode.G then
+		if isCarrying then
+			if DropCharacterEvent then
+				DropCharacterEvent:FireServer()
+			end
+		end
 
-        elseif input.KeyCode == Enum.KeyCode.T then
-                -- Mejorar personaje mas cercano en pedestal
-                if UpgradeCharacterEvent then
-                        UpgradeCharacterEvent:FireServer()
-                end
-        end
+	elseif input.KeyCode == Enum.KeyCode.F then
+		-- Mejorar personaje con F (solo cuando esta cerca del boton)
+		if not isCarrying and nearUpgradeButton then
+			if UpgradeCharacterEvent then
+				UpgradeCharacterEvent:FireServer()
+			end
+		end
+	end
 end)
 
 -- Click izquierdo para lanzar pelota
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-        if gameProcessed then return end
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                if ballEquipped and not isCarrying then
-                        throwBall()
-                end
-        end
+	if gameProcessed then return end
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		if ballEquipped and not isCarrying then
+			throwBall()
+		end
+	end
 end)
 
 -- Botones de la GUI
 ballButton.MouseButton1Click:Connect(function()
-        if isCarrying then return end
-        if inputDebounce then return end
-        inputDebounce = true
-        if ballEquipped then
-                unequipBall()
-        else
-                equipBall()
-        end
-        task.wait(0.3)
-        inputDebounce = false
+	if isCarrying then return end
+	if inputDebounce then return end
+	inputDebounce = true
+	if ballEquipped then
+		unequipBall()
+	else
+		equipBall()
+	end
+	task.wait(0.3)
+	inputDebounce = false
 end)
 
 placeBtn.MouseButton1Click:Connect(function()
-        if isCarrying and PlaceCharacterEvent then
-                PlaceCharacterEvent:FireServer()
-        end
+	if isCarrying and PlaceCharacterEvent then
+		PlaceCharacterEvent:FireServer()
+	end
 end)
 
 dropBtn.MouseButton1Click:Connect(function()
-        if isCarrying and DropCharacterEvent then
-                DropCharacterEvent:FireServer()
-        end
+	if isCarrying and DropCharacterEvent then
+		DropCharacterEvent:FireServer()
+	end
 end)
 
 -- Al respawnear
 player.CharacterAdded:Connect(function()
-        ballEquipped = false
-        inputDebounce = false
-        throwDebounce = false
-        isCarrying = false
-        updateButton()
-        updateUI()
+	ballEquipped = false
+	inputDebounce = false
+	throwDebounce = false
+	isCarrying = false
+	updateButton()
+	updateUI()
 end)
 
 -- Escuchar actualizaciones de dinero del servidor
 MoneyUpdateEvent.OnClientEvent:Connect(function(amount)
-        playerMoney = amount
-        moneyLabel.Text = tostring(amount)
+	playerMoney = amount
+	moneyLabel.Text = tostring(amount)
 end)
 
 updateButton()
