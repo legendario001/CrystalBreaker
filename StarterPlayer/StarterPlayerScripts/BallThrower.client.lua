@@ -24,6 +24,12 @@ local PlaceCharacterEvent = ReplicatedStorage:WaitForChild("PlaceCharacter", 15)
 local DropCharacterEvent = ReplicatedStorage:WaitForChild("DropCharacter", 15)
 local RemoveFromPedestalEvent = ReplicatedStorage:WaitForChild("RemoveFromPedestal", 15)
 local PickupDroppedEvent = ReplicatedStorage:WaitForChild("PickupDropped", 15)
+local MoneyUpdateEvent = ReplicatedStorage:WaitForChild("MoneyUpdate", 15)
+
+-- ============================================
+-- DINERO DEL JUGADOR
+-- ============================================
+local playerMoney = 0
 
 -- ============================================
 -- GUI MODERNA
@@ -162,315 +168,362 @@ dropKey.Parent = dropBtn
 Instance.new("UICorner", dropKey).CornerRadius = UDim.new(0, 4)
 
 -- ============================================
+-- PANEL DE DINERO (esquina superior derecha)
+-- ============================================
+local moneyPanel = Instance.new("Frame")
+moneyPanel.Name = "MoneyPanel"
+moneyPanel.Size = UDim2.new(0, 180, 0, 55)
+moneyPanel.Position = UDim2.new(1, -200, 0, 15)
+moneyPanel.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+moneyPanel.BackgroundTransparency = 0.2
+moneyPanel.BorderSizePixel = 0
+moneyPanel.Parent = screenGui
+Instance.new("UICorner", moneyPanel).CornerRadius = UDim.new(0, 16)
+
+local moneyStroke = Instance.new("UIStroke")
+moneyStroke.Color = Color3.fromRGB(255, 215, 0)
+moneyStroke.Thickness = 2
+moneyStroke.Transparency = 0.3
+moneyStroke.Parent = moneyPanel
+
+local moneyIcon = Instance.new("TextLabel")
+moneyIcon.Size = UDim2.new(0.3, 0, 0.6, 0)
+moneyIcon.Position = UDim2.new(0.05, 0, 0.2, 0)
+moneyIcon.BackgroundTransparency = 1
+moneyIcon.Text = "$"
+moneyIcon.TextColor3 = Color3.fromRGB(255, 215, 0)
+moneyIcon.TextScaled = true
+moneyIcon.Font = Enum.Font.GothamBlack
+moneyIcon.Parent = moneyPanel
+
+local moneyLabel = Instance.new("TextLabel")
+moneyLabel.Name = "MoneyLabel"
+moneyLabel.Size = UDim2.new(0.6, 0, 0.6, 0)
+moneyLabel.Position = UDim2.new(0.35, 0, 0.2, 0)
+moneyLabel.BackgroundTransparency = 1
+moneyLabel.Text = "0"
+moneyLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
+moneyLabel.TextScaled = true
+moneyLabel.Font = Enum.Font.GothamBlack
+moneyLabel.TextXAlignment = Enum.TextXAlignment.Left
+moneyLabel.Parent = moneyPanel
+
+-- ============================================
 -- FUNCIONES DE ESTADO
 -- ============================================
 local function updateUI()
-	if isCarrying then
-		bottomBar.Visible = false
-		carryPanel.Visible = true
-	else
-		bottomBar.Visible = true
-		carryPanel.Visible = false
-	end
+        if isCarrying then
+                bottomBar.Visible = false
+                carryPanel.Visible = true
+        else
+                bottomBar.Visible = true
+                carryPanel.Visible = false
+        end
 end
 
 local function updateButton()
-	if ballEquipped then
-		ballButton.BackgroundColor3 = Color3.fromRGB(100, 200, 255)
-		ballIcon.TextColor3 = Color3.fromRGB(0, 0, 0)
-		keyLabel.TextColor3 = Color3.fromRGB(100, 200, 255)
-		keyLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-		btnStroke.Color = Color3.fromRGB(150, 230, 255)
-	else
-		ballButton.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
-		ballIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
-		keyLabel.TextColor3 = Color3.fromRGB(0, 0, 0)
-		keyLabel.BackgroundColor3 = Color3.fromRGB(100, 200, 255)
-		btnStroke.Color = Color3.fromRGB(100, 200, 255)
-	end
+        if ballEquipped then
+                ballButton.BackgroundColor3 = Color3.fromRGB(100, 200, 255)
+                ballIcon.TextColor3 = Color3.fromRGB(0, 0, 0)
+                keyLabel.TextColor3 = Color3.fromRGB(100, 200, 255)
+                keyLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+                btnStroke.Color = Color3.fromRGB(150, 230, 255)
+        else
+                ballButton.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+                ballIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
+                keyLabel.TextColor3 = Color3.fromRGB(0, 0, 0)
+                keyLabel.BackgroundColor3 = Color3.fromRGB(100, 200, 255)
+                btnStroke.Color = Color3.fromRGB(100, 200, 255)
+        end
 end
 
 -- Detectar si esta cargando un personaje
 local function checkCarrying()
-	local char = player.Character
-	if char then
-		local tool = char:FindFirstChild("Carrying")
-		if tool then
-			isCarrying = true
-			updateUI()
-			return
-		end
-	end
-	local bp = player:FindFirstChild("Backpack")
-	if bp then
-		local tool = bp:FindFirstChild("Carrying")
-		if tool then
-			isCarrying = true
-			updateUI()
-			return
-		end
-	end
-	if isCarrying then
-		isCarrying = false
-		updateUI()
-	end
+        local char = player.Character
+        if char then
+                local tool = char:FindFirstChild("Carrying")
+                if tool then
+                        isCarrying = true
+                        updateUI()
+                        return
+                end
+        end
+        local bp = player:FindFirstChild("Backpack")
+        if bp then
+                local tool = bp:FindFirstChild("Carrying")
+                if tool then
+                        isCarrying = true
+                        updateUI()
+                        return
+                end
+        end
+        if isCarrying then
+                isCarrying = false
+                updateUI()
+        end
 end
 
 task.spawn(function()
-	while true do
-		task.wait(0.5)
-		checkCarrying()
-	end
+        while true do
+                task.wait(0.5)
+                checkCarrying()
+        end
 end)
 
 -- ============================================
 -- SISTEMA DE PELOTA
 -- ============================================
 local function equipBall()
-	if ballEquipped then return end
-	if isCarrying then return end
-	local char = player.Character
-	if not char then return end
+        if ballEquipped then return end
+        if isCarrying then return end
+        local char = player.Character
+        if not char then return end
 
-	local old = char:FindFirstChild("CrystalBall")
-	if old then old:Destroy() end
-	local bp = player:FindFirstChild("Backpack")
-	if bp then
-		local oldBp = bp:FindFirstChild("CrystalBall")
-		if oldBp then oldBp:Destroy() end
-	end
+        local old = char:FindFirstChild("CrystalBall")
+        if old then old:Destroy() end
+        local bp = player:FindFirstChild("Backpack")
+        if bp then
+                local oldBp = bp:FindFirstChild("CrystalBall")
+                if oldBp then oldBp:Destroy() end
+        end
 
-	local tool = Instance.new("Tool")
-	tool.Name = "CrystalBall"
-	tool.RequiresHandle = true
-	tool.CanBeDropped = false
+        local tool = Instance.new("Tool")
+        tool.Name = "CrystalBall"
+        tool.RequiresHandle = true
+        tool.CanBeDropped = false
 
-	local handle = Instance.new("Part")
-	handle.Name = "Handle"
-	handle.Size = Vector3.new(1.5, 1.5, 1.5)
-	handle.Shape = Enum.PartType.Ball
-	handle.Color = Color3.fromRGB(100, 200, 255)
-	handle.Material = Enum.Material.SmoothPlastic
-	handle.Anchored = false
-	handle.CanCollide = false
-	handle.Massless = true
-	handle.Parent = tool
+        local handle = Instance.new("Part")
+        handle.Name = "Handle"
+        handle.Size = Vector3.new(1.5, 1.5, 1.5)
+        handle.Shape = Enum.PartType.Ball
+        handle.Color = Color3.fromRGB(100, 200, 255)
+        handle.Material = Enum.Material.SmoothPlastic
+        handle.Anchored = false
+        handle.CanCollide = false
+        handle.Massless = true
+        handle.Parent = tool
 
-	tool.Parent = char
-	ballEquipped = true
-	updateButton()
+        tool.Parent = char
+        ballEquipped = true
+        updateButton()
 end
 
 local function unequipBall()
-	if not ballEquipped then return end
-	local char = player.Character
-	if char then
-		local tool = char:FindFirstChild("CrystalBall")
-		if tool then tool:Destroy() end
-	end
-	local bp = player:FindFirstChild("Backpack")
-	if bp then
-		local tool = bp:FindFirstChild("CrystalBall")
-		if tool then tool:Destroy() end
-	end
-	ballEquipped = false
-	updateButton()
+        if not ballEquipped then return end
+        local char = player.Character
+        if char then
+                local tool = char:FindFirstChild("CrystalBall")
+                if tool then tool:Destroy() end
+        end
+        local bp = player:FindFirstChild("Backpack")
+        if bp then
+                local tool = bp:FindFirstChild("CrystalBall")
+                if tool then tool:Destroy() end
+        end
+        ballEquipped = false
+        updateButton()
 end
 
 local function throwBall()
-	if not ballEquipped then return end
-	if isCarrying then return end
-	if throwDebounce then return end
-	throwDebounce = true
+        if not ballEquipped then return end
+        if isCarrying then return end
+        if throwDebounce then return end
+        throwDebounce = true
 
-	local char = player.Character
-	if not char then
-		throwDebounce = false
-		return
-	end
+        local char = player.Character
+        if not char then
+                throwDebounce = false
+                return
+        end
 
-	local root = char:FindFirstChild("HumanoidRootPart")
-	local humanoid = char:FindFirstChild("Humanoid")
-	if not root then
-		throwDebounce = false
-		return
-	end
+        local root = char:FindFirstChild("HumanoidRootPart")
+        local humanoid = char:FindFirstChild("Humanoid")
+        if not root then
+                throwDebounce = false
+                return
+        end
 
-	if humanoid then
-		local animator = humanoid:FindFirstChildOfClass("Animator")
-		if animator then
-			local anim = Instance.new("Animation")
-			anim.AnimationId = "rbxassetid://90927250635352"
-			local track = animator:LoadAnimation(anim)
-			track:Play()
-		end
-	end
+        if humanoid then
+                local animator = humanoid:FindFirstChildOfClass("Animator")
+                if animator then
+                        local anim = Instance.new("Animation")
+                        anim.AnimationId = "rbxassetid://90927250635352"
+                        local track = animator:LoadAnimation(anim)
+                        track:Play()
+                end
+        end
 
-	local ball = Instance.new("Part")
-	ball.Name = "ThrownBall"
-	ball.Size = Vector3.new(1.5, 1.5, 1.5)
-	ball.Shape = Enum.PartType.Ball
-	ball.Color = Color3.fromRGB(100, 200, 255)
-	ball.Material = Enum.Material.SmoothPlastic
-	ball.Anchored = false
-	ball.CanCollide = true
-	ball.Massless = false
-	ball.Position = root.Position + root.CFrame.LookVector * 3 + Vector3.new(0, 3, 0)
-	ball.Parent = workspace
+        local ball = Instance.new("Part")
+        ball.Name = "ThrownBall"
+        ball.Size = Vector3.new(1.5, 1.5, 1.5)
+        ball.Shape = Enum.PartType.Ball
+        ball.Color = Color3.fromRGB(100, 200, 255)
+        ball.Material = Enum.Material.SmoothPlastic
+        ball.Anchored = false
+        ball.CanCollide = true
+        ball.Massless = false
+        ball.Position = root.Position + root.CFrame.LookVector * 3 + Vector3.new(0, 3, 0)
+        ball.Parent = workspace
 
-	local bounceForce = Instance.new("VectorForce")
-	bounceForce.RelativeTo = Enum.ActuatorRelativeTo.World
-	local attachment = Instance.new("Attachment")
-	attachment.Parent = ball
-	bounceForce.Attachment0 = attachment
-	bounceForce.Force = Vector3.new(0, 0, 0)
-	bounceForce.Parent = ball
+        local bounceForce = Instance.new("VectorForce")
+        bounceForce.RelativeTo = Enum.ActuatorRelativeTo.World
+        local attachment = Instance.new("Attachment")
+        attachment.Parent = ball
+        bounceForce.Attachment0 = attachment
+        bounceForce.Force = Vector3.new(0, 0, 0)
+        bounceForce.Parent = ball
 
-	ball.CustomPhysicalProperties = PhysicalProperties.new(0.5, 0.3, 1.0, 0.3, 1.0)
+        ball.CustomPhysicalProperties = PhysicalProperties.new(0.5, 0.3, 1.0, 0.3, 1.0)
 
-	local direction = (mouse.Hit.Position - ball.Position).Unit
-	local launchSpeed = 100
-	ball.AssemblyLinearVelocity = direction * launchSpeed + Vector3.new(0, 20, 0)
+        local direction = (mouse.Hit.Position - ball.Position).Unit
+        local launchSpeed = 100
+        ball.AssemblyLinearVelocity = direction * launchSpeed + Vector3.new(0, 20, 0)
 
-	if ThrowBallEvent then
-		ThrowBallEvent:FireServer(mouse.Hit.Position)
-	end
+        if ThrowBallEvent then
+                ThrowBallEvent:FireServer(mouse.Hit.Position)
+        end
 
-	task.delay(5, function()
-		if ball and ball.Parent then ball:Destroy() end
-	end)
+        task.delay(5, function()
+                if ball and ball.Parent then ball:Destroy() end
+        end)
 
-	task.wait(0.3)
-	throwDebounce = false
+        task.wait(0.3)
+        throwDebounce = false
 end
 
 -- ============================================
 -- Verificar si hay un DropTimer cerca para recoger
 -- ============================================
 local function isNearDroppedChar()
-	local char = player.Character
-	if not char then return false end
-	local root = char:FindFirstChild("HumanoidRootPart")
-	if not root then return false end
+        local char = player.Character
+        if not char then return false end
+        local root = char:FindFirstChild("HumanoidRootPart")
+        if not root then return false end
 
-	for _, obj in ipairs(workspace:GetChildren()) do
-		if obj.Name == "DropTimer" then
-			local owner = obj:FindFirstChild("Owner")
-			if owner and owner.Value == player then
-				local d = (obj.Position - root.Position).Magnitude
-				if d < 15 then
-					return true
-				end
-			end
-		end
-	end
-	return false
+        for _, obj in ipairs(workspace:GetChildren()) do
+                if obj.Name == "DropTimer" then
+                        local owner = obj:FindFirstChild("Owner")
+                        if owner and owner.Value == player then
+                                local d = (obj.Position - root.Position).Magnitude
+                                if d < 15 then
+                                        return true
+                                end
+                        end
+                end
+        end
+        return false
 end
 
 -- ============================================
 -- INPUTS
 -- ============================================
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed then return end
+        if gameProcessed then return end
 
-	if input.KeyCode == Enum.KeyCode.One then
-		if isCarrying then return end
-		if inputDebounce then return end
-		inputDebounce = true
-		if ballEquipped then
-			unequipBall()
-		else
-			equipBall()
-		end
-		task.wait(0.3)
-		inputDebounce = false
+        if input.KeyCode == Enum.KeyCode.One then
+                if isCarrying then return end
+                if inputDebounce then return end
+                inputDebounce = true
+                if ballEquipped then
+                        unequipBall()
+                else
+                        equipBall()
+                end
+                task.wait(0.3)
+                inputDebounce = false
 
-	elseif input.KeyCode == Enum.KeyCode.E then
-		if inputDebounce then return end
-		inputDebounce = true
+        elseif input.KeyCode == Enum.KeyCode.E then
+                if inputDebounce then return end
+                inputDebounce = true
 
-		if isCarrying then
-			-- Colocar personaje en pedestal cercano
-			if PlaceCharacterEvent then
-				PlaceCharacterEvent:FireServer()
-			end
-		else
-			-- Intentar recoger de pedestal primero
-			if RemoveFromPedestalEvent then
-				RemoveFromPedestalEvent:FireServer()
-			end
-			task.wait(0.1)
-			if not isCarrying then
-				-- Intentar recoger personaje soltado del suelo
-				if PickupDroppedEvent then
-					PickupDroppedEvent:FireServer()
-				end
-			end
-			task.wait(0.1)
-			if not isCarrying then
-				-- Intentar recoger cofre
-				if PickupChestEvent then
-					PickupChestEvent:FireServer()
-				end
-			end
-		end
+                if isCarrying then
+                        -- Colocar personaje en pedestal cercano
+                        if PlaceCharacterEvent then
+                                PlaceCharacterEvent:FireServer()
+                        end
+                else
+                        -- Intentar recoger de pedestal primero
+                        if RemoveFromPedestalEvent then
+                                RemoveFromPedestalEvent:FireServer()
+                        end
+                        task.wait(0.1)
+                        if not isCarrying then
+                                -- Intentar recoger personaje soltado del suelo
+                                if PickupDroppedEvent then
+                                        PickupDroppedEvent:FireServer()
+                                end
+                        end
+                        task.wait(0.1)
+                        if not isCarrying then
+                                -- Intentar recoger cofre
+                                if PickupChestEvent then
+                                        PickupChestEvent:FireServer()
+                                end
+                        end
+                end
 
-		task.wait(0.3)
-		inputDebounce = false
+                task.wait(0.3)
+                inputDebounce = false
 
-	elseif input.KeyCode == Enum.KeyCode.G then
-		if isCarrying then
-			if DropCharacterEvent then
-				DropCharacterEvent:FireServer()
-			end
-		end
-	end
+        elseif input.KeyCode == Enum.KeyCode.G then
+                if isCarrying then
+                        if DropCharacterEvent then
+                                DropCharacterEvent:FireServer()
+                        end
+                end
+        end
 end)
 
 -- Click izquierdo para lanzar pelota
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed then return end
-	if input.UserInputType == Enum.UserInputType.MouseButton1 then
-		if ballEquipped and not isCarrying then
-			throwBall()
-		end
-	end
+        if gameProcessed then return end
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                if ballEquipped and not isCarrying then
+                        throwBall()
+                end
+        end
 end)
 
 -- Botones de la GUI
 ballButton.MouseButton1Click:Connect(function()
-	if isCarrying then return end
-	if inputDebounce then return end
-	inputDebounce = true
-	if ballEquipped then
-		unequipBall()
-	else
-		equipBall()
-	end
-	task.wait(0.3)
-	inputDebounce = false
+        if isCarrying then return end
+        if inputDebounce then return end
+        inputDebounce = true
+        if ballEquipped then
+                unequipBall()
+        else
+                equipBall()
+        end
+        task.wait(0.3)
+        inputDebounce = false
 end)
 
 placeBtn.MouseButton1Click:Connect(function()
-	if isCarrying and PlaceCharacterEvent then
-		PlaceCharacterEvent:FireServer()
-	end
+        if isCarrying and PlaceCharacterEvent then
+                PlaceCharacterEvent:FireServer()
+        end
 end)
 
 dropBtn.MouseButton1Click:Connect(function()
-	if isCarrying and DropCharacterEvent then
-		DropCharacterEvent:FireServer()
-	end
+        if isCarrying and DropCharacterEvent then
+                DropCharacterEvent:FireServer()
+        end
 end)
 
 -- Al respawnear
 player.CharacterAdded:Connect(function()
-	ballEquipped = false
-	inputDebounce = false
-	throwDebounce = false
-	isCarrying = false
-	updateButton()
-	updateUI()
+        ballEquipped = false
+        inputDebounce = false
+        throwDebounce = false
+        isCarrying = false
+        updateButton()
+        updateUI()
+end)
+
+-- Escuchar actualizaciones de dinero del servidor
+MoneyUpdateEvent.OnClientEvent:Connect(function(amount)
+        playerMoney = amount
+        moneyLabel.Text = tostring(amount)
 end)
 
 updateButton()
