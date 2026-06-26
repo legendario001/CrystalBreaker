@@ -1,7 +1,7 @@
 -- ============================================
 -- CrystalSpawner (ModuleScript) - ServerStorage/ServerModules
 -- Genera 25 cristales en la zona de cristales
--- Rareza: Morado (raro) > Rojo > Amarillo > Azul > Blanco (comun)
+-- Rareza: Mitico (Morado) > Epico (Rojo) > Raro (Amarillo) > Incomun (Azul) > Comun (Blanco)
 -- Cofres al romper cristal, regenera si no se recoge
 -- ============================================
 
@@ -9,13 +9,13 @@ local Workspace = game:GetService("Workspace")
 
 local CrystalSpawner = {}
 
--- Colores y rareza de cristales
+-- Colores, rareza y nombres bonitos de cristales
 local CRYSTAL_TYPES = {
-	{color = Color3.fromRGB(170, 85, 255), name = "Morado", weight = 3},
-	{color = Color3.fromRGB(255, 80, 80),  name = "Rojo",    weight = 6},
-	{color = Color3.fromRGB(255, 255, 100), name = "Amarillo", weight = 12},
-	{color = Color3.fromRGB(85, 170, 255),  name = "Azul",    weight = 25},
-	{color = Color3.fromRGB(220, 220, 220), name = "Blanco",  weight = 54}
+	{color = Color3.fromRGB(170, 85, 255),  name = "Morado",   displayName = "MITICO",  weight = 3},
+	{color = Color3.fromRGB(255, 80, 80),   name = "Rojo",     displayName = "EPICO",   weight = 6},
+	{color = Color3.fromRGB(255, 255, 100), name = "Amarillo", displayName = "RARO",    weight = 12},
+	{color = Color3.fromRGB(85, 170, 255),  name = "Azul",     displayName = "INCOMUN", weight = 25},
+	{color = Color3.fromRGB(220, 220, 220), name = "Blanco",   displayName = "COMUN",   weight = 54}
 }
 
 local CHEST_TIMEOUT = 15 -- segundos antes de que el cofre desaparezca y regenere cristal
@@ -37,7 +37,7 @@ local function pickRarity()
 	return CRYSTAL_TYPES[#CRYSTAL_TYPES]
 end
 
--- Crear un cristal en una posicion
+-- Crear un cristal en una posicion con etiqueta bonita
 local function createCrystal(position, crystalType, parent)
 	local crystal = Instance.new("Part")
 	crystal.Name = "Crystal"
@@ -56,30 +56,62 @@ local function createCrystal(position, crystalType, parent)
 	rarityTag.Value = crystalType.name
 	rarityTag.Parent = crystal
 
-	local bb = Instance.new("BillboardGui")
-	bb.Size = UDim2.new(3, 0, 1, 0)
-	bb.StudsOffset = Vector3.new(0, 3.5, 0)
-	bb.AlwaysOnTop = false
-	bb.Parent = crystal
-
-	local lbl = Instance.new("TextLabel")
-	lbl.Size = UDim2.new(1, 0, 1, 0)
-	lbl.BackgroundTransparency = 1
-	lbl.Text = crystalType.name
-	lbl.TextColor3 = crystalType.color
-	lbl.TextScaled = true
-	lbl.Font = Enum.Font.GothamBold
-	lbl.Parent = bb
-
+	-- HP = 1 (se rompe de un golpe)
 	local hp = Instance.new("IntValue")
 	hp.Name = "Health"
-	hp.Value = 10
+	hp.Value = 1
 	hp.Parent = crystal
 
 	local mhp = Instance.new("IntValue")
 	mhp.Name = "MaxHealth"
-	mhp.Value = 10
+	mhp.Value = 1
 	mhp.Parent = crystal
+
+	-- ============================================
+	-- ETIQUETA BONITA DE RAREZA sobre el cristal
+	-- ============================================
+	local bb = Instance.new("BillboardGui")
+	bb.Name = "RarityLabel"
+	bb.Size = UDim2.new(4, 0, 1.5, 0)
+	bb.StudsOffset = Vector3.new(0, 4, 0)
+	bb.AlwaysOnTop = false
+	bb.MaxDistance = 60
+	bb.Parent = crystal
+
+	-- Fondo oscuro con bordes redondeados
+	local bg = Instance.new("Frame")
+	bg.Name = "Bg"
+	bg.Size = UDim2.new(1, 0, 1, 0)
+	bg.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	bg.BackgroundTransparency = 0.5
+	bg.BorderSizePixel = 0
+	bg.Parent = bb
+	Instance.new("UICorner", bg).CornerRadius = UDim.new(0, 6)
+
+	-- Borde del color de la rareza
+	local bgStroke = Instance.new("UIStroke")
+	bgStroke.Color = crystalType.color
+	bgStroke.Thickness = 2
+	bgStroke.Transparency = 0.2
+	bgStroke.Parent = bg
+
+	-- Texto del nombre de rareza
+	local lbl = Instance.new("TextLabel")
+	lbl.Name = "RarityText"
+	lbl.Size = UDim2.new(1, 0, 1, 0)
+	lbl.BackgroundTransparency = 1
+	lbl.Text = crystalType.displayName
+	lbl.TextColor3 = crystalType.color
+	lbl.TextScaled = true
+	lbl.Font = Enum.Font.GothamBlack
+	lbl.Parent = bg
+
+	-- Brillo sutil en el texto (UIStroke)
+	local textStroke = Instance.new("UIStroke")
+	textStroke.Color = Color3.fromRGB(255, 255, 255)
+	textStroke.Thickness = 1
+	textStroke.Transparency = 0.7
+	textStroke.Parent = lbl
 
 	return crystal
 end
@@ -108,7 +140,16 @@ function CrystalSpawner.spawnChest(position, crystalType, player)
 	ot.Value = player
 	ot.Parent = chest
 
-	-- Etiqueta del cofre
+	-- Encontrar displayName
+	local displayName = crystalType.name
+	for _, ct in ipairs(CRYSTAL_TYPES) do
+		if ct.name == crystalType.name then
+			displayName = ct.displayName
+			break
+		end
+	end
+
+	-- Etiqueta del cofre con estilo
 	local bb = Instance.new("BillboardGui")
 	bb.Size = UDim2.new(4, 0, 1.5, 0)
 	bb.StudsOffset = Vector3.new(0, 2.5, 0)
@@ -119,17 +160,24 @@ function CrystalSpawner.spawnChest(position, crystalType, player)
 	bg.Size = UDim2.new(1, 0, 1, 0)
 	bg.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 	bg.BackgroundTransparency = 0.4
+	bg.BorderSizePixel = 0
 	bg.Parent = bb
-	Instance.new("UICorner", bg).CornerRadius = UDim.new(0, 4)
+	Instance.new("UICorner", bg).CornerRadius = UDim.new(0, 6)
+
+	local bgStroke = Instance.new("UIStroke")
+	bgStroke.Color = crystalType.color
+	bgStroke.Thickness = 1.5
+	bgStroke.Transparency = 0.3
+	bgStroke.Parent = bg
 
 	local lbl = Instance.new("TextLabel")
 	lbl.Size = UDim2.new(1, 0, 0.6, 0)
 	lbl.Position = UDim2.new(0, 0, 0, 0)
 	lbl.BackgroundTransparency = 1
-	lbl.Text = crystalType.name
+	lbl.Text = displayName
 	lbl.TextColor3 = crystalType.color
 	lbl.TextScaled = true
-	lbl.Font = Enum.Font.GothamBold
+	lbl.Font = Enum.Font.GothamBlack
 	lbl.Parent = bg
 
 	local timerLbl = Instance.new("TextLabel")
