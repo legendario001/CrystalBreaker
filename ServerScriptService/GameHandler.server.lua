@@ -18,6 +18,7 @@ local PLACE_DISTANCE = 12
 
 -- ============================================
 -- CREAR HERRAMIENTA DE CARGA
+-- No destruir partes del modelo, solo weld al handle
 -- ============================================
 local function createCarryTool(player, model)
         local char = player.Character
@@ -36,7 +37,7 @@ local function createCarryTool(player, model)
         carryTool.RequiresHandle = true
         carryTool.CanBeDropped = false
 
-        -- Handle invisible que va en la mano
+        -- Handle invisible
         local handle = Instance.new("Part")
         handle.Name = "Handle"
         handle.Size = Vector3.new(1, 1, 1)
@@ -49,16 +50,6 @@ local function createCarryTool(player, model)
         if model then
                 local modelClone = model:Clone()
 
-                -- Limpiar partes problematicas (FakeRootPart, AnimationController, efectos)
-                for _, desc in ipairs(modelClone:GetDescendants()) do
-                        if desc.Name == "FakeRootPart" or desc.Name == "AnimationController" or desc.Name == "AnimSaves" then
-                                desc:Destroy()
-                        end
-                        if desc:IsA("ParticleEmitter") or desc:IsA("Beam") or desc:IsA("Trail") or desc:IsA("Smoke") or desc:IsA("Fire") or desc:IsA("Sparkles") then
-                                desc:Destroy()
-                        end
-                end
-
                 -- Desanclar todo
                 for _, desc in ipairs(modelClone:GetDescendants()) do
                         if desc:IsA("BasePart") then
@@ -70,14 +61,24 @@ local function createCarryTool(player, model)
 
                 modelClone.Parent = carryTool
 
-                -- Weld TODAS las partes al handle
-                for _, desc in ipairs(modelClone:GetDescendants()) do
-                        if desc:IsA("BasePart") then
-                                local weld = Instance.new("WeldConstraint")
-                                weld.Part0 = handle
-                                weld.Part1 = desc
-                                weld.Parent = handle
+                -- Asegurar PrimaryPart y weld solo esa al handle
+                -- Las demas partes se mueven con el PrimaryPart via Welds internos del modelo
+                local primaryPart = modelClone.PrimaryPart
+                if not primaryPart then
+                        for _, desc in ipairs(modelClone:GetDescendants()) do
+                                if desc:IsA("BasePart") and desc.Name == "RootPart" then
+                                        primaryPart = desc
+                                        modelClone.PrimaryPart = desc
+                                        break
+                                end
                         end
+                end
+
+                if primaryPart then
+                        local weld = Instance.new("WeldConstraint")
+                        weld.Part0 = handle
+                        weld.Part1 = primaryPart
+                        weld.Parent = handle
                 end
         end
 

@@ -1,8 +1,6 @@
 -- ============================================
 -- ModelManager (ModuleScript) - ServerStorage/ServerModules
--- Coloca modelos en pedestales
--- Limpia partes problematicas: FakeRootPart, AnimationController, AnimSaves
--- Mueve usando CFrame offset sobre partes visibles
+-- Enfoque SIMPLE: no destruir nada, usar PivotTo
 -- ============================================
 
 local ModelManager = {}
@@ -14,49 +12,6 @@ local rarityColors = {
 	Azul = Color3.fromRGB(85, 170, 255),
 	Blanco = Color3.fromRGB(220, 220, 220)
 }
-
--- Nombres de partes/objetos a eliminar del clon
-local REMOVE_NAMES = {
-	["FakeRootPart"] = true,
-	["AnimationController"] = true,
-	["AnimSaves"] = true,
-}
-
--- Limpiar partes problematicas de un modelo clonado
-local function cleanModel(model)
-	for _, obj in ipairs(model:GetDescendants()) do
-		if REMOVE_NAMES[obj.Name] then
-			obj:Destroy()
-		end
-	end
-	-- Tambien limpiar ParticleEmitters y otros efectos que causan problemas
-	for _, obj in ipairs(model:GetDescendants()) do
-		if obj:IsA("ParticleEmitter") or obj:IsA("Beam") or obj:IsA("Trail") or obj:IsA("Smoke") or obj:IsA("Fire") or obj:IsA("Sparkles") then
-			obj:Destroy()
-		end
-	end
-end
-
--- Obtener partes visibles (MeshPart y Part, no eliminadas)
-local function getVisibleParts(model)
-	local parts = {}
-	for _, part in ipairs(model:GetDescendants()) do
-		if (part:IsA("BasePart") or part:IsA("MeshPart")) and not part.Name:find("FakeRoot") then
-			table.insert(parts, part)
-		end
-	end
-	return parts
-end
-
--- Calcular centro de partes visibles
-local function getCenter(parts)
-	if #parts == 0 then return Vector3.new(0, 5, 0) end
-	local sum = Vector3.new(0, 0, 0)
-	for _, part in ipairs(parts) do
-		sum = sum + part.Position
-	end
-	return sum / #parts
-end
 
 -- Mostrar E en pedestal vacio
 function ModelManager.showEmptyLabel(pedestal)
@@ -97,10 +52,26 @@ function ModelManager.placeOnPedestal(model, pedestal)
 
 	local clone = model:Clone()
 
-	-- Limpiar partes problematicas
-	cleanModel(clone)
+	-- Asegurar que tiene PrimaryPart (necesario para PivotTo)
+	if not clone.PrimaryPart then
+		for _, desc in ipairs(clone:GetDescendants()) do
+			if desc:IsA("BasePart") and desc.Name == "RootPart" then
+				clone.PrimaryPart = desc
+				break
+			end
+		end
+	end
+	-- Si aun no tiene, usar cualquier BasePart
+	if not clone.PrimaryPart then
+		for _, desc in ipairs(clone:GetDescendants()) do
+			if desc:IsA("BasePart") then
+				clone.PrimaryPart = desc
+				break
+			end
+		end
+	end
 
-	-- Desanclar todo
+	-- Desanclar todo antes de mover
 	for _, part in ipairs(clone:GetDescendants()) do
 		if part:IsA("BasePart") then
 			part.Anchored = false
@@ -111,21 +82,15 @@ function ModelManager.placeOnPedestal(model, pedestal)
 	-- Parentear al pedestal
 	clone.Parent = pedestal
 
-	-- Calcular posicion objetivo
+	-- Mover con PivotTo (respeta PrimaryPart y Scale)
 	local topY = platform.Position.Y + platform.Size.Y / 2 + 2
-	local targetPos = Vector3.new(platform.Position.X, topY, platform.Position.Z)
+	local targetCF = CFrame.new(platform.Position.X, topY, platform.Position.Z)
 
-	-- Mover modelo: calcular offset y aplicarlo a cada parte
-	local parts = getVisibleParts(clone)
-	if #parts > 0 then
-		local center = getCenter(parts)
-		local offset = targetPos - center
-		for _, part in ipairs(parts) do
-			part.CFrame = part.CFrame + offset
-		end
-	end
+	pcall(function()
+		clone:PivotTo(targetCF)
+	end)
 
-	-- Anclar todo
+	-- Anclar todo en posicion final
 	for _, part in ipairs(clone:GetDescendants()) do
 		if part:IsA("BasePart") then
 			part.Anchored = true
@@ -137,15 +102,17 @@ function ModelManager.placeOnPedestal(model, pedestal)
 end
 
 function ModelManager.moveModelTo(model, position)
-	cleanModel(model)
-	local parts = getVisibleParts(model)
-	if #parts > 0 then
-		local center = getCenter(parts)
-		local offset = position - center
-		for _, part in ipairs(parts) do
-			part.CFrame = part.CFrame + offset
+	if not model.PrimaryPart then
+		for _, desc in ipairs(model:GetDescendants()) do
+			if desc:IsA("BasePart") and desc.Name == "RootPart" then
+				model.PrimaryPart = desc
+				break
+			end
 		end
 	end
+	pcall(function()
+		model:PivotTo(CFrame.new(position))
+	end)
 end
 
 function ModelManager.createLabels(pedestal, charName, rarity)
