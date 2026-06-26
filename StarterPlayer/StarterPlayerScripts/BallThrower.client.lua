@@ -1,7 +1,7 @@
 -- ============================================
 -- BallThrower (LocalScript) - StarterPlayerScripts
--- Presiona 1 o click en el boton para equipar/desequipar
--- Click izquierdo para lanzar
+-- Presiona 1 o click en boton para equipar/desequipar
+-- Click izquierdo para lanzar (sin desequipar)
 -- ============================================
 
 local Players = game:GetService("Players")
@@ -144,13 +144,6 @@ local function equipBall()
 	handle.Massless = true
 	handle.Parent = tool
 
-	-- Brillo de la pelota
-	local highlight = Instance.new("SurfaceLight")
-	highlight.Color = Color3.fromRGB(100, 200, 255)
-	highlight.Range = 5
-	highlight.Brightness = 1
-	highlight.Parent = handle
-
 	tool.Parent = char
 	ballEquipped = true
 	updateButton()
@@ -189,51 +182,52 @@ local function throwBall()
 		return
 	end
 
-	-- Quitar la herramienta
-	unequipBall()
+	-- NO desequipar, solo lanzar una pelota fisica
 
-	-- Crear pelota que vuela
 	local ball = Instance.new("Part")
 	ball.Name = "ThrownBall"
 	ball.Size = Vector3.new(1.5, 1.5, 1.5)
 	ball.Shape = Enum.PartType.Ball
 	ball.Color = Color3.fromRGB(100, 200, 255)
-	ball.Material = Enum.Material.Neon
-	ball.Anchored = true
-	ball.CanCollide = false
+	ball.Material = Enum.Material.SmoothPlastic
+	ball.Anchored = false
+	ball.CanCollide = true
+	ball.Massless = false
 	ball.Position = root.Position + root.CFrame.LookVector * 3 + Vector3.new(0, 3, 0)
 	ball.Parent = workspace
 
-	-- Brillo al volar
-	local light = Instance.new("PointLight")
-	light.Color = Color3.fromRGB(100, 200, 255)
-	light.Range = 8
-	light.Brightness = 2
-	light.Parent = ball
+	-- Fisicas de rebote
+	local bounceForce = Instance.new("VectorForce")
+	bounceForce.RelativeTo = Enum.ActuatorRelativeTo.World
 
-	-- Dirección del lanzamiento
+	local attachment = Instance.new("Attachment")
+	attachment.Parent = ball
+	bounceForce.Attachment0 = attachment
+	bounceForce.Force = Vector3.new(0, 0, 0)
+	bounceForce.Parent = ball
+
+	-- Propiedades de rebote (elasticidad alta)
+	ball.CustomPhysicalProperties = PhysicalProperties.new(
+		0.5,   -- Density
+		0.3,   -- Friction
+		1.0,   -- Elasticity (alto = mucho rebote)
+		0.3,   -- FrictionWeight
+		1.0    -- ElasticityWeight
+	)
+
+	-- Lanzar con velocidad
 	local direction = (mouse.Hit.Position - ball.Position).Unit
-	local speed = 150
-	local velocity = direction * speed
+	local launchSpeed = 100
+	ball.AssemblyLinearVelocity = direction * launchSpeed + Vector3.new(0, 20, 0)
 
-	-- Animar la pelota
-	task.spawn(function()
-		local distance = 0
-		local maxDistance = 250
-
-		while distance < maxDistance do
-			local dt = task.wait(0.01)
-			local move = velocity * dt
-			ball.Position = ball.Position + move
-			distance = distance + move.Magnitude
-		end
-
+	-- Eliminar despues de 5 segundos
+	task.delay(5, function()
 		if ball and ball.Parent then
 			ball:Destroy()
 		end
 	end)
 
-	task.wait(0.4)
+	task.wait(0.3)
 	throwDebounce = false
 end
 
