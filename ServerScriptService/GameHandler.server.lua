@@ -16,6 +16,9 @@ local playerData = {}
 local droppedChars = {}
 local PLACE_DISTANCE = 12
 
+-- Color verde dolar
+local MONEY_COLOR = Color3.fromRGB(76, 175, 80)
+
 -- ============================================
 -- CREAR HERRAMIENTA DE CARGA
 -- ============================================
@@ -50,7 +53,6 @@ local function createCarryTool(player, model)
 
 	if model then
 		local modelClone = model:Clone()
-
 		for _, desc in ipairs(modelClone:GetDescendants()) do
 			if desc:IsA("BasePart") then
 				desc.Anchored = false
@@ -58,7 +60,6 @@ local function createCarryTool(player, model)
 				desc.Massless = true
 			end
 		end
-
 		modelClone.Parent = carryTool
 
 		local parts = {}
@@ -81,11 +82,9 @@ local function createCarryTool(player, model)
 			end
 			local centerX = sumX / #parts
 			local centerZ = sumZ / #parts
-
 			local offsetX = 0 - centerX
 			local offsetY = 0 - lowestY
 			local offsetZ = 0 - centerZ
-
 			for _, part in ipairs(parts) do
 				part.Position = part.Position + Vector3.new(offsetX, offsetY, offsetZ)
 			end
@@ -105,7 +104,7 @@ local function createCarryTool(player, model)
 end
 
 -- ============================================
--- MOSTRAR E EN PEDESTALES VACIOS DE UNA BASE
+-- MOSTRAR E EN PEDESTALES VACIOS
 -- ============================================
 local function showEmptyLabels(base)
 	local pedestals = base:FindFirstChild("Pedestals")
@@ -116,7 +115,7 @@ local function showEmptyLabels(base)
 end
 
 -- ============================================
--- DAR DINERO AL JUGADOR (actualizar leaderstats + cliente)
+-- DAR DINERO AL JUGADOR
 -- ============================================
 local function addMoney(player, amount)
 	local data = playerData[player.UserId]
@@ -124,7 +123,6 @@ local function addMoney(player, amount)
 
 	data.money = (data.money or 0) + amount
 
-	-- Actualizar leaderstats
 	local leaderstats = player:FindFirstChild("leaderstats")
 	if leaderstats then
 		local coins = leaderstats:FindFirstChild("Coins")
@@ -133,12 +131,65 @@ local function addMoney(player, amount)
 		end
 	end
 
-	-- Notificar al cliente
 	Events.MoneyUpdate:FireClient(player, data.money)
 end
 
 -- ============================================
--- LANZAR PELOTA AL CRISTAL (1 golpe = roto)
+-- Configurar eventos de un MoneyPile (Touched + Click mejorar)
+-- Se llama solo cuando se crea el moneyPile, NO usa DescendantAdded
+-- ============================================
+local function setupMoneyPileEvents(pedestal, moneyPile, charIdx)
+	if not moneyPile then return end
+
+	-- Evento de mejora por click
+	local upgradeEvent = moneyPile:WaitForChild("UpgradeEvent", 5)
+	if upgradeEvent then
+		upgradeEvent.Event:Connect(function(player)
+			local data = playerData[player.UserId]
+			if not data then return end
+
+			local charData = data.characters[charIdx]
+			if not charData then return end
+			if charData.pedestal ~= pedestal then return end
+
+			local currentLevel = charData.level or 1
+			if currentLevel >= 100 then return end
+
+			local cost = ModelManager.getUpgradeCost(currentLevel)
+			if (data.money or 0) < cost then return end
+
+			-- Pagar y subir nivel
+			data.money = data.money - cost
+			charData.level = currentLevel + 1
+
+			-- Actualizar leaderstats
+			local leaderstats = player:FindFirstChild("leaderstats")
+			if leaderstats then
+				local coins = leaderstats:FindFirstChild("Coins")
+				if coins then coins.Value = data.money end
+			end
+			Events.MoneyUpdate:FireClient(player, data.money)
+
+			-- Actualizar labels
+			ModelManager.createLabels(pedestal, charData.name, charData.rarity, charData.level)
+			ModelManager.updateMoneyPileUI(pedestal, charData.rarity, charData.level)
+
+			print(player.Name .. " mejoro " .. charData.name .. " a Lv." .. charData.level .. " (-$" .. cost .. ")")
+		end)
+	end
+
+	-- Evento de recoleccion por Touched
+	local collectEvent = moneyPile:WaitForChild("CollectEvent", 5)
+	if collectEvent then
+		collectEvent.Event:Connect(function(player, amount)
+			addMoney(player, amount)
+			print(player.Name .. " recogio $" .. amount)
+		end)
+	end
+end
+
+-- ============================================
+-- LANZAR PELOTA AL CRISTAL
 -- ============================================
 Events.ThrowBall.OnServerEvent:Connect(function(player, targetPos)
 	local data = playerData[player.UserId]
@@ -174,7 +225,7 @@ Events.ThrowBall.OnServerEvent:Connect(function(player, targetPos)
 end)
 
 -- ============================================
--- RECOGER COFRE (E) - Da personaje aleatorio
+-- RECOGER COFRE
 -- ============================================
 Events.PickupChest.OnServerEvent:Connect(function(player)
 	local char = player.Character
@@ -230,7 +281,7 @@ Events.PickupChest.OnServerEvent:Connect(function(player)
 end)
 
 -- ============================================
--- RECOGER PERSONAJE SOLTADO DEL SUELO (E)
+-- RECOGER PERSONAJE SOLTADO
 -- ============================================
 Events.PickupDropped.OnServerEvent:Connect(function(player)
 	local char = player.Character
@@ -287,7 +338,7 @@ Events.PickupDropped.OnServerEvent:Connect(function(player)
 end)
 
 -- ============================================
--- COLOCAR PERSONAJE EN PEDESTAL CERCANO (E o 2)
+-- COLOCAR PERSONAJE EN PEDESTAL
 -- ============================================
 Events.PlaceCharacter.OnServerEvent:Connect(function(player)
 	local data = playerData[player.UserId]
@@ -332,14 +383,17 @@ Events.PlaceCharacter.OnServerEvent:Connect(function(player)
 
 	if not nearestFree then return end
 
+	local charIdx = data.carrying
+
 	if charData.model then
 		ModelManager.placeOnPedestal(charData.model, nearestFree)
 	end
 	charData.pedestal = nearestFree
-	ModelManager.createLabels(nearestFree, charData.name, charData.rarity)
+	ModelManager.createLabels(nearestFree, charData.name, charData.rarity, charData.level)
 
-	-- Crear pila de dinero frente al pedestal
-	ModelManager.createMoneyPile(nearestFree, charData.rarity)
+	-- Crear pila de dinero con eventos
+	local moneyPile = ModelManager.createMoneyPile(nearestFree, charData.rarity, charData.level)
+	setupMoneyPileEvents(nearestFree, moneyPile, charIdx)
 
 	local char = player.Character
 	if char then
@@ -353,11 +407,11 @@ Events.PlaceCharacter.OnServerEvent:Connect(function(player)
 	end
 
 	data.carrying = nil
-	print(player.Name .. " coloco " .. charData.name .. " en pedestal")
+	print(player.Name .. " coloco " .. charData.name .. " Lv." .. (charData.level or 1) .. " en pedestal")
 end)
 
 -- ============================================
--- RECOGER PERSONAJE DE PEDESTAL (E)
+-- RECOGER PERSONAJE DE PEDESTAL
 -- ============================================
 Events.RemoveFromPedestal.OnServerEvent:Connect(function(player)
 	local data = playerData[player.UserId]
@@ -400,7 +454,7 @@ Events.RemoveFromPedestal.OnServerEvent:Connect(function(player)
 
 	local charData = data.characters[nearCharIdx]
 
-	-- Recolectar dinero pendiente antes de quitar
+	-- Recolectar dinero pendiente
 	local moneyPile = nearestPed:FindFirstChild("MoneyPile")
 	if moneyPile then
 		local mv = moneyPile:FindFirstChild("MoneyValue")
@@ -417,6 +471,63 @@ Events.RemoveFromPedestal.OnServerEvent:Connect(function(player)
 	createCarryTool(player, charData.model)
 
 	print(player.Name .. " recogio " .. charData.name .. " del pedestal")
+end)
+
+-- ============================================
+-- MEJORAR PERSONAJE (evento alternativo desde servidor)
+-- ============================================
+Events.UpgradeCharacter.OnServerEvent:Connect(function(player)
+	-- Este evento es backup en caso de que el ClickDetector no funcione
+	-- Buscar pedestal mas cercano con MoneyPile
+	local data = playerData[player.UserId]
+	if not data then return end
+
+	local pchar = player.Character
+	if not pchar then return end
+	local root = pchar:FindFirstChild("HumanoidRootPart")
+	if not root then return end
+
+	local base = BaseManager.getBase(player.UserId)
+	if not base then return end
+
+	local pedestals = base:FindFirstChild("Pedestals")
+	if not pedestals then return end
+
+	-- Buscar pedestal con MoneyPile clickeable mas cercano
+	for i, charData in ipairs(data.characters) do
+		if charData.pedestal then
+			local mp = charData.pedestal:FindFirstChild("MoneyPile")
+			if mp then
+				local platform = charData.pedestal:FindFirstChild("Platform")
+				if platform then
+					local d = (platform.Position - root.Position).Magnitude
+					if d < 15 then
+						local currentLevel = charData.level or 1
+						if currentLevel >= 100 then return end
+
+						local cost = ModelManager.getUpgradeCost(currentLevel)
+						if (data.money or 0) < cost then return end
+
+						data.money = data.money - cost
+						charData.level = currentLevel + 1
+
+						local leaderstats = player:FindFirstChild("leaderstats")
+						if leaderstats then
+							local coins = leaderstats:FindFirstChild("Coins")
+							if coins then coins.Value = data.money end
+						end
+						Events.MoneyUpdate:FireClient(player, data.money)
+
+						ModelManager.createLabels(charData.pedestal, charData.name, charData.rarity, charData.level)
+						ModelManager.updateMoneyPileUI(charData.pedestal, charData.rarity, charData.level)
+
+						print(player.Name .. " mejoro " .. charData.name .. " a Lv." .. charData.level .. " (-$" .. cost .. ")")
+						return
+					end
+				end
+			end
+		end
+	end
 end)
 
 -- ============================================
@@ -450,14 +561,12 @@ Events.DropCharacter.OnServerEvent:Connect(function(player)
 
 	if charData.model then
 		local dm = charData.model:Clone()
-
 		for _, p in ipairs(dm:GetDescendants()) do
 			if p:IsA("BasePart") then
 				p.Anchored = true
 				p.CanCollide = false
 			end
 		end
-
 		dm.Parent = workspace
 		ModelManager.moveModelTo(dm, dropPos)
 
@@ -500,7 +609,7 @@ Events.DropCharacter.OnServerEvent:Connect(function(player)
 		local nameLabel = Instance.new("TextLabel")
 		nameLabel.Size = UDim2.new(1, 0, 0.5, 0)
 		nameLabel.BackgroundTransparency = 1
-		nameLabel.Text = charData.name
+		nameLabel.Text = charData.name .. " Lv." .. (charData.level or 1)
 		nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 		nameLabel.TextScaled = true
 		nameLabel.Font = Enum.Font.GothamBold
@@ -544,8 +653,6 @@ end)
 
 -- ============================================
 -- SISTEMA DE DINERO - Timer cada 2 segundos
--- Genera dinero en las pilas de los pedestales
--- con personajes colocados
 -- ============================================
 task.spawn(function()
 	while true do
@@ -558,10 +665,11 @@ task.spawn(function()
 						if moneyPile and moneyPile.Parent then
 							local mv = moneyPile:FindFirstChild("MoneyValue")
 							local rarityTag = moneyPile:FindFirstChild("Rarity")
+							local levelTag = moneyPile:FindFirstChild("CharLevel")
 							if mv and rarityTag then
-								local rate = ModelManager.getMoneyRate(rarityTag.Value)
+								local lvl = levelTag and levelTag.Value or 1
+								local rate = ModelManager.getMoneyRate(rarityTag.Value, lvl)
 								mv.Value = mv.Value + rate
-								-- Actualizar texto del billboard
 								local bb = moneyPile:FindFirstChild("MoneyGui")
 								if bb then
 									local bg = bb:FindFirstChild("Frame")
@@ -582,50 +690,12 @@ task.spawn(function()
 end)
 
 -- ============================================
--- SISTEMA DE DINERO - Recoger al pasar sobre la pila
--- ============================================
-local moneyPiles = Workspace:WaitForChild("Map"):WaitForChild("Bases")
-
-Workspace.DescendantAdded:Connect(function(desc)
-	if desc.Name == "MoneyPile" and desc:IsA("BasePart") then
-		desc.Touched:Connect(function(hit)
-			local character = hit.Parent
-			if not character then return end
-			local player = Players:GetPlayerFromCharacter(character)
-			if not player then return end
-
-			local mv = desc:FindFirstChild("MoneyValue")
-			if not mv or mv.Value <= 0 then return end
-
-			local amount = mv.Value
-			mv.Value = 0
-
-			-- Actualizar texto
-			local bb = desc:FindFirstChild("MoneyGui")
-			if bb then
-				local bg = bb:FindFirstChild("Frame")
-				if bg then
-					local lbl = bg:FindFirstChild("MoneyLabel")
-					if lbl then
-						lbl.Text = "$0"
-					end
-				end
-			end
-
-			addMoney(player, amount)
-			print(player.Name .. " recogio $" .. amount)
-		end)
-	end
-end)
-
--- ============================================
 -- JUGADOR ENTRA / SALE
 -- ============================================
 Players.PlayerAdded:Connect(function(player)
 	print(player.Name .. " se unio al juego")
 	playerData[player.UserId] = {characters = {}, carrying = nil, money = 0}
 
-	-- Crear leaderstats
 	local leaderstats = Instance.new("Folder")
 	leaderstats.Name = "leaderstats"
 	leaderstats.Parent = player
@@ -635,7 +705,6 @@ Players.PlayerAdded:Connect(function(player)
 	coins.Value = 0
 	coins.Parent = leaderstats
 
-	-- Notificar dinero inicial al cliente
 	task.delay(1, function()
 		Events.MoneyUpdate:FireClient(player, 0)
 	end)
