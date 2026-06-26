@@ -349,16 +349,13 @@ Events.DropCharacter.OnServerEvent:Connect(function(player)
         local root = character:FindFirstChild("HumanoidRootPart")
         if not root then return end
 
-        local dropPos = root.Position + root.CFrame.LookVector * 5 + Vector3.new(0, 2, 0)
+        local dropPos = root.Position + root.CFrame.LookVector * 3 + Vector3.new(0, 2, 0)
         local charIndex = data.carrying
 
         if charData.model then
                 local dm = charData.model:Clone()
 
-                -- Weld todo para que no se separe
-                ModelManager.weldModel(dm)
-
-                -- Desanclar
+                -- Desanclar primero
                 for _, p in ipairs(dm:GetDescendants()) do
                         if p:IsA("BasePart") then
                                 p.Anchored = false
@@ -367,7 +364,11 @@ Events.DropCharacter.OnServerEvent:Connect(function(player)
                         end
                 end
 
+                -- Parentear al workspace ANTES de weld
                 dm.Parent = workspace
+
+                -- Weld todo (necesita estar en workspace)
+                ModelManager.weldModel(dm)
 
                 -- Mover con PivotTo
                 pcall(function() dm:PivotTo(CFrame.new(dropPos)) end)
