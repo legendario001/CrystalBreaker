@@ -60,19 +60,8 @@ local function createCarryTool(player, model)
 
                 modelClone.Parent = carryTool
 
-                -- Mover el modelo para que su centro quede cerca del handle
-                pcall(function()
-                        local targetCF = handle.CFrame * CFrame.new(0, -2, -2)
-                        local currentCF, _ = modelClone:GetBoundingBox()
-                        local delta = targetCF * currentCF:Inverse()
-                        for _, part in ipairs(modelClone:GetDescendants()) do
-                                if part:IsA("BasePart") then
-                                        part.CFrame = delta * part.CFrame
-                                end
-                        end
-                end)
-
-                -- Weld todas las partes al handle
+                -- Weld TODAS las partes directamente al handle
+                -- Roblox posiciona el handle en la mano automaticamente
                 for _, desc in ipairs(modelClone:GetDescendants()) do
                         if desc:IsA("BasePart") then
                                 local weld = Instance.new("WeldConstraint")

@@ -1,7 +1,7 @@
 -- ============================================
 -- ModelManager (ModuleScript) - ServerStorage/ServerModules
 -- Coloca modelos en pedestales, crea etiquetas, muestra E en vacios
--- Usa CFrame por parte en vez de PivotTo/Welds
+-- Usa offset por parte - sin GetBoundingBox, sin ScaleTo, sin PivotTo
 -- ============================================
 
 local ModelManager = {}
@@ -47,18 +47,34 @@ function ModelManager.hideEmptyLabel(pedestal)
 	end
 end
 
--- Mover un modelo entero usando CFrame por cada parte (mas confiable que PivotTo)
-local function moveModelCF(model, targetCFrame)
-	-- Obtener el CFrame actual del modelo (centro de su bounding box)
-	local currentCF, _ = model:GetBoundingBox()
-	-- Calcular la transformacion necesaria
-	local delta = targetCFrame * currentCF:Inverse()
-	-- Aplicar a cada parte
+-- Calcular el centro de todas las partes de un modelo
+local function getModelCenter(model)
+	local sum = Vector3.new(0, 0, 0)
+	local count = 0
 	for _, part in ipairs(model:GetDescendants()) do
 		if part:IsA("BasePart") then
-			part.CFrame = delta * part.CFrame
+			sum = sum + part.Position
+			count = count + 1
 		end
 	end
+	if count == 0 then return Vector3.new(0, 0, 0) end
+	return sum / count
+end
+
+-- Mover todas las partes de un modelo por un offset
+local function moveModelByOffset(model, offset)
+	for _, part in ipairs(model:GetDescendants()) do
+		if part:IsA("BasePart") then
+			part.CFrame = part.CFrame + offset
+		end
+	end
+end
+
+-- Mover modelo para que su centro quede en targetPosition
+local function moveModelCenterTo(model, targetPosition)
+	local center = getModelCenter(model)
+	local offset = targetPosition - center
+	moveModelByOffset(model, offset)
 end
 
 function ModelManager.placeOnPedestal(model, pedestal)
@@ -67,7 +83,7 @@ function ModelManager.placeOnPedestal(model, pedestal)
 
 	local clone = model:Clone()
 
-	-- Desanclar todo antes de mover
+	-- Desanclar todo
 	for _, part in ipairs(clone:GetDescendants()) do
 		if part:IsA("BasePart") then
 			part.Anchored = false
@@ -75,16 +91,16 @@ function ModelManager.placeOnPedestal(model, pedestal)
 		end
 	end
 
-	-- Parentear al pedestal
+	-- Parentear al pedestal PRIMERO
 	clone.Parent = pedestal
 
 	-- Calcular posicion objetivo: arriba de la plataforma
 	local topY = platform.Position.Y + platform.Size.Y / 2 + 2
-	local targetCF = CFrame.new(platform.Position.X, topY, platform.Position.Z)
+	local targetPos = Vector3.new(platform.Position.X, topY, platform.Position.Z)
 
-	-- Mover cada parte usando CFrame
+	-- Mover modelo para que su centro quede en targetPos
 	pcall(function()
-		moveModelCF(clone, targetCF)
+		moveModelCenterTo(clone, targetPos)
 	end)
 
 	-- Anclar todo en su posicion final
@@ -102,8 +118,7 @@ end
 -- Mover modelo a una posicion (para drop)
 function ModelManager.moveModelTo(model, position)
 	pcall(function()
-		local targetCF = CFrame.new(position)
-		moveModelCF(model, targetCF)
+		moveModelCenterTo(model, position)
 	end)
 end
 
