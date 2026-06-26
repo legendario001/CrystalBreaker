@@ -1,12 +1,15 @@
 -- ============================================
 -- GameHandler (Script) - ServerScriptService
--- FIX: pcall en timer de dinero y event handlers para evitar crashes
--- FIX: Verificar instancias destruidas antes de usarlas
+-- FIX: table.remove → nil assignment (evita corrupcion de indices)
+-- FIX: PlayerRemoving limpia TODO (droppedChars, pedestales, carry tools)
+-- FIX: pcall en todos los event handlers + verificacion de instancias destruidas
+-- FIX: FireClient con verificacion de jugador conectado
 -- ============================================
 
 local ServerStorage = game:GetService("ServerStorage")
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
+local Debris = game:GetService("Debris")
 
 local CrystalSpawner = require(ServerStorage.ServerModules.CrystalSpawner)
 local BaseManager = require(ServerStorage.ServerModules.BaseManager)
@@ -23,6 +26,38 @@ local PLACE_DISTANCE = 12
 -- ============================================
 local function isValid(instance)
 	return instance ~= nil and instance.Parent ~= nil
+end
+
+-- ============================================
+-- Helper: verificar si un jugador sigue conectado
+-- ============================================
+local function isPlayerValid(player)
+	return player ~= nil and player.Parent ~= nil
+end
+
+-- ============================================
+-- Helper: encontrar siguiente indice disponible en tabla de personajes
+-- (Evita sobreescribir indices existentes cuando hay huecos nil)
+-- ============================================
+local function getNextCharIndex(characters)
+	local idx = 1
+	while characters[idx] do
+		idx = idx + 1
+	end
+	return idx
+end
+
+-- ============================================
+-- Helper: iterar personajes saltando nil (sparse array)
+-- ============================================
+local function iterateCharacters(characters)
+	local results = {}
+	for i, c in pairs(characters) do
+		if c then
+			table.insert(results, {index = i, data = c})
+		end
+	end
+	return results
 end
 
 -- ============================================
@@ -119,8 +154,10 @@ end
 
 -- ============================================
 -- DAR DINERO AL JUGADOR
+-- FIX: Verificar que el jugador siga conectado antes de FireClient
 -- ============================================
 local function addMoney(player, amount)
+	if not isPlayerValid(player) then return end
 	local data = playerData[player.UserId]
 	if not data then return end
 	data.money = (data.money or 0) + amount
@@ -130,7 +167,10 @@ local function addMoney(player, amount)
 		local coins = leaderstats:FindFirstChild("Coins")
 		if coins then coins.Value = data.money end
 	end
-	Events.MoneyUpdate:FireClient(player, data.money)
+
+	if isPlayerValid(player) then
+		Events.MoneyUpdate:FireClient(player, data.money)
+	end
 end
 
 -- ============================================
@@ -156,6 +196,7 @@ local function setupUpgradeButtonEvents(pedestal, upgradeBtn, charIdx)
 
 	upgradeEvent.Event:Connect(function(player)
 		local ok, err = pcall(function()
+			if not isPlayerValid(player) then return end
 			local data = playerData[player.UserId]
 			if not data then return end
 
@@ -168,8 +209,6 @@ local function setupUpgradeButtonEvents(pedestal, upgradeBtn, charIdx)
 				return
 			end
 			if charData.pedestal ~= pedestal then return end
-
-			-- Verificar que el pedestal sigue siendo valido
 			if not isValid(pedestal) then return end
 
 			local currentLevel = charData.level or 1
@@ -188,7 +227,9 @@ local function setupUpgradeButtonEvents(pedestal, upgradeBtn, charIdx)
 				local coins = leaderstats:FindFirstChild("Coins")
 				if coins then coins.Value = data.money end
 			end
-			Events.MoneyUpdate:FireClient(player, data.money)
+			if isPlayerValid(player) then
+				Events.MoneyUpdate:FireClient(player, data.money)
+			end
 
 			-- Actualizar labels y botones
 			if isValid(pedestal) then
@@ -284,15 +325,16 @@ Events.PickupChest.OnServerEvent:Connect(function(player)
 		local model, folder = CharacterManager.getRandomModel(rarity)
 		local charName = model and model.Name or (rarity .. " Personaje")
 
-		local charIndex = #data.characters + 1
-		table.insert(data.characters, {
+		-- FIX: Usar getNextCharIndex en vez de #data.characters + 1
+		local charIndex = getNextCharIndex(data.characters)
+		data.characters[charIndex] = {
 			name = charName,
 			rarity = rarity,
 			level = 1,
 			model = model,
 			folder = folder,
 			pedestal = nil
-		})
+		}
 
 		data.carrying = charIndex
 		createCarryTool(player, model)
@@ -309,6 +351,7 @@ end)
 
 -- ============================================
 -- RECOGER PERSONAJE SOLTADO
+-- FIX: Verificar que charIndex sigue siendo valido
 -- ============================================
 Events.PickupDropped.OnServerEvent:Connect(function(player)
 	local ok, err = pcall(function()
@@ -343,10 +386,13 @@ Events.PickupDropped.OnServerEvent:Connect(function(player)
 
 		local charIndex = charIndexObj.Value
 		local dropModel = dropModelObj.Value
+
+		-- FIX: Verificar que el character en ese indice sigue existiendo
 		local charData = data.characters[charIndex]
 		if not charData then
 			if dropModel and dropModel.Parent then dropModel:Destroy() end
 			if nearest.Parent then nearest:Destroy() end
+			droppedChars[player.UserId .. "_" .. charIndex] = nil
 			return
 		end
 
@@ -365,7 +411,6 @@ end)
 
 -- ============================================
 -- COLOCAR PERSONAJE EN PEDESTAL
--- FIX: Solo colocar si NO esta ya en un pedestal (evitar duplicacion)
 -- ============================================
 Events.PlaceCharacter.OnServerEvent:Connect(function(player)
 	local ok, err = pcall(function()
@@ -374,10 +419,9 @@ Events.PlaceCharacter.OnServerEvent:Connect(function(player)
 
 		local charData = data.characters[data.carrying]
 		if not charData then return end
-		-- FIX: Si ya tiene pedestal, no duplicar
 		if charData.pedestal then return end
 
-		-- QUITAR HERRAMIENTA INMEDIATAMENTE para que desaparezca rapido de la mano
+		-- QUITAR HERRAMIENTA INMEDIATAMENTE
 		local char = player.Character
 		if char then
 			local tool = char:FindFirstChild("Carrying")
@@ -406,7 +450,6 @@ Events.PlaceCharacter.OnServerEvent:Connect(function(player)
 		for _, ped in ipairs(pedestals:GetChildren()) do
 			local platform = ped:FindFirstChild("Platform")
 			if platform then
-				-- Verificar que no haya ya un modelo en este pedestal
 				local hasModel = false
 				for _, child in ipairs(ped:GetChildren()) do
 					if child:IsA("Model") then
@@ -416,10 +459,9 @@ Events.PlaceCharacter.OnServerEvent:Connect(function(player)
 				end
 				if hasModel then continue end
 
-				-- Verificar que ningun otro personaje lo tenga asignado
 				local occupied = false
-				for _, c in ipairs(data.characters) do
-					if c.pedestal == ped then
+				for _, entry in ipairs(iterateCharacters(data.characters)) do
+					if entry.data.pedestal == ped then
 						occupied = true
 						break
 					end
@@ -438,20 +480,16 @@ Events.PlaceCharacter.OnServerEvent:Connect(function(player)
 
 		local charIdx = data.carrying
 
-		-- Colocar modelo
 		if charData.model then
 			ModelManager.placeOnPedestal(charData.model, nearestFree)
 		end
 		charData.pedestal = nearestFree
 
-		-- Crear labels
 		ModelManager.createLabels(nearestFree, charData.name, charData.rarity, charData.level)
 
-		-- Crear pila de dinero (separada)
 		local moneyPile = ModelManager.createMoneyPile(nearestFree, charData.rarity, charData.level)
 		setupMoneyPileEvents(moneyPile)
 
-		-- Crear boton mejorar (separado)
 		local upgradeBtn = ModelManager.createUpgradeButton(nearestFree, charData.rarity, charData.level)
 		setupUpgradeButtonEvents(nearestFree, upgradeBtn, charIdx)
 
@@ -465,6 +503,7 @@ end)
 
 -- ============================================
 -- RECOGER PERSONAJE DE PEDESTAL
+-- FIX: Usar iterateCharacters en vez de ipairs (para sparse array)
 -- ============================================
 Events.RemoveFromPedestal.OnServerEvent:Connect(function(player)
 	local ok, err = pcall(function()
@@ -486,18 +525,16 @@ Events.RemoveFromPedestal.OnServerEvent:Connect(function(player)
 		local nearDist = PLACE_DISTANCE
 		local nearCharIdx = nil
 
-		for _, ped in ipairs(pedestals:GetChildren()) do
-			local platform = ped:FindFirstChild("Platform")
-			if platform then
-				local d = (platform.Position - root.Position).Magnitude
-				if d < nearDist then
-					for i, c in ipairs(data.characters) do
-						if c.pedestal == ped then
-							nearestPed = ped
-							nearDist = d
-							nearCharIdx = i
-							break
-						end
+		for _, entry in ipairs(iterateCharacters(data.characters)) do
+			local charData = entry.data
+			if charData.pedestal and isValid(charData.pedestal) then
+				local platform = charData.pedestal:FindFirstChild("Platform")
+				if platform then
+					local d = (platform.Position - root.Position).Magnitude
+					if d < nearDist then
+						nearestPed = charData.pedestal
+						nearDist = d
+						nearCharIdx = entry.index
 					end
 				end
 			end
@@ -505,6 +542,7 @@ Events.RemoveFromPedestal.OnServerEvent:Connect(function(player)
 
 		if not nearestPed or not nearCharIdx then return end
 		local charData = data.characters[nearCharIdx]
+		if not charData then return end
 
 		-- Recolectar dinero pendiente
 		local moneyPile = nearestPed:FindFirstChild("MoneyPile")
@@ -531,9 +569,11 @@ end)
 
 -- ============================================
 -- MEJORAR PERSONAJE (tecla F)
+-- FIX: Usar iterateCharacters + verificar instancias destruidas
 -- ============================================
 Events.UpgradeCharacter.OnServerEvent:Connect(function(player)
 	local ok, err = pcall(function()
+		if not isPlayerValid(player) then return end
 		local data = playerData[player.UserId]
 		if not data then return end
 
@@ -547,9 +587,9 @@ Events.UpgradeCharacter.OnServerEvent:Connect(function(player)
 		local pedestals = base:FindFirstChild("Pedestals")
 		if not pedestals then return end
 
-		for i, charData in ipairs(data.characters) do
+		for _, entry in ipairs(iterateCharacters(data.characters)) do
+			local charData = entry.data
 			if charData.pedestal then
-				-- Verificar que el pedestal sigue siendo valido
 				if not isValid(charData.pedestal) then
 					charData.pedestal = nil
 					continue
@@ -573,7 +613,9 @@ Events.UpgradeCharacter.OnServerEvent:Connect(function(player)
 							local coins = leaderstats:FindFirstChild("Coins")
 							if coins then coins.Value = data.money end
 						end
-						Events.MoneyUpdate:FireClient(player, data.money)
+						if isPlayerValid(player) then
+							Events.MoneyUpdate:FireClient(player, data.money)
+						end
 
 						if isValid(charData.pedestal) then
 							ModelManager.createLabels(charData.pedestal, charData.name, charData.rarity, charData.level)
@@ -600,6 +642,8 @@ end)
 
 -- ============================================
 -- SOLTAR PERSONAJE (G)
+-- FIX: No usar table.remove → set nil en su lugar
+-- FIX: Usar Debris para cleanup del DropTimer
 -- ============================================
 Events.DropCharacter.OnServerEvent:Connect(function(player)
 	local ok, err = pcall(function()
@@ -626,6 +670,7 @@ Events.DropCharacter.OnServerEvent:Connect(function(player)
 
 		local dropPos = root.Position + root.CFrame.LookVector * 3 + Vector3.new(0, 2, 0)
 		local charIndex = data.carrying
+		local userId = player.UserId
 
 		if charData.model then
 			local dm = charData.model:Clone()
@@ -637,6 +682,8 @@ Events.DropCharacter.OnServerEvent:Connect(function(player)
 			end
 			dm.Parent = workspace
 			ModelManager.moveModelTo(dm, dropPos)
+			-- Auto-destruir el modelo clonado tras 35s (seguridad)
+			Debris:AddItem(dm, 35)
 
 			local tp = Instance.new("Part")
 			tp.Name = "DropTimer"
@@ -694,13 +741,22 @@ Events.DropCharacter.OnServerEvent:Connect(function(player)
 			tl.Font = Enum.Font.GothamBold
 			tl.Parent = bg
 
-			local key = player.UserId .. "_" .. charIndex
+			local key = userId .. "_" .. charIndex
 			droppedChars[key] = tp
 
 			task.spawn(function()
 				for i = 29, 0, -1 do
 					task.wait(1)
 					if not tp or not tp.Parent then return end
+					-- FIX: Verificar que el jugador siga conectado
+					local currentData = playerData[userId]
+					if not currentData then
+						-- Jugador se fue, limpiar todo
+						if dm and dm.Parent then dm:Destroy() end
+						if tp and tp.Parent then tp:Destroy() end
+						droppedChars[key] = nil
+						return
+					end
 					tl.Text = i .. "s"
 				end
 				if tp and tp.Parent then
@@ -708,8 +764,10 @@ Events.DropCharacter.OnServerEvent:Connect(function(player)
 					if d and d.Value and d.Value.Parent then d.Value:Destroy() end
 					tp:Destroy()
 				end
-				if data.characters[charIndex] then
-					table.remove(data.characters, charIndex)
+				-- FIX: set nil en vez de table.remove (no corrompe indices)
+				local currentData = playerData[userId]
+				if currentData and currentData.characters then
+					currentData.characters[charIndex] = nil
 				end
 				droppedChars[key] = nil
 			end)
@@ -725,8 +783,8 @@ end)
 
 -- ============================================
 -- SISTEMA DE DINERO - Timer cada 2 segundos
--- FIX: pcall para evitar que el timer se detenga por errores
--- FIX: Verificar instancias destruidas antes de acceder
+-- FIX: pcall + verificacion de instancias destruidas
+-- FIX: Verificar jugador conectado antes de actualizar UI
 -- ============================================
 task.spawn(function()
 	while true do
@@ -734,9 +792,9 @@ task.spawn(function()
 		local ok, err = pcall(function()
 			for userId, data in pairs(playerData) do
 				if data.characters then
-					for _, charData in ipairs(data.characters) do
+					for _, entry in ipairs(iterateCharacters(data.characters)) do
+						local charData = entry.data
 						if charData.pedestal then
-							-- FIX: Verificar que el pedestal no fue destruido
 							if not isValid(charData.pedestal) then
 								charData.pedestal = nil
 								continue
@@ -774,6 +832,7 @@ end)
 
 -- ============================================
 -- JUGADOR ENTRA / SALE
+-- FIX: PlayerRemoving limpia TODO (droppedChars, pedestales, carry tools)
 -- ============================================
 Players.PlayerAdded:Connect(function(player)
 	print(player.Name .. " se unio al juego")
@@ -789,15 +848,19 @@ Players.PlayerAdded:Connect(function(player)
 	coins.Parent = leaderstats
 
 	task.delay(1, function()
-		Events.MoneyUpdate:FireClient(player, 0)
+		if isPlayerValid(player) then
+			Events.MoneyUpdate:FireClient(player, 0)
+		end
 	end)
 
 	task.delay(3, function()
+		if not isPlayerValid(player) then return end
 		local base = BaseManager.assign(player)
 		if base then
 			showEmptyLabels(base)
 		else
 			task.delay(5, function()
+				if not isPlayerValid(player) then return end
 				base = BaseManager.assign(player)
 				if base then showEmptyLabels(base) end
 			end)
@@ -807,8 +870,61 @@ end)
 
 Players.PlayerRemoving:Connect(function(player)
 	print(player.Name .. " salio del juego")
-	playerData[player.UserId] = nil
-	BaseManager.release(player.UserId)
+	local userId = player.UserId
+	local data = playerData[userId]
+
+	if data then
+		-- Limpiar carry tool
+		local char = player.Character
+		if char then
+			local tool = char:FindFirstChild("Carrying")
+			if tool then tool:Destroy() end
+		end
+		local bp = player:FindFirstChild("Backpack")
+		if bp then
+			local tool = bp:FindFirstChild("Carrying")
+			if tool then tool:Destroy() end
+		end
+
+		-- Limpiar todos los pedestales del jugador
+		for _, entry in ipairs(iterateCharacters(data.characters)) do
+			local charData = entry.data
+			if charData.pedestal and isValid(charData.pedestal) then
+				-- Recolectar dinero pendiente
+				local moneyPile = charData.pedestal:FindFirstChild("MoneyPile")
+				if moneyPile then
+					local mv = moneyPile:FindFirstChild("MoneyValue")
+					if mv and mv.Value > 0 then
+						-- El dinero se pierde al salir, pero limpiamos la instancia
+					end
+				end
+				ModelManager.clearPedestal(charData.pedestal)
+				ModelManager.removeMoneyPile(charData.pedestal)
+				ModelManager.removeUpgradeButton(charData.pedestal)
+			end
+		end
+
+		-- Limpiar personajes soltados del jugador
+		for key, tp in pairs(droppedChars) do
+			if tp and tp.Parent then
+				local owner = tp:FindFirstChild("Owner")
+				if owner and owner.Value == player then
+					local dropModelObj = tp:FindFirstChild("DropModel")
+					if dropModelObj and dropModelObj.Value and dropModelObj.Value.Parent then
+						dropModelObj.Value:Destroy()
+					end
+					tp:Destroy()
+					droppedChars[key] = nil
+				end
+			else
+				-- Entrada stale, limpiar
+				droppedChars[key] = nil
+			end
+		end
+	end
+
+	playerData[userId] = nil
+	BaseManager.release(userId)
 end)
 
 -- ============================================
