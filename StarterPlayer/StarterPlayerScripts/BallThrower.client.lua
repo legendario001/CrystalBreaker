@@ -6,12 +6,17 @@
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local player = Players.LocalPlayer
 local mouse = player:GetMouse()
 local ballEquipped = false
 local inputDebounce = false
 local throwDebounce = false
+
+-- Eventos del servidor
+local ThrowBallEvent = ReplicatedStorage:WaitForChild("ThrowBall", 15)
+local PickupChestEvent = ReplicatedStorage:WaitForChild("PickupChest", 15)
 
 -- ============================================
 -- GUI MODERNA
@@ -232,6 +237,11 @@ local function throwBall()
         local launchSpeed = 100
         ball.AssemblyLinearVelocity = direction * launchSpeed + Vector3.new(0, 20, 0)
 
+        -- Enviar posicion al servidor para verificar golpe al cristal
+        if ThrowBallEvent then
+                ThrowBallEvent:FireServer(mouse.Hit.Position)
+        end
+
         -- Eliminar despues de 5 segundos
         task.delay(5, function()
                 if ball and ball.Parent then
@@ -248,6 +258,7 @@ end
 -- ============================================
 
 -- Tecla 1 para equipar/desequipar
+-- Tecla E para recoger cofre
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
         if gameProcessed then return end
         if input.KeyCode == Enum.KeyCode.One then
@@ -260,6 +271,10 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
                 end
                 task.wait(0.3)
                 inputDebounce = false
+        elseif input.KeyCode == Enum.KeyCode.E then
+                if PickupChestEvent then
+                        PickupChestEvent:FireServer()
+                end
         end
 end)
 
