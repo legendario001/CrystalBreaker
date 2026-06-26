@@ -25,11 +25,16 @@ local DropCharacterEvent = ReplicatedStorage:WaitForChild("DropCharacter", 15)
 local RemoveFromPedestalEvent = ReplicatedStorage:WaitForChild("RemoveFromPedestal", 15)
 local PickupDroppedEvent = ReplicatedStorage:WaitForChild("PickupDropped", 15)
 local MoneyUpdateEvent = ReplicatedStorage:WaitForChild("MoneyUpdate", 15)
+local UpgradeCharacterEvent = ReplicatedStorage:WaitForChild("UpgradeCharacter", 15)
 
 -- ============================================
 -- DINERO DEL JUGADOR
 -- ============================================
 local playerMoney = 0
+
+-- Color verde dolar
+local MONEY_GREEN = Color3.fromRGB(76, 175, 80)
+local MONEY_GREEN_BRIGHT = Color3.fromRGB(129, 199, 132)
 
 -- ============================================
 -- GUI MODERNA
@@ -181,7 +186,7 @@ moneyPanel.Parent = screenGui
 Instance.new("UICorner", moneyPanel).CornerRadius = UDim.new(0, 16)
 
 local moneyStroke = Instance.new("UIStroke")
-moneyStroke.Color = Color3.fromRGB(255, 215, 0)
+moneyStroke.Color = MONEY_GREEN
 moneyStroke.Thickness = 2
 moneyStroke.Transparency = 0.3
 moneyStroke.Parent = moneyPanel
@@ -191,7 +196,7 @@ moneyIcon.Size = UDim2.new(0.3, 0, 0.6, 0)
 moneyIcon.Position = UDim2.new(0.05, 0, 0.2, 0)
 moneyIcon.BackgroundTransparency = 1
 moneyIcon.Text = "$"
-moneyIcon.TextColor3 = Color3.fromRGB(255, 215, 0)
+moneyIcon.TextColor3 = MONEY_GREEN_BRIGHT
 moneyIcon.TextScaled = true
 moneyIcon.Font = Enum.Font.GothamBlack
 moneyIcon.Parent = moneyPanel
@@ -202,7 +207,7 @@ moneyLabel.Size = UDim2.new(0.6, 0, 0.6, 0)
 moneyLabel.Position = UDim2.new(0.35, 0, 0.2, 0)
 moneyLabel.BackgroundTransparency = 1
 moneyLabel.Text = "0"
-moneyLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
+moneyLabel.TextColor3 = MONEY_GREEN_BRIGHT
 moneyLabel.TextScaled = true
 moneyLabel.Font = Enum.Font.GothamBlack
 moneyLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -470,6 +475,12 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
                         if DropCharacterEvent then
                                 DropCharacterEvent:FireServer()
                         end
+                end
+
+        elseif input.KeyCode == Enum.KeyCode.T then
+                -- Mejorar personaje mas cercano en pedestal
+                if UpgradeCharacterEvent then
+                        UpgradeCharacterEvent:FireServer()
                 end
         end
 end)
