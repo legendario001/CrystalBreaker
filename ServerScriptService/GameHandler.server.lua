@@ -35,7 +35,6 @@ local PLACE_DISTANCE = 12
 local upgradeCooldowns = {}       -- debounce por jugador (tecla F)
 local upgradeButtonCooldowns = {} -- debounce por jugador+personaje (click)
 local throwCooldowns = {}         -- debounce por jugador (lanzar pelota)
-local pickupCooldowns = {}        -- debounce por jugador (recoger)
 
 -- ============================================
 -- Helper: verificar si una instancia es valida (no destruida)
@@ -370,10 +369,6 @@ Events.PickupChest.OnServerEvent:Connect(function(player)
                 nearest:Destroy()
                 CrystalSpawner.respawn(pos)
                 print(player.Name .. " obtuvo " .. charName .. " [" .. rarity .. "]")
-
-                -- DEBOUNCE: Solo se activa cuando se recogio exitosamente un cofre
-                pickupCooldowns[player.UserId] = true
-                task.delay(0.5, function() pickupCooldowns[player.UserId] = nil end)
         end)
         if not ok then
                 warn("Error en PickupChest: " .. tostring(err))
@@ -995,7 +990,6 @@ Players.PlayerRemoving:Connect(function(player)
         -- Limpiar cooldowns del jugador
         upgradeCooldowns[userId] = nil
         throwCooldowns[userId] = nil
-        pickupCooldowns[userId] = nil
         for key, _ in pairs(upgradeButtonCooldowns) do
                 if string.find(key, tostring(userId)) then
                         upgradeButtonCooldowns[key] = nil
