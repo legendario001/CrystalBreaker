@@ -30,6 +30,14 @@ local droppedChars = {}
 local PLACE_DISTANCE = 12
 
 -- ============================================
+-- DEBOUNCE: Previene spam de eventos del servidor
+-- ============================================
+local upgradeCooldowns = {}       -- debounce por jugador (tecla F)
+local upgradeButtonCooldowns = {} -- debounce por jugador+personaje (click)
+local throwCooldowns = {}         -- debounce por jugador (lanzar pelota)
+local pickupCooldowns = {}        -- debounce por jugador (recoger)
+
+-- ============================================
 -- Helper: verificar si una instancia es valida (no destruida)
 -- ============================================
 local function isValid(instance)
@@ -203,6 +211,12 @@ local function setupUpgradeButtonEvents(pedestal, upgradeBtn, charIdx)
         if not upgradeEvent then return end
 
         upgradeEvent.Event:Connect(function(player)
+                -- DEBOUNCE: Previene spam de click en boton mejorar
+                local btnKey = player.UserId .. "_" .. charIdx
+                if upgradeButtonCooldowns[btnKey] then return end
+                upgradeButtonCooldowns[btnKey] = true
+                task.delay(0.25, function() upgradeButtonCooldowns[btnKey] = nil end)
+
                 local ok, err = pcall(function()
                         if not isPlayerValid(player) then return end
                         local data = playerData[player.UserId]
@@ -264,6 +278,11 @@ end
 -- LANZAR PELOTA AL CRISTAL
 -- ============================================
 Events.ThrowBall.OnServerEvent:Connect(function(player, targetPos)
+        -- DEBOUNCE: Previene spam de lanzar pelotas
+        if throwCooldowns[player.UserId] then return end
+        throwCooldowns[player.UserId] = true
+        task.delay(0.3, function() throwCooldowns[player.UserId] = nil end)
+
         local ok, err = pcall(function()
                 local data = playerData[player.UserId]
                 if data and data.carrying then return end
@@ -302,6 +321,11 @@ end)
 -- RECOGER COFRE
 -- ============================================
 Events.PickupChest.OnServerEvent:Connect(function(player)
+        -- DEBOUNCE: Previene spam de recoger cofres
+        if pickupCooldowns[player.UserId] then return end
+        pickupCooldowns[player.UserId] = true
+        task.delay(0.3, function() pickupCooldowns[player.UserId] = nil end)
+
         local ok, err = pcall(function()
                 local char = player.Character
                 if not char then return end
@@ -362,6 +386,11 @@ end)
 -- FIX: Verificar que charIndex sigue siendo valido
 -- ============================================
 Events.PickupDropped.OnServerEvent:Connect(function(player)
+        -- DEBOUNCE: Previene spam de recoger personajes
+        if pickupCooldowns[player.UserId] then return end
+        pickupCooldowns[player.UserId] = true
+        task.delay(0.3, function() pickupCooldowns[player.UserId] = nil end)
+
         local ok, err = pcall(function()
                 local char = player.Character
                 if not char then return end
@@ -374,8 +403,12 @@ Events.PickupDropped.OnServerEvent:Connect(function(player)
 
                 local nearest = nil
                 local nearDist = 15
+                -- FIX: Limpiar entradas stale de droppedChars mientras iteramos
+                local staleKeys = {}
                 for key, tp in pairs(droppedChars) do
-                        if tp and tp.Parent then
+                        if not tp or not tp.Parent then
+                                table.insert(staleKeys, key)
+                        else
                                 local owner = tp:FindFirstChild("Owner")
                                 if owner and owner.Value == player then
                                         local d = (tp.Position - root.Position).Magnitude
@@ -385,6 +418,10 @@ Events.PickupDropped.OnServerEvent:Connect(function(player)
                                         end
                                 end
                         end
+                end
+                -- Limpiar entradas stale
+                for _, key in ipairs(staleKeys) do
+                        droppedChars[key] = nil
                 end
                 if not nearest then return end
 
@@ -580,6 +617,11 @@ end)
 -- FIX: Usar iterateCharacters + verificar instancias destruidas
 -- ============================================
 Events.UpgradeCharacter.OnServerEvent:Connect(function(player)
+        -- DEBOUNCE: Previene spam de tecla F para mejorar
+        if upgradeCooldowns[player.UserId] then return end
+        upgradeCooldowns[player.UserId] = true
+        task.delay(0.25, function() upgradeCooldowns[player.UserId] = nil end)
+
         local ok, err = pcall(function()
                 if not isPlayerValid(player) then return end
                 local data = playerData[player.UserId]
@@ -953,6 +995,17 @@ Players.PlayerRemoving:Connect(function(player)
         end
 
         playerData[userId] = nil
+
+        -- Limpiar cooldowns del jugador
+        upgradeCooldowns[userId] = nil
+        throwCooldowns[userId] = nil
+        pickupCooldowns[userId] = nil
+        for key, _ in pairs(upgradeButtonCooldowns) do
+                if string.find(key, tostring(userId)) then
+                        upgradeButtonCooldowns[key] = nil
+                end
+        end
+
         BaseManager.release(userId)
 end)
 
