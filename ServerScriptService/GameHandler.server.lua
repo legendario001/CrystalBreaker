@@ -18,13 +18,6 @@ local PLACE_DISTANCE = 12
 
 -- ============================================
 -- CREAR HERRAMIENTA DE CARGA
--- Metodo correcto:
---   1. Clonar modelo
---   2. Desanclar, CanCollide=false, Massless=true
---   3. Centrar modelo en (0,0,0) usando part.Position + Vector3
---   4. Weld TODAS las partes al handle
---   5. El Handle se posiciona automaticamente en la mano del jugador
---   6. Como el modelo esta centrado en el Handle, se ve en la mano
 -- ============================================
 local function createCarryTool(player, model)
 	local char = player.Character
@@ -43,7 +36,6 @@ local function createCarryTool(player, model)
 	carryTool.RequiresHandle = true
 	carryTool.CanBeDropped = false
 
-	-- Handle invisible en posicion conocida
 	local handle = Instance.new("Part")
 	handle.Name = "Handle"
 	handle.Size = Vector3.new(0.5, 0.5, 0.5)
@@ -54,14 +46,11 @@ local function createCarryTool(player, model)
 	handle.Position = Vector3.new(0, 0, 0)
 	handle.Parent = carryTool
 
-	-- Grip: posicion relativa del Handle respecto a la mano derecha
-	-- El modelo aparecera un poco adelante y abajo de la mano
 	carryTool.Grip = CFrame.new(0, -1.5, 1.5)
 
 	if model then
 		local modelClone = model:Clone()
 
-		-- Paso 1: Desanclar todo y hacer massless
 		for _, desc in ipairs(modelClone:GetDescendants()) do
 			if desc:IsA("BasePart") then
 				desc.Anchored = false
@@ -70,10 +59,8 @@ local function createCarryTool(player, model)
 			end
 		end
 
-		-- Paso 2: Parentar al Tool para que este en workspace
 		modelClone.Parent = carryTool
 
-		-- Paso 3: Calcular centro actual del modelo
 		local parts = {}
 		for _, desc in ipairs(modelClone:GetDescendants()) do
 			if desc:IsA("BasePart") then
@@ -82,7 +69,6 @@ local function createCarryTool(player, model)
 		end
 
 		if #parts > 0 then
-			-- Calcular centro del modelo (promedio XZ, lowestY para la base)
 			local sumX, sumZ = 0, 0
 			local lowestY = math.huge
 			for _, part in ipairs(parts) do
@@ -96,23 +82,15 @@ local function createCarryTool(player, model)
 			local centerX = sumX / #parts
 			local centerZ = sumZ / #parts
 
-			-- Mover todas las partes para que el centro del modelo este en (0, 0, 0)
-			-- Esto es CRITICO: asi cuando el Handle se mueve a la mano,
-			-- el modelo se mueve con el y queda centrado ahi
 			local offsetX = 0 - centerX
-			local offsetY = 0 - lowestY  -- La base del modelo en Y=0
+			local offsetY = 0 - lowestY
 			local offsetZ = 0 - centerZ
 
 			for _, part in ipairs(parts) do
 				part.Position = part.Position + Vector3.new(offsetX, offsetY, offsetZ)
 			end
-
-			print("[CarryTool] Modelo centrado en Handle: offsetX=" .. offsetX .. " offsetY=" .. offsetY .. " offsetZ=" .. offsetZ)
 		end
 
-		-- Paso 4: Weld TODAS las BaseParts al handle
-		-- Como el modelo esta centrado en el handle, los WeldConstraints
-		-- mantienen esa relacion y todo se mueve junto
 		for _, desc in ipairs(modelClone:GetDescendants()) do
 			if desc:IsA("BasePart") then
 				local weld = Instance.new("WeldConstraint")
@@ -138,7 +116,7 @@ local function showEmptyLabels(base)
 end
 
 -- ============================================
--- LANZAR PELOTA AL CRISTAL
+-- LANZAR PELOTA AL CRISTAL (1 golpe = roto)
 -- ============================================
 Events.ThrowBall.OnServerEvent:Connect(function(player, targetPos)
 	local data = playerData[player.UserId]
@@ -164,19 +142,14 @@ Events.ThrowBall.OnServerEvent:Connect(function(player, targetPos)
 
 	if not nearest then return end
 
-	local hp = nearest:FindFirstChild("Health")
-	if not hp then return end
-	hp.Value = hp.Value - 1
-
-	if hp.Value <= 0 then
-		local rt = nearest:FindFirstChild("Rarity")
-		local rarity = rt and rt.Value or "Blanco"
-		local crystalColor = nearest.Color
-		local pos = nearest.Position
-		local crystalType = {color = crystalColor, name = rarity}
-		nearest:Destroy()
-		CrystalSpawner.spawnChest(pos, crystalType, player)
-	end
+	-- Cristal se rompe de un golpe
+	local rt = nearest:FindFirstChild("Rarity")
+	local rarity = rt and rt.Value or "Blanco"
+	local crystalColor = nearest.Color
+	local pos = nearest.Position
+	local crystalType = {color = crystalColor, name = rarity}
+	nearest:Destroy()
+	CrystalSpawner.spawnChest(pos, crystalType, player)
 end)
 
 -- ============================================
@@ -236,8 +209,72 @@ Events.PickupChest.OnServerEvent:Connect(function(player)
 end)
 
 -- ============================================
+-- RECOGER PERSONAJE SOLTADO DEL SUELO (E)
+-- ============================================
+Events.PickupDropped.OnServerEvent:Connect(function(player)
+	local char = player.Character
+	if not char then return end
+	local root = char:FindFirstChild("HumanoidRootPart")
+	if not root then return end
+
+	local data = playerData[player.UserId]
+	if not data then return end
+	if data.carrying then return end
+
+	-- Buscar DropTimer mas cercano que pertenezca a este jugador
+	local nearest = nil
+	local nearDist = 15
+
+	for key, tp in pairs(droppedChars) do
+		if tp and tp.Parent then
+			local owner = tp:FindFirstChild("Owner")
+			if owner and owner.Value == player then
+				local d = (tp.Position - root.Position).Magnitude
+				if d < nearDist then
+					nearDist = d
+					nearest = tp
+				end
+			end
+		end
+	end
+
+	if not nearest then return end
+
+	-- Obtener datos del personaje soltado
+	local charIndexObj = nearest:FindFirstChild("CharIndex")
+	local dropModelObj = nearest:FindFirstChild("DropModel")
+
+	if not charIndexObj or not dropModelObj then return end
+
+	local charIndex = charIndexObj.Value
+	local dropModel = dropModelObj.Value
+
+	-- Verificar que el personaje aun existe en los datos del jugador
+	local charData = data.characters[charIndex]
+	if not charData then
+		-- El personaje ya fue eliminado (se acabo el timer)
+		if dropModel and dropModel.Parent then dropModel:Destroy() end
+		if nearest.Parent then nearest:Destroy() end
+		return
+	end
+
+	-- Recoger: equipar en la mano
+	data.carrying = charIndex
+	createCarryTool(player, charData.model)
+
+	-- Destruir modelo del suelo y timer
+	if dropModel and dropModel.Parent then dropModel:Destroy() end
+	if nearest.Parent then nearest:Destroy() end
+
+	-- Limpiar de droppedChars
+	local key = player.UserId .. "_" .. charIndex
+	droppedChars[key] = nil
+
+	print(player.Name .. " recogio " .. charData.name .. " del suelo")
+end)
+
+-- ============================================
 -- COLOCAR PERSONAJE EN PEDESTAL CERCANO (E o 2)
--- Solo si esta cerca de un pedestal vacio
 -- ============================================
 Events.PlaceCharacter.OnServerEvent:Connect(function(player)
 	local data = playerData[player.UserId]
@@ -257,7 +294,6 @@ Events.PlaceCharacter.OnServerEvent:Connect(function(player)
 	local pedestals = base:FindFirstChild("Pedestals")
 	if not pedestals then return end
 
-	-- Buscar pedestal vacio MAS CERCANO al jugador
 	local nearestFree = nil
 	local nearestDist = PLACE_DISTANCE
 
@@ -283,14 +319,12 @@ Events.PlaceCharacter.OnServerEvent:Connect(function(player)
 
 	if not nearestFree then return end
 
-	-- Colocar modelo en pedestal
 	if charData.model then
 		ModelManager.placeOnPedestal(charData.model, nearestFree)
 	end
 	charData.pedestal = nearestFree
 	ModelManager.createLabels(nearestFree, charData.name, charData.rarity)
 
-	-- Quitar herramienta
 	local char = player.Character
 	if char then
 		local tool = char:FindFirstChild("Carrying")
@@ -325,7 +359,6 @@ Events.RemoveFromPedestal.OnServerEvent:Connect(function(player)
 	local pedestals = base:FindFirstChild("Pedestals")
 	if not pedestals then return end
 
-	-- Buscar pedestal ocupado mas cercano
 	local nearestPed = nil
 	local nearDist = PLACE_DISTANCE
 	local nearCharIdx = nil
@@ -351,11 +384,9 @@ Events.RemoveFromPedestal.OnServerEvent:Connect(function(player)
 
 	local charData = data.characters[nearCharIdx]
 
-	-- Limpiar pedestal (esto tambien muestra la E de nuevo)
 	ModelManager.clearPedestal(nearestPed)
 	charData.pedestal = nil
 
-	-- Cargar en la mano
 	data.carrying = nearCharIdx
 	createCarryTool(player, charData.model)
 
@@ -395,7 +426,6 @@ Events.DropCharacter.OnServerEvent:Connect(function(player)
 	if charData.model then
 		local dm = charData.model:Clone()
 
-		-- Anclar todo primero para poder posicionar
 		for _, p in ipairs(dm:GetDescendants()) do
 			if p:IsA("BasePart") then
 				p.Anchored = true
@@ -403,10 +433,7 @@ Events.DropCharacter.OnServerEvent:Connect(function(player)
 			end
 		end
 
-		-- Parentear al workspace
 		dm.Parent = workspace
-
-		-- Mover modelo a la posicion usando part.Position + Vector3 (espacio MUNDIAL)
 		ModelManager.moveModelTo(dm, dropPos)
 
 		local tp = Instance.new("Part")
@@ -425,21 +452,46 @@ Events.DropCharacter.OnServerEvent:Connect(function(player)
 		Instance.new("ObjectValue", tp).Name = "DropModel"
 		tp.DropModel.Value = dm
 
+		-- Etiqueta bonita del personaje soltado
 		local bb = Instance.new("BillboardGui")
-		bb.Size = UDim2.new(4, 0, 1, 0)
+		bb.Size = UDim2.new(4, 0, 1.5, 0)
 		bb.StudsOffset = Vector3.new(0, 1, 0)
 		bb.AlwaysOnTop = true
 		bb.Parent = tp
 
+		local bg = Instance.new("Frame")
+		bg.Size = UDim2.new(1, 0, 1, 0)
+		bg.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+		bg.BackgroundTransparency = 0.4
+		bg.BorderSizePixel = 0
+		bg.Parent = bb
+		Instance.new("UICorner", bg).CornerRadius = UDim.new(0, 6)
+
+		local bgStroke = Instance.new("UIStroke")
+		bgStroke.Color = Color3.fromRGB(255, 100, 100)
+		bgStroke.Thickness = 1.5
+		bgStroke.Transparency = 0.3
+		bgStroke.Parent = bg
+
+		local nameLabel = Instance.new("TextLabel")
+		nameLabel.Size = UDim2.new(1, 0, 0.5, 0)
+		nameLabel.BackgroundTransparency = 1
+		nameLabel.Text = charData.name
+		nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+		nameLabel.TextScaled = true
+		nameLabel.Font = Enum.Font.GothamBold
+		nameLabel.Parent = bg
+
 		local tl = Instance.new("TextLabel")
-		tl.Size = UDim2.new(1, 0, 1, 0)
-		tl.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-		tl.BackgroundTransparency = 0.3
+		tl.Name = "TimerLabel"
+		tl.Size = UDim2.new(1, 0, 0.5, 0)
+		tl.Position = UDim2.new(0, 0, 0.5, 0)
+		tl.BackgroundTransparency = 1
+		tl.Text = "30s"
 		tl.TextColor3 = Color3.fromRGB(255, 100, 100)
 		tl.TextScaled = true
 		tl.Font = Enum.Font.GothamBold
-		tl.Text = "30s"
-		tl.Parent = bb
+		tl.Parent = bg
 
 		local key = player.UserId .. "_" .. charIndex
 		droppedChars[key] = tp
