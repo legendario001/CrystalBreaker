@@ -1,6 +1,5 @@
 -- ============================================
 -- GameHandler (Script) - ServerScriptService
--- Script principal del servidor
 -- ============================================
 
 local ServerStorage = game:GetService("ServerStorage")
@@ -15,15 +14,15 @@ local Events = require(game:GetService("ReplicatedStorage").RemoteEvents)
 
 local playerData = {}
 local droppedChars = {}
+local PLACE_DISTANCE = 12
 
 -- ============================================
--- CREAR HERRAMIENTA DE CARGA
+-- CREAR HERRAMIENTA DE CARGA (modelo pegado a la mano)
 -- ============================================
 local function createCarryTool(player, model)
 	local char = player.Character
 	if not char then return end
 
-	-- Eliminar herramienta anterior
 	local old = char:FindFirstChild("Carrying")
 	if old then old:Destroy() end
 	local bp = player:FindFirstChild("Backpack")
@@ -37,20 +36,24 @@ local function createCarryTool(player, model)
 	carryTool.RequiresHandle = true
 	carryTool.CanBeDropped = false
 
+	-- Handle invisible en la mano derecha
 	local handle = Instance.new("Part")
 	handle.Name = "Handle"
 	handle.Size = Vector3.new(0.5, 0.5, 0.5)
 	handle.Transparency = 1
 	handle.Anchored = false
 	handle.CanCollide = false
+	handle.Massless = true
 	handle.Parent = carryTool
 
 	if model then
 		local modelClone = model:Clone()
 		modelClone.Parent = carryTool
 
-		pcall(function() modelClone:ScaleTo(2) end)
+		-- Escalar pequeno para la mano
+		pcall(function() modelClone:ScaleTo(1.5) end)
 
+		-- Buscar PrimaryPart
 		local primaryPart = modelClone.PrimaryPart
 		if not primaryPart then
 			for _, desc in ipairs(modelClone:GetDescendants()) do
@@ -69,7 +72,13 @@ local function createCarryTool(player, model)
 			end
 		end
 
+		-- Weld al handle para que vaya pegado
 		if primaryPart then
+			-- Mover modelo cerca del handle
+			pcall(function()
+				modelClone:PivotTo(handle.CFrame * CFrame.new(0, -1, -1.5))
+			end)
+
 			local weld = Instance.new("WeldConstraint")
 			weld.Part0 = handle
 			weld.Part1 = primaryPart
@@ -81,10 +90,20 @@ local function createCarryTool(player, model)
 end
 
 -- ============================================
+-- MOSTRAR E EN PEDESTALES VACIOS DE UNA BASE
+-- ============================================
+local function showEmptyLabels(base)
+	local pedestals = base:FindFirstChild("Pedestals")
+	if not pedestals then return end
+	for _, ped in ipairs(pedestals:GetChildren()) do
+		ModelManager.showEmptyLabel(ped)
+	end
+end
+
+-- ============================================
 -- LANZAR PELOTA AL CRISTAL
 -- ============================================
 Events.ThrowBall.OnServerEvent:Connect(function(player, targetPos)
-	-- No lanzar si esta cargando personaje
 	local data = playerData[player.UserId]
 	if data and data.carrying then return end
 
@@ -117,7 +136,6 @@ Events.ThrowBall.OnServerEvent:Connect(function(player, targetPos)
 		local rarity = rt and rt.Value or "Blanco"
 		local crystalColor = nearest.Color
 		local pos = nearest.Position
-
 		local crystalType = {color = crystalColor, name = rarity}
 		nearest:Destroy()
 		CrystalSpawner.spawnChest(pos, crystalType, player)
@@ -157,7 +175,6 @@ Events.PickupChest.OnServerEvent:Connect(function(player)
 
 	local rt = nearest:FindFirstChild("Rarity")
 	local rarity = rt and rt.Value or "Blanco"
-
 	local model, folder = CharacterManager.getRandomModel(rarity)
 	local charName = model and model.Name or (rarity .. " Personaje")
 
@@ -182,7 +199,8 @@ Events.PickupChest.OnServerEvent:Connect(function(player)
 end)
 
 -- ============================================
--- COLOCAR PERSONAJE EN PEDESTAL (E)
+-- COLOCAR PERSONAJE EN PEDESTAL CERCANO (E)
+-- Solo si esta cerca de un pedestal vacio
 -- ============================================
 Events.PlaceCharacter.OnServerEvent:Connect(function(player)
 	local data = playerData[player.UserId]
@@ -191,17 +209,24 @@ Events.PlaceCharacter.OnServerEvent:Connect(function(player)
 	local charData = data.characters[data.carrying]
 	if not charData then return end
 
-	-- Buscar base del jugador
+	local pchar = player.Character
+	if not pchar then return end
+	local root = pchar:FindFirstChild("HumanoidRootPart")
+	if not root then return end
+
 	local base = BaseManager.getBase(player.UserId)
 	if not base then return end
 
-	-- Buscar pedestal libre
 	local pedestals = base:FindFirstChild("Pedestals")
 	if not pedestals then return end
 
-	local freePed = nil
+	-- Buscar pedestal vacio MAS CERCANO al jugador
+	local nearestFree = nil
+	local nearestDist = PLACE_DISTANCE
+
 	for _, ped in ipairs(pedestals:GetChildren()) do
-		if ped:FindFirstChild("Platform") then
+		local platform = ped:FindFirstChild("Platform")
+		if platform then
 			local occupied = false
 			for _, c in ipairs(data.characters) do
 				if c.pedestal == ped then
@@ -210,25 +235,28 @@ Events.PlaceCharacter.OnServerEvent:Connect(function(player)
 				end
 			end
 			if not occupied then
-				freePed = ped
-				break
+				local d = (platform.Position - root.Position).Magnitude
+				if d < nearestDist then
+					nearestDist = d
+					nearestFree = ped
+				end
 			end
 		end
 	end
 
-	if not freePed then return end
+	if not nearestFree then return end
 
-	-- Colocar modelo en pedestal
+	-- Colocar modelo
 	if charData.model then
-		ModelManager.placeOnPedestal(charData.model, freePed)
+		ModelManager.placeOnPedestal(charData.model, nearestFree)
 	end
-	charData.pedestal = freePed
-	ModelManager.createLabels(freePed, charData.name, charData.rarity)
+	charData.pedestal = nearestFree
+	ModelManager.createLabels(nearestFree, charData.name, charData.rarity)
 
-	-- Quitar herramienta de carga
-	local pchar = player.Character
-	if pchar then
-		local tool = pchar:FindFirstChild("Carrying")
+	-- Quitar herramienta
+	local char = player.Character
+	if char then
+		local tool = char:FindFirstChild("Carrying")
 		if tool then tool:Destroy() end
 	end
 	local bp = player:FindFirstChild("Backpack")
@@ -242,7 +270,63 @@ Events.PlaceCharacter.OnServerEvent:Connect(function(player)
 end)
 
 -- ============================================
--- SOLTAR PERSONAJE (G) - Se deja en el suelo con timer
+-- RECOGER PERSONAJE DE PEDESTAL (E)
+-- ============================================
+Events.RemoveFromPedestal.OnServerEvent:Connect(function(player)
+	local data = playerData[player.UserId]
+	if not data then return end
+	if data.carrying then return end
+
+	local pchar = player.Character
+	if not pchar then return end
+	local root = pchar:FindFirstChild("HumanoidRootPart")
+	if not root then return end
+
+	local base = BaseManager.getBase(player.UserId)
+	if not base then return end
+
+	local pedestals = base:FindFirstChild("Pedestals")
+	if not pedestals then return end
+
+	-- Buscar pedestal ocupado mas cercano
+	local nearestPed = nil
+	local nearDist = PLACE_DISTANCE
+	local nearCharIdx = nil
+
+	for _, ped in ipairs(pedestals:GetChildren()) do
+		local platform = ped:FindFirstChild("Platform")
+		if platform then
+			local d = (platform.Position - root.Position).Magnitude
+			if d < nearDist then
+				for i, c in ipairs(data.characters) do
+					if c.pedestal == ped then
+						nearestPed = ped
+						nearDist = d
+						nearCharIdx = i
+						break
+					end
+				end
+			end
+		end
+	end
+
+	if not nearestPed or not nearCharIdx then return end
+
+	local charData = data.characters[nearCharIdx]
+
+	-- Limpiar pedestal (esto tambien muestra la E de nuevo)
+	ModelManager.clearPedestal(nearestPed)
+	charData.pedestal = nil
+
+	-- Cargar en la mano
+	data.carrying = nearCharIdx
+	createCarryTool(player, charData.model)
+
+	print(player.Name .. " recogio " .. charData.name .. " del pedestal")
+end)
+
+-- ============================================
+-- SOLTAR PERSONAJE (G)
 -- ============================================
 Events.DropCharacter.OnServerEvent:Connect(function(player)
 	local data = playerData[player.UserId]
@@ -251,7 +335,7 @@ Events.DropCharacter.OnServerEvent:Connect(function(player)
 	local charData = data.characters[data.carrying]
 	if not charData then return end
 
-	-- Quitar herramienta de carga
+	-- Quitar herramienta
 	local pchar = player.Character
 	if pchar then
 		local tool = pchar:FindFirstChild("Carrying")
@@ -263,7 +347,6 @@ Events.DropCharacter.OnServerEvent:Connect(function(player)
 		if tool then tool:Destroy() end
 	end
 
-	-- Crear modelo en el suelo
 	local character = player.Character
 	if not character then return end
 	local root = character:FindFirstChild("HumanoidRootPart")
@@ -275,7 +358,7 @@ Events.DropCharacter.OnServerEvent:Connect(function(player)
 	if charData.model then
 		local dm = charData.model:Clone()
 		dm.Parent = workspace
-		pcall(function() dm:ScaleTo(4) end)
+		pcall(function() dm:ScaleTo(3) end)
 		pcall(function() dm:PivotTo(CFrame.new(dropPos)) end)
 		for _, p in ipairs(dm:GetDescendants()) do
 			if p:IsA("BasePart") then
@@ -284,7 +367,6 @@ Events.DropCharacter.OnServerEvent:Connect(function(player)
 			end
 		end
 
-		-- Timer de 30 segundos
 		local tp = Instance.new("Part")
 		tp.Name = "DropTimer"
 		tp.Size = Vector3.new(1, 1, 1)
@@ -331,7 +413,6 @@ Events.DropCharacter.OnServerEvent:Connect(function(player)
 				if d and d.Value and d.Value.Parent then d.Value:Destroy() end
 				tp:Destroy()
 			end
-			-- Eliminar personaje de los datos
 			if data.characters[charIndex] then
 				table.remove(data.characters, charIndex)
 			end
@@ -352,9 +433,12 @@ Players.PlayerAdded:Connect(function(player)
 
 	task.delay(3, function()
 		local base = BaseManager.assign(player)
-		if not base then
+		if base then
+			showEmptyLabels(base)
+		else
 			task.delay(5, function()
-				BaseManager.assign(player)
+				base = BaseManager.assign(player)
+				if base then showEmptyLabels(base) end
 			end)
 		end
 	end)

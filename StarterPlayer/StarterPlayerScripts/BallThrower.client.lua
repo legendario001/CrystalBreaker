@@ -2,7 +2,7 @@
 -- BallThrower (LocalScript) - StarterPlayerScripts
 -- 1 = equipar/desequipar pelota
 -- Click = lanzar pelota
--- E = recoger cofre / colocar personaje en pedestal
+-- E = recoger cofre / recoger de pedestal / colocar personaje
 -- G = soltar personaje
 -- ============================================
 
@@ -22,6 +22,7 @@ local ThrowBallEvent = ReplicatedStorage:WaitForChild("ThrowBall", 15)
 local PickupChestEvent = ReplicatedStorage:WaitForChild("PickupChest", 15)
 local PlaceCharacterEvent = ReplicatedStorage:WaitForChild("PlaceCharacter", 15)
 local DropCharacterEvent = ReplicatedStorage:WaitForChild("DropCharacter", 15)
+local RemoveFromPedestalEvent = ReplicatedStorage:WaitForChild("RemoveFromPedestal", 15)
 
 -- ============================================
 -- GUI MODERNA
@@ -32,11 +33,11 @@ screenGui.ResetOnSpawn = false
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screenGui.Parent = player:WaitForChild("PlayerGui")
 
--- Barra inferior
+-- Barra inferior - PELOTA (izquierda)
 local bottomBar = Instance.new("Frame")
 bottomBar.Name = "BottomBar"
-bottomBar.Size = UDim2.new(0, 200, 0, 70)
-bottomBar.Position = UDim2.new(0.5, -100, 1, -80)
+bottomBar.Size = UDim2.new(0, 80, 0, 70)
+bottomBar.Position = UDim2.new(0, 20, 1, -80)
 bottomBar.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
 bottomBar.BackgroundTransparency = 0.2
 bottomBar.BorderSizePixel = 0
@@ -49,9 +50,7 @@ uiStroke.Thickness = 2
 uiStroke.Transparency = 0.5
 uiStroke.Parent = bottomBar
 
--- ============================================
--- BOTON PELOTA
--- ============================================
+-- Boton pelota
 local ballButton = Instance.new("TextButton")
 ballButton.Name = "BallButton"
 ballButton.Size = UDim2.new(0, 60, 0, 60)
@@ -89,24 +88,13 @@ keyLabel.Font = Enum.Font.GothamBold
 keyLabel.Parent = ballButton
 Instance.new("UICorner", keyLabel).CornerRadius = UDim.new(0, 4)
 
-local toolName = Instance.new("TextLabel")
-toolName.Size = UDim2.new(0, 120, 0, 20)
-toolName.Position = UDim2.new(0.5, -60, 0, -25)
-toolName.BackgroundTransparency = 1
-toolName.Text = "Crystal Ball"
-toolName.TextColor3 = Color3.fromRGB(100, 200, 255)
-toolName.TextScaled = true
-toolName.Font = Enum.Font.GothamBold
-toolName.TextTransparency = 0.5
-toolName.Parent = bottomBar
-
 -- ============================================
--- PANEL DE PERSONAJE (solo al cargar)
+-- PANEL DE PERSONAJE (derecha, solo al cargar)
 -- ============================================
 local carryPanel = Instance.new("Frame")
 carryPanel.Name = "CarryPanel"
 carryPanel.Size = UDim2.new(0, 220, 0, 70)
-carryPanel.Position = UDim2.new(0.5, -110, 1, -80)
+carryPanel.Position = UDim2.new(1, -240, 1, -80)
 carryPanel.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
 carryPanel.BackgroundTransparency = 0.2
 carryPanel.BorderSizePixel = 0
@@ -192,14 +180,12 @@ local function updateButton()
 		keyLabel.TextColor3 = Color3.fromRGB(100, 200, 255)
 		keyLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 		btnStroke.Color = Color3.fromRGB(150, 230, 255)
-		toolName.TextTransparency = 0
 	else
 		ballButton.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
 		ballIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
 		keyLabel.TextColor3 = Color3.fromRGB(0, 0, 0)
 		keyLabel.BackgroundColor3 = Color3.fromRGB(100, 200, 255)
 		btnStroke.Color = Color3.fromRGB(100, 200, 255)
-		toolName.TextTransparency = 0.5
 	end
 end
 
@@ -229,7 +215,6 @@ local function checkCarrying()
 	end
 end
 
--- Verificar periodicamente
 task.spawn(function()
 	while true do
 		task.wait(0.5)
@@ -310,7 +295,6 @@ local function throwBall()
 		return
 	end
 
-	-- Animacion de lanzar
 	if humanoid then
 		local animator = humanoid:FindFirstChildOfClass("Animator")
 		if animator then
@@ -347,7 +331,6 @@ local function throwBall()
 	local launchSpeed = 100
 	ball.AssemblyLinearVelocity = direction * launchSpeed + Vector3.new(0, 20, 0)
 
-	-- Enviar posicion al servidor
 	if ThrowBallEvent then
 		ThrowBallEvent:FireServer(mouse.Hit.Position)
 	end
@@ -379,21 +362,32 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		inputDebounce = false
 
 	elseif input.KeyCode == Enum.KeyCode.E then
+		if inputDebounce then return end
+		inputDebounce = true
+
 		if isCarrying then
-			-- Colocar personaje en pedestal
+			-- Colocar personaje en pedestal cercano
 			if PlaceCharacterEvent then
 				PlaceCharacterEvent:FireServer()
 			end
 		else
-			-- Recoger cofre
-			if PickupChestEvent then
-				PickupChestEvent:FireServer()
+			-- Intentar recoger de pedestal primero, sino recoger cofre
+			if RemoveFromPedestalEvent then
+				RemoveFromPedestalEvent:FireServer()
+			end
+			task.wait(0.1)
+			if not isCarrying then
+				if PickupChestEvent then
+					PickupChestEvent:FireServer()
+				end
 			end
 		end
 
+		task.wait(0.3)
+		inputDebounce = false
+
 	elseif input.KeyCode == Enum.KeyCode.G then
 		if isCarrying then
-			-- Soltar personaje
 			if DropCharacterEvent then
 				DropCharacterEvent:FireServer()
 			end

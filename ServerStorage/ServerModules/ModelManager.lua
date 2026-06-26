@@ -1,9 +1,53 @@
 -- ============================================
 -- ModelManager (ModuleScript) - ServerStorage/ServerModules
--- Coloca modelos en pedestales, crea etiquetas
+-- Coloca modelos en pedestales, crea etiquetas, muestra E en vacios
 -- ============================================
 
 local ModelManager = {}
+
+local rarityColors = {
+	Morado = Color3.fromRGB(170, 85, 255),
+	Rojo = Color3.fromRGB(255, 80, 80),
+	Amarillo = Color3.fromRGB(255, 255, 100),
+	Azul = Color3.fromRGB(85, 170, 255),
+	Blanco = Color3.fromRGB(220, 220, 220)
+}
+
+-- Mostrar E en pedestal vacio
+function ModelManager.showEmptyLabel(pedestal)
+	local platform = pedestal:FindFirstChild("Platform")
+	if not platform then return end
+
+	-- Quitar label anterior si existe
+	local old = platform:FindFirstChild("EmptyGui")
+	if old then old:Destroy() end
+
+	local bb = Instance.new("BillboardGui")
+	bb.Name = "EmptyGui"
+	bb.Size = UDim2.new(2, 0, 2, 0)
+	bb.StudsOffset = Vector3.new(0, 3, 0)
+	bb.AlwaysOnTop = false
+	bb.MaxDistance = 30
+	bb.Parent = platform
+
+	local lbl = Instance.new("TextLabel")
+	lbl.Size = UDim2.new(1, 0, 1, 0)
+	lbl.BackgroundTransparency = 1
+	lbl.Text = "E"
+	lbl.TextColor3 = Color3.fromRGB(160, 160, 160)
+	lbl.TextScaled = true
+	lbl.Font = Enum.Font.GothamBlack
+	lbl.Parent = bb
+end
+
+-- Ocultar E en pedestal
+function ModelManager.hideEmptyLabel(pedestal)
+	local platform = pedestal:FindFirstChild("Platform")
+	if platform then
+		local old = platform:FindFirstChild("EmptyGui")
+		if old then old:Destroy() end
+	end
+end
 
 function ModelManager.placeOnPedestal(model, pedestal)
 	local platform = pedestal:FindFirstChild("Platform")
@@ -12,17 +56,18 @@ function ModelManager.placeOnPedestal(model, pedestal)
 	local clone = model:Clone()
 	clone.Parent = pedestal
 
+	-- Escalar a tamaño apropiado (no gigante)
 	pcall(function()
 		local _, size = clone:GetBoundingBox()
 		local maxDim = math.max(size.X, size.Y, size.Z)
-		if maxDim > 4 then
-			clone:ScaleTo(4)
+		if maxDim > 3 then
+			clone:ScaleTo(3)
 		end
 	end)
 
 	pcall(function()
 		local topY = platform.Position.Y + platform.Size.Y / 2
-		local cf = CFrame.new(platform.Position.X, topY + 2.5, platform.Position.Z)
+		local cf = CFrame.new(platform.Position.X, topY + 2, platform.Position.Z)
 		clone:PivotTo(cf)
 	end)
 
@@ -32,20 +77,14 @@ function ModelManager.placeOnPedestal(model, pedestal)
 			part.CanCollide = false
 		end
 	end
+
+	-- Ocultar la E del pedestal
+	ModelManager.hideEmptyLabel(pedestal)
 end
 
 function ModelManager.createLabels(pedestal, charName, rarity)
 	local platform = pedestal:FindFirstChild("Platform")
 	if not platform then return end
-
-	-- Color segun rareza
-	local rarityColors = {
-		Morado = Color3.fromRGB(170, 85, 255),
-		Rojo = Color3.fromRGB(255, 80, 80),
-		Amarillo = Color3.fromRGB(255, 255, 100),
-		Azul = Color3.fromRGB(85, 170, 255),
-		Blanco = Color3.fromRGB(220, 220, 220)
-	}
 
 	-- Nombre del personaje
 	local nameGui = Instance.new("BillboardGui")
@@ -88,6 +127,8 @@ function ModelManager.clearPedestal(pedestal)
 			child:Destroy()
 		end
 	end
+	-- Volver a mostrar la E
+	ModelManager.showEmptyLabel(pedestal)
 end
 
 return ModelManager
