@@ -1,6 +1,7 @@
 -- ============================================
 -- ModelManager (ModuleScript) - ServerStorage/ServerModules
 -- Coloca modelos en pedestales, crea etiquetas, muestra E en vacios
+-- SIN ScaleTo - modelo en su tamaño original
 -- ============================================
 
 local ModelManager = {}
@@ -12,18 +13,6 @@ local rarityColors = {
 	Azul = Color3.fromRGB(85, 170, 255),
 	Blanco = Color3.fromRGB(220, 220, 220)
 }
-
--- Weld todas las partes de un modelo entre si
-local function weldAllParts(model, rootPart)
-	for _, desc in ipairs(model:GetDescendants()) do
-		if desc:IsA("BasePart") and desc ~= rootPart then
-			local weld = Instance.new("WeldConstraint")
-			weld.Part0 = rootPart
-			weld.Part1 = desc
-			weld.Parent = rootPart
-		end
-	end
-end
 
 -- Mostrar E en pedestal vacio
 function ModelManager.showEmptyLabel(pedestal)
@@ -60,6 +49,39 @@ function ModelManager.hideEmptyLabel(pedestal)
 	end
 end
 
+-- Weld todas las partes de un modelo al PrimaryPart
+function ModelManager.weldModel(model)
+	if not model.PrimaryPart then
+		for _, desc in ipairs(model:GetDescendants()) do
+			if desc:IsA("BasePart") then
+				model.PrimaryPart = desc
+				break
+			end
+		end
+	end
+
+	if model.PrimaryPart then
+		for _, desc in ipairs(model:GetDescendants()) do
+			if desc:IsA("BasePart") and desc ~= model.PrimaryPart then
+				-- Solo weld si no tiene weld ya
+				local alreadyWelded = false
+				for _, child in ipairs(desc:GetJoints()) do
+					if child:IsA("WeldConstraint") then
+						alreadyWelded = true
+						break
+					end
+				end
+				if not alreadyWelded then
+					local weld = Instance.new("WeldConstraint")
+					weld.Part0 = model.PrimaryPart
+					weld.Part1 = desc
+					weld.Parent = model.PrimaryPart
+				end
+			end
+		end
+	end
+end
+
 function ModelManager.placeOnPedestal(model, pedestal)
 	local platform = pedestal:FindFirstChild("Platform")
 	if not platform then return end
@@ -67,21 +89,9 @@ function ModelManager.placeOnPedestal(model, pedestal)
 	local clone = model:Clone()
 
 	-- Asegurar PrimaryPart
-	if not clone.PrimaryPart then
-		for _, desc in ipairs(clone:GetDescendants()) do
-			if desc:IsA("BasePart") then
-				clone.PrimaryPart = desc
-				break
-			end
-		end
-	end
+	ModelManager.weldModel(clone)
 
-	-- Weld todas las partes al PrimaryPart para que se muevan juntas
-	if clone.PrimaryPart then
-		weldAllParts(clone, clone.PrimaryPart)
-	end
-
-	-- Desanclar todo antes de mover
+	-- Desanclar todo
 	for _, part in ipairs(clone:GetDescendants()) do
 		if part:IsA("BasePart") then
 			part.Anchored = false
@@ -90,26 +100,25 @@ function ModelManager.placeOnPedestal(model, pedestal)
 		end
 	end
 
-	-- Parentear al workspace temporalmente
-	clone.Parent = workspace
+	-- Parentear al pedestal
+	clone.Parent = pedestal
 
-	-- Mover TODO el modelo junto con PivotTo
-	pcall(function()
+	-- Mover TODO el modelo con PivotTo (respeta welds)
+	if clone.PrimaryPart then
 		local topY = platform.Position.Y + platform.Size.Y / 2
+		-- Posicionar el PrimaryPart del modelo justo arriba de la plataforma
+		local offset = clone.PrimaryPart.Position - clone:GetBoundingBox()
 		local targetCF = CFrame.new(platform.Position.X, topY + 2, platform.Position.Z)
 		clone:PivotTo(targetCF)
-	end)
+	end
 
-	-- Ahora anclar todo en su posicion correcta
+	-- Anclar todo en su posicion final
 	for _, part in ipairs(clone:GetDescendants()) do
 		if part:IsA("BasePart") then
 			part.Anchored = true
 			part.CanCollide = false
 		end
 	end
-
-	-- Mover al pedestal
-	clone.Parent = pedestal
 
 	-- Ocultar la E
 	ModelManager.hideEmptyLabel(pedestal)

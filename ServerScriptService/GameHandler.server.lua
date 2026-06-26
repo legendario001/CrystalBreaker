@@ -35,8 +35,9 @@ local function createCarryTool(player, model)
         carryTool.Name = "Carrying"
         carryTool.RequiresHandle = true
         carryTool.CanBeDropped = false
+        carryTool.Grip = CFrame.new(0, -1.5, -1.5) * CFrame.Angles(0, math.rad(90), 0)
 
-        -- Handle invisible en la mano derecha
+        -- Handle invisible
         local handle = Instance.new("Part")
         handle.Name = "Handle"
         handle.Size = Vector3.new(1, 1, 1)
@@ -59,7 +60,7 @@ local function createCarryTool(player, model)
                         end
                 end
 
-                -- Desanclar todo antes de escalar
+                -- Desanclar todo
                 for _, desc in ipairs(modelClone:GetDescendants()) do
                         if desc:IsA("BasePart") then
                                 desc.Anchored = false
@@ -68,23 +69,13 @@ local function createCarryTool(player, model)
                         end
                 end
 
+                -- Weld todas las partes al PrimaryPart
+                ModelManager.weldModel(modelClone)
+
                 modelClone.Parent = carryTool
 
-                -- Escalar pequeno para la mano (despues de parentear)
-                pcall(function() modelClone:ScaleTo(2) end)
-
-                -- Weld TODAS las partes al PrimaryPart para que no se separen
+                -- Weld PrimaryPart al handle
                 if modelClone.PrimaryPart then
-                        for _, desc in ipairs(modelClone:GetDescendants()) do
-                                if desc:IsA("BasePart") and desc ~= modelClone.PrimaryPart then
-                                        local weld = Instance.new("WeldConstraint")
-                                        weld.Part0 = modelClone.PrimaryPart
-                                        weld.Part1 = desc
-                                        weld.Parent = modelClone.PrimaryPart
-                                end
-                        end
-
-                        -- Weld el PrimaryPart al handle
                         local weld = Instance.new("WeldConstraint")
                         weld.Part0 = handle
                         weld.Part1 = modelClone.PrimaryPart
@@ -363,9 +354,25 @@ Events.DropCharacter.OnServerEvent:Connect(function(player)
 
         if charData.model then
                 local dm = charData.model:Clone()
+
+                -- Weld todo para que no se separe
+                ModelManager.weldModel(dm)
+
+                -- Desanclar
+                for _, p in ipairs(dm:GetDescendants()) do
+                        if p:IsA("BasePart") then
+                                p.Anchored = false
+                                p.CanCollide = false
+                                p.Massless = true
+                        end
+                end
+
                 dm.Parent = workspace
-                pcall(function() dm:ScaleTo(3) end)
+
+                -- Mover con PivotTo
                 pcall(function() dm:PivotTo(CFrame.new(dropPos)) end)
+
+                -- Anclar en posicion
                 for _, p in ipairs(dm:GetDescendants()) do
                         if p:IsA("BasePart") then
                                 p.Anchored = true
