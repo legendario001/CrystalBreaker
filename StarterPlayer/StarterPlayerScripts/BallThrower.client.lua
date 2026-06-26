@@ -5,11 +5,12 @@
 -- E = recoger cofre / recoger de pedestal / recoger soltado / colocar personaje
 -- G = soltar personaje
 -- F = mejorar personaje (cuando estas cerca del boton)
+-- FIX: Animation cacheada, Debris para pelotas, debounce mejorado
 -- ============================================
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
+local Debris = game:GetService("Debris")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local player = Players.LocalPlayer
@@ -18,6 +19,8 @@ local ballEquipped = false
 local inputDebounce = false
 local throwDebounce = false
 local isCarrying = false
+local activeBalls = 0
+local MAX_ACTIVE_BALLS = 5
 
 -- Eventos del servidor
 local ThrowBallEvent = ReplicatedStorage:WaitForChild("ThrowBall", 15)
@@ -28,6 +31,12 @@ local RemoveFromPedestalEvent = ReplicatedStorage:WaitForChild("RemoveFromPedest
 local PickupDroppedEvent = ReplicatedStorage:WaitForChild("PickupDropped", 15)
 local MoneyUpdateEvent = ReplicatedStorage:WaitForChild("MoneyUpdate", 15)
 local UpgradeCharacterEvent = ReplicatedStorage:WaitForChild("UpgradeCharacter", 15)
+
+-- ============================================
+-- FIX: Animacion cacheada (no crear nueva cada throw)
+-- ============================================
+local cachedThrowAnim = Instance.new("Animation")
+cachedThrowAnim.AnimationId = "rbxassetid://90927250635352"
 
 -- ============================================
 -- DINERO DEL JUGADOR
@@ -334,7 +343,7 @@ end)
 -- ============================================
 task.spawn(function()
 	while true do
-		task.wait(0.2)
+		task.wait(0.3)
 
 		if isCarrying then
 			nearUpgradeButton = false
@@ -358,7 +367,6 @@ task.spawn(function()
 		local playerPos = root.Position
 		local found = false
 
-		-- Buscar UpgradeButtons en el workspace
 		local map = workspace:FindFirstChild("Map")
 		if map then
 			local bases = map:FindFirstChild("Bases")
@@ -445,6 +453,8 @@ local function throwBall()
 	if not ballEquipped then return end
 	if isCarrying then return end
 	if throwDebounce then return end
+	-- FIX: Limitar pelotas activas
+	if activeBalls >= MAX_ACTIVE_BALLS then return end
 	throwDebounce = true
 
 	local char = player.Character
@@ -460,12 +470,11 @@ local function throwBall()
 		return
 	end
 
+	-- FIX: Usar animacion cacheada
 	if humanoid then
 		local animator = humanoid:FindFirstChildOfClass("Animator")
 		if animator then
-			local anim = Instance.new("Animation")
-			anim.AnimationId = "rbxassetid://90927250635352"
-			local track = animator:LoadAnimation(anim)
+			local track = animator:LoadAnimation(cachedThrowAnim)
 			track:Play()
 		end
 	end
@@ -482,53 +491,29 @@ local function throwBall()
 	ball.Position = root.Position + root.CFrame.LookVector * 3 + Vector3.new(0, 3, 0)
 	ball.Parent = workspace
 
-	local bounceForce = Instance.new("VectorForce")
-	bounceForce.RelativeTo = Enum.ActuatorRelativeTo.World
-	local attachment = Instance.new("Attachment")
-	attachment.Parent = ball
-	bounceForce.Attachment0 = attachment
-	bounceForce.Force = Vector3.new(0, 0, 0)
-	bounceForce.Parent = ball
-
 	ball.CustomPhysicalProperties = PhysicalProperties.new(0.5, 0.3, 1.0, 0.3, 1.0)
 
-	local direction = (mouse.Hit.Position - ball.Position).Unit
-	local launchSpeed = 100
-	ball.AssemblyLinearVelocity = direction * launchSpeed + Vector3.new(0, 20, 0)
+	local mouseHit = mouse.Hit
+	if mouseHit then
+		local direction = (mouseHit.Position - ball.Position).Unit
+		local launchSpeed = 100
+		ball.AssemblyLinearVelocity = direction * launchSpeed + Vector3.new(0, 20, 0)
+	end
 
 	if ThrowBallEvent then
-		ThrowBallEvent:FireServer(mouse.Hit.Position)
+		ThrowBallEvent:FireServer(mouse.Hit and mouse.Hit.Position or root.Position + root.CFrame.LookVector * 20)
 	end
 
-	task.delay(5, function()
-		if ball and ball.Parent then ball:Destroy() end
+	-- FIX: Usar Debris para cleanup garantizado
+	activeBalls = activeBalls + 1
+	Debris:AddItem(ball, 4)
+
+	task.delay(4.5, function()
+		activeBalls = math.max(0, activeBalls - 1)
 	end)
 
-	task.wait(0.3)
+	task.wait(0.5)
 	throwDebounce = false
-end
-
--- ============================================
--- Verificar si hay un DropTimer cerca para recoger
--- ============================================
-local function isNearDroppedChar()
-	local char = player.Character
-	if not char then return false end
-	local root = char:FindFirstChild("HumanoidRootPart")
-	if not root then return false end
-
-	for _, obj in ipairs(workspace:GetChildren()) do
-		if obj.Name == "DropTimer" then
-			local owner = obj:FindFirstChild("Owner")
-			if owner and owner.Value == player then
-				local d = (obj.Position - root.Position).Magnitude
-				if d < 15 then
-					return true
-				end
-			end
-		end
-	end
-	return false
 end
 
 -- ============================================
@@ -554,25 +539,21 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		inputDebounce = true
 
 		if isCarrying then
-			-- Colocar personaje en pedestal cercano
 			if PlaceCharacterEvent then
 				PlaceCharacterEvent:FireServer()
 			end
 		else
-			-- Intentar recoger de pedestal primero
 			if RemoveFromPedestalEvent then
 				RemoveFromPedestalEvent:FireServer()
 			end
 			task.wait(0.1)
 			if not isCarrying then
-				-- Intentar recoger personaje soltado del suelo
 				if PickupDroppedEvent then
 					PickupDroppedEvent:FireServer()
 				end
 			end
 			task.wait(0.1)
 			if not isCarrying then
-				-- Intentar recoger cofre
 				if PickupChestEvent then
 					PickupChestEvent:FireServer()
 				end
@@ -641,6 +622,7 @@ player.CharacterAdded:Connect(function()
 	inputDebounce = false
 	throwDebounce = false
 	isCarrying = false
+	activeBalls = 0
 	updateButton()
 	updateUI()
 end)
