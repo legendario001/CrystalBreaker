@@ -12,7 +12,8 @@ local eventNames = {
 	"PickupChest",
 	"PlaceCharacter",
 	"DropCharacter",
-	"RemoveFromPedestal"
+	"RemoveFromPedestal",
+	"PickupDropped"
 }
 
 for _, name in ipairs(eventNames) do
