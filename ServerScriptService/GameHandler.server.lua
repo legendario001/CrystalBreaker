@@ -321,11 +321,6 @@ end)
 -- RECOGER COFRE
 -- ============================================
 Events.PickupChest.OnServerEvent:Connect(function(player)
-        -- DEBOUNCE: Previene spam de recoger cofres
-        if pickupCooldowns[player.UserId] then return end
-        pickupCooldowns[player.UserId] = true
-        task.delay(0.3, function() pickupCooldowns[player.UserId] = nil end)
-
         local ok, err = pcall(function()
                 local char = player.Character
                 if not char then return end
@@ -375,6 +370,10 @@ Events.PickupChest.OnServerEvent:Connect(function(player)
                 nearest:Destroy()
                 CrystalSpawner.respawn(pos)
                 print(player.Name .. " obtuvo " .. charName .. " [" .. rarity .. "]")
+
+                -- DEBOUNCE: Solo se activa cuando se recogio exitosamente un cofre
+                pickupCooldowns[player.UserId] = true
+                task.delay(0.5, function() pickupCooldowns[player.UserId] = nil end)
         end)
         if not ok then
                 warn("Error en PickupChest: " .. tostring(err))
@@ -386,11 +385,8 @@ end)
 -- FIX: Verificar que charIndex sigue siendo valido
 -- ============================================
 Events.PickupDropped.OnServerEvent:Connect(function(player)
-        -- DEBOUNCE: Previene spam de recoger personajes
-        if pickupCooldowns[player.UserId] then return end
-        pickupCooldowns[player.UserId] = true
-        task.delay(0.3, function() pickupCooldowns[player.UserId] = nil end)
-
+        -- NOTA: No necesita cooldown propio - ya tiene "if data.carrying then return end"
+        -- PickupChest usa pickupCooldowns cuando tiene exito, eso es suficiente
         local ok, err = pcall(function()
                 local char = player.Character
                 if not char then return end
