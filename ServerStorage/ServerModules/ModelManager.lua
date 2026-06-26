@@ -13,6 +13,18 @@ local rarityColors = {
 	Blanco = Color3.fromRGB(220, 220, 220)
 }
 
+-- Weld todas las partes de un modelo entre si
+local function weldAllParts(model, rootPart)
+	for _, desc in ipairs(model:GetDescendants()) do
+		if desc:IsA("BasePart") and desc ~= rootPart then
+			local weld = Instance.new("WeldConstraint")
+			weld.Part0 = rootPart
+			weld.Part1 = desc
+			weld.Parent = rootPart
+		end
+	end
+end
+
 -- Mostrar E en pedestal vacio
 function ModelManager.showEmptyLabel(pedestal)
 	local platform = pedestal:FindFirstChild("Platform")
@@ -54,13 +66,7 @@ function ModelManager.placeOnPedestal(model, pedestal)
 
 	local clone = model:Clone()
 
-	-- Calcular posicion ANTES de parentear
-	local topY = platform.Position.Y + platform.Size.Y / 2
-
-	-- Primero parentear al workspace temporalmente para poder mover
-	clone.Parent = workspace
-
-	-- Asegurar que tiene PrimaryPart
+	-- Asegurar PrimaryPart
 	if not clone.PrimaryPart then
 		for _, desc in ipairs(clone:GetDescendants()) do
 			if desc:IsA("BasePart") then
@@ -70,16 +76,31 @@ function ModelManager.placeOnPedestal(model, pedestal)
 		end
 	end
 
-	-- Mover todo el modelo junto usando PivotTo
+	-- Weld todas las partes al PrimaryPart para que se muevan juntas
+	if clone.PrimaryPart then
+		weldAllParts(clone, clone.PrimaryPart)
+	end
+
+	-- Desanclar todo antes de mover
+	for _, part in ipairs(clone:GetDescendants()) do
+		if part:IsA("BasePart") then
+			part.Anchored = false
+			part.CanCollide = false
+			part.Massless = true
+		end
+	end
+
+	-- Parentear al workspace temporalmente
+	clone.Parent = workspace
+
+	-- Mover TODO el modelo junto con PivotTo
 	pcall(function()
+		local topY = platform.Position.Y + platform.Size.Y / 2
 		local targetCF = CFrame.new(platform.Position.X, topY + 2, platform.Position.Z)
 		clone:PivotTo(targetCF)
 	end)
 
-	-- Ahora parentear al pedestal (ya posicionado correctamente)
-	clone.Parent = pedestal
-
-	-- Anclar todas las partes DESPUES de posicionar
+	-- Ahora anclar todo en su posicion correcta
 	for _, part in ipairs(clone:GetDescendants()) do
 		if part:IsA("BasePart") then
 			part.Anchored = true
@@ -87,7 +108,10 @@ function ModelManager.placeOnPedestal(model, pedestal)
 		end
 	end
 
-	-- Ocultar la E del pedestal
+	-- Mover al pedestal
+	clone.Parent = pedestal
+
+	-- Ocultar la E
 	ModelManager.hideEmptyLabel(pedestal)
 end
 
@@ -95,7 +119,6 @@ function ModelManager.createLabels(pedestal, charName, rarity)
 	local platform = pedestal:FindFirstChild("Platform")
 	if not platform then return end
 
-	-- Nombre del personaje
 	local nameGui = Instance.new("BillboardGui")
 	nameGui.Name = "CharNameGui"
 	nameGui.Size = UDim2.new(4, 0, 0.5, 0)
@@ -112,7 +135,6 @@ function ModelManager.createLabels(pedestal, charName, rarity)
 	nameLabel.Font = Enum.Font.GothamBold
 	nameLabel.Parent = nameGui
 
-	-- Nivel
 	local levelGui = Instance.new("BillboardGui")
 	levelGui.Name = "CharLevelGui"
 	levelGui.Size = UDim2.new(2, 0, 0.5, 0)
@@ -136,7 +158,6 @@ function ModelManager.clearPedestal(pedestal)
 			child:Destroy()
 		end
 	end
-	-- Volver a mostrar la E
 	ModelManager.showEmptyLabel(pedestal)
 end
 
