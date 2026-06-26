@@ -93,21 +93,21 @@ toolName.Parent = bottomBar
 
 -- Funcion para actualizar el boton visualmente
 local function updateButton()
-	if ballEquipped then
-		ballButton.BackgroundColor3 = Color3.fromRGB(100, 200, 255)
-		ballIcon.TextColor3 = Color3.fromRGB(0, 0, 0)
-		keyLabel.TextColor3 = Color3.fromRGB(100, 200, 255)
-		keyLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-		btnStroke.Color = Color3.fromRGB(150, 230, 255)
-		toolName.TextTransparency = 0
-	else
-		ballButton.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
-		ballIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
-		keyLabel.TextColor3 = Color3.fromRGB(0, 0, 0)
-		keyLabel.BackgroundColor3 = Color3.fromRGB(100, 200, 255)
-		btnStroke.Color = Color3.fromRGB(100, 200, 255)
-		toolName.TextTransparency = 0.5
-	end
+        if ballEquipped then
+                ballButton.BackgroundColor3 = Color3.fromRGB(100, 200, 255)
+                ballIcon.TextColor3 = Color3.fromRGB(0, 0, 0)
+                keyLabel.TextColor3 = Color3.fromRGB(100, 200, 255)
+                keyLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+                btnStroke.Color = Color3.fromRGB(150, 230, 255)
+                toolName.TextTransparency = 0
+        else
+                ballButton.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+                ballIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
+                keyLabel.TextColor3 = Color3.fromRGB(0, 0, 0)
+                keyLabel.BackgroundColor3 = Color3.fromRGB(100, 200, 255)
+                btnStroke.Color = Color3.fromRGB(100, 200, 255)
+                toolName.TextTransparency = 0.5
+        end
 end
 
 -- ============================================
@@ -115,120 +115,132 @@ end
 -- ============================================
 
 local function equipBall()
-	if ballEquipped then return end
-	local char = player.Character
-	if not char then return end
+        if ballEquipped then return end
+        local char = player.Character
+        if not char then return end
 
-	-- Eliminar pelota anterior si existe
-	local old = char:FindFirstChild("CrystalBall")
-	if old then old:Destroy() end
-	local bp = player:FindFirstChild("Backpack")
-	if bp then
-		local oldBp = bp:FindFirstChild("CrystalBall")
-		if oldBp then oldBp:Destroy() end
-	end
+        -- Eliminar pelota anterior si existe
+        local old = char:FindFirstChild("CrystalBall")
+        if old then old:Destroy() end
+        local bp = player:FindFirstChild("Backpack")
+        if bp then
+                local oldBp = bp:FindFirstChild("CrystalBall")
+                if oldBp then oldBp:Destroy() end
+        end
 
-	local tool = Instance.new("Tool")
-	tool.Name = "CrystalBall"
-	tool.RequiresHandle = true
-	tool.CanBeDropped = false
+        local tool = Instance.new("Tool")
+        tool.Name = "CrystalBall"
+        tool.RequiresHandle = true
+        tool.CanBeDropped = false
 
-	local handle = Instance.new("Part")
-	handle.Name = "Handle"
-	handle.Size = Vector3.new(1.5, 1.5, 1.5)
-	handle.Shape = Enum.PartType.Ball
-	handle.Color = Color3.fromRGB(100, 200, 255)
-	handle.Material = Enum.Material.SmoothPlastic
-	handle.Anchored = false
-	handle.CanCollide = false
-	handle.Massless = true
-	handle.Parent = tool
+        local handle = Instance.new("Part")
+        handle.Name = "Handle"
+        handle.Size = Vector3.new(1.5, 1.5, 1.5)
+        handle.Shape = Enum.PartType.Ball
+        handle.Color = Color3.fromRGB(100, 200, 255)
+        handle.Material = Enum.Material.SmoothPlastic
+        handle.Anchored = false
+        handle.CanCollide = false
+        handle.Massless = true
+        handle.Parent = tool
 
-	tool.Parent = char
-	ballEquipped = true
-	updateButton()
+        tool.Parent = char
+        ballEquipped = true
+        updateButton()
 end
 
 local function unequipBall()
-	if not ballEquipped then return end
-	local char = player.Character
-	if char then
-		local tool = char:FindFirstChild("CrystalBall")
-		if tool then tool:Destroy() end
-	end
-	local bp = player:FindFirstChild("Backpack")
-	if bp then
-		local tool = bp:FindFirstChild("CrystalBall")
-		if tool then tool:Destroy() end
-	end
-	ballEquipped = false
-	updateButton()
+        if not ballEquipped then return end
+        local char = player.Character
+        if char then
+                local tool = char:FindFirstChild("CrystalBall")
+                if tool then tool:Destroy() end
+        end
+        local bp = player:FindFirstChild("Backpack")
+        if bp then
+                local tool = bp:FindFirstChild("CrystalBall")
+                if tool then tool:Destroy() end
+        end
+        ballEquipped = false
+        updateButton()
 end
 
 local function throwBall()
-	if not ballEquipped then return end
-	if throwDebounce then return end
-	throwDebounce = true
+        if not ballEquipped then return end
+        if throwDebounce then return end
+        throwDebounce = true
 
-	local char = player.Character
-	if not char then
-		throwDebounce = false
-		return
-	end
+        local char = player.Character
+        if not char then
+                throwDebounce = false
+                return
+        end
 
-	local root = char:FindFirstChild("HumanoidRootPart")
-	if not root then
-		throwDebounce = false
-		return
-	end
+        local root = char:FindFirstChild("HumanoidRootPart")
+        local humanoid = char:FindFirstChild("Humanoid")
+        if not root then
+                throwDebounce = false
+                return
+        end
 
-	-- NO desequipar, solo lanzar una pelota fisica
+        -- Reproducir animacion de lanzar
+        if humanoid then
+                local animator = humanoid:FindFirstChildOfClass("Animator")
+                if animator then
+                        local anim = Instance.new("Animation")
+                        anim.AnimationId = "rbxassetid://90927250635352"
+                        local track = animator:LoadAnimation(anim)
+                        track:Play()
+                end
+        end
 
-	local ball = Instance.new("Part")
-	ball.Name = "ThrownBall"
-	ball.Size = Vector3.new(1.5, 1.5, 1.5)
-	ball.Shape = Enum.PartType.Ball
-	ball.Color = Color3.fromRGB(100, 200, 255)
-	ball.Material = Enum.Material.SmoothPlastic
-	ball.Anchored = false
-	ball.CanCollide = true
-	ball.Massless = false
-	ball.Position = root.Position + root.CFrame.LookVector * 3 + Vector3.new(0, 3, 0)
-	ball.Parent = workspace
+        -- NO desequipar, solo lanzar una pelota fisica
 
-	-- Fisicas de rebote
-	local bounceForce = Instance.new("VectorForce")
-	bounceForce.RelativeTo = Enum.ActuatorRelativeTo.World
+        local ball = Instance.new("Part")
+        ball.Name = "ThrownBall"
+        ball.Size = Vector3.new(1.5, 1.5, 1.5)
+        ball.Shape = Enum.PartType.Ball
+        ball.Color = Color3.fromRGB(100, 200, 255)
+        ball.Material = Enum.Material.SmoothPlastic
+        ball.Anchored = false
+        ball.CanCollide = true
+        ball.Massless = false
+        ball.Position = root.Position + root.CFrame.LookVector * 3 + Vector3.new(0, 3, 0)
+        ball.Parent = workspace
 
-	local attachment = Instance.new("Attachment")
-	attachment.Parent = ball
-	bounceForce.Attachment0 = attachment
-	bounceForce.Force = Vector3.new(0, 0, 0)
-	bounceForce.Parent = ball
+        -- Fisicas de rebote
+        local bounceForce = Instance.new("VectorForce")
+        bounceForce.RelativeTo = Enum.ActuatorRelativeTo.World
 
-	-- Propiedades de rebote (elasticidad alta)
-	ball.CustomPhysicalProperties = PhysicalProperties.new(
-		0.5,   -- Density
-		0.3,   -- Friction
-		1.0,   -- Elasticity (alto = mucho rebote)
-		0.3,   -- FrictionWeight
-		1.0    -- ElasticityWeight
-	)
+        local attachment = Instance.new("Attachment")
+        attachment.Parent = ball
+        bounceForce.Attachment0 = attachment
+        bounceForce.Force = Vector3.new(0, 0, 0)
+        bounceForce.Parent = ball
 
-	-- Lanzar con velocidad
-	local direction = (mouse.Hit.Position - ball.Position).Unit
-	local launchSpeed = 100
-	ball.AssemblyLinearVelocity = direction * launchSpeed + Vector3.new(0, 20, 0)
+        -- Propiedades de rebote (elasticidad alta)
+        ball.CustomPhysicalProperties = PhysicalProperties.new(
+                0.5,   -- Density
+                0.3,   -- Friction
+                1.0,   -- Elasticity (alto = mucho rebote)
+                0.3,   -- FrictionWeight
+                1.0    -- ElasticityWeight
+        )
 
-	-- Eliminar despues de 5 segundos
-	task.delay(5, function()
-		if ball and ball.Parent then
-			ball:Destroy()
-		end
-	end)
+        -- Lanzar con velocidad
+        local direction = (mouse.Hit.Position - ball.Position).Unit
+        local launchSpeed = 100
+        ball.AssemblyLinearVelocity = direction * launchSpeed + Vector3.new(0, 20, 0)
 
-	task.wait(0.3)
-	throwDebounce = false
+        -- Eliminar despues de 5 segundos
+        task.delay(5, function()
+                if ball and ball.Parent then
+                        ball:Destroy()
+                end
+        end)
+
+        task.wait(0.3)
+        throwDebounce = false
 end
 
 -- ============================================
@@ -237,49 +249,49 @@ end
 
 -- Tecla 1 para equipar/desequipar
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed then return end
-	if input.KeyCode == Enum.KeyCode.One then
-		if inputDebounce then return end
-		inputDebounce = true
-		if ballEquipped then
-			unequipBall()
-		else
-			equipBall()
-		end
-		task.wait(0.3)
-		inputDebounce = false
-	end
+        if gameProcessed then return end
+        if input.KeyCode == Enum.KeyCode.One then
+                if inputDebounce then return end
+                inputDebounce = true
+                if ballEquipped then
+                        unequipBall()
+                else
+                        equipBall()
+                end
+                task.wait(0.3)
+                inputDebounce = false
+        end
 end)
 
 -- Click izquierdo para lanzar
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed then return end
-	if input.UserInputType == Enum.UserInputType.MouseButton1 then
-		if ballEquipped then
-			throwBall()
-		end
-	end
+        if gameProcessed then return end
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                if ballEquipped then
+                        throwBall()
+                end
+        end
 end)
 
 -- Click en el boton
 ballButton.MouseButton1Click:Connect(function()
-	if inputDebounce then return end
-	inputDebounce = true
-	if ballEquipped then
-		unequipBall()
-	else
-		equipBall()
-	end
-	task.wait(0.3)
-	inputDebounce = false
+        if inputDebounce then return end
+        inputDebounce = true
+        if ballEquipped then
+                unequipBall()
+        else
+                equipBall()
+        end
+        task.wait(0.3)
+        inputDebounce = false
 end)
 
 -- Al respawnear, reiniciar
 player.CharacterAdded:Connect(function()
-	ballEquipped = false
-	inputDebounce = false
-	throwDebounce = false
-	updateButton()
+        ballEquipped = false
+        inputDebounce = false
+        throwDebounce = false
+        updateButton()
 end)
 
 updateButton()
