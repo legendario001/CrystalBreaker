@@ -49,9 +49,12 @@ local function createCarryTool(player, model)
         if model then
                 local modelClone = model:Clone()
 
-                -- Eliminar FakeRootPart (esta lejos del modelo real)
+                -- Limpiar partes problematicas (FakeRootPart, AnimationController, efectos)
                 for _, desc in ipairs(modelClone:GetDescendants()) do
-                        if desc:IsA("BasePart") and desc.Name == "FakeRootPart" then
+                        if desc.Name == "FakeRootPart" or desc.Name == "AnimationController" or desc.Name == "AnimSaves" then
+                                desc:Destroy()
+                        end
+                        if desc:IsA("ParticleEmitter") or desc:IsA("Beam") or desc:IsA("Trail") or desc:IsA("Smoke") or desc:IsA("Fire") or desc:IsA("Sparkles") then
                                 desc:Destroy()
                         end
                 end
@@ -67,7 +70,7 @@ local function createCarryTool(player, model)
 
                 modelClone.Parent = carryTool
 
-                -- Weld TODAS las partes visibles al handle
+                -- Weld TODAS las partes al handle
                 for _, desc in ipairs(modelClone:GetDescendants()) do
                         if desc:IsA("BasePart") then
                                 local weld = Instance.new("WeldConstraint")

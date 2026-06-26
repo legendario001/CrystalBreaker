@@ -1,6 +1,8 @@
 -- ============================================
 -- ModelManager (ModuleScript) - ServerStorage/ServerModules
--- Coloca modelos en pedestales - ignora FakeRootPart
+-- Coloca modelos en pedestales
+-- Limpia partes problematicas: FakeRootPart, AnimationController, AnimSaves
+-- Mueve usando CFrame offset sobre partes visibles
 -- ============================================
 
 local ModelManager = {}
@@ -13,11 +15,33 @@ local rarityColors = {
 	Blanco = Color3.fromRGB(220, 220, 220)
 }
 
--- Obtener las partes visibles de un modelo (ignorar FakeRootPart)
+-- Nombres de partes/objetos a eliminar del clon
+local REMOVE_NAMES = {
+	["FakeRootPart"] = true,
+	["AnimationController"] = true,
+	["AnimSaves"] = true,
+}
+
+-- Limpiar partes problematicas de un modelo clonado
+local function cleanModel(model)
+	for _, obj in ipairs(model:GetDescendants()) do
+		if REMOVE_NAMES[obj.Name] then
+			obj:Destroy()
+		end
+	end
+	-- Tambien limpiar ParticleEmitters y otros efectos que causan problemas
+	for _, obj in ipairs(model:GetDescendants()) do
+		if obj:IsA("ParticleEmitter") or obj:IsA("Beam") or obj:IsA("Trail") or obj:IsA("Smoke") or obj:IsA("Fire") or obj:IsA("Sparkles") then
+			obj:Destroy()
+		end
+	end
+end
+
+-- Obtener partes visibles (MeshPart y Part, no eliminadas)
 local function getVisibleParts(model)
 	local parts = {}
 	for _, part in ipairs(model:GetDescendants()) do
-		if part:IsA("BasePart") and part.Name ~= "FakeRootPart" then
+		if (part:IsA("BasePart") or part:IsA("MeshPart")) and not part.Name:find("FakeRoot") then
 			table.insert(parts, part)
 		end
 	end
@@ -25,21 +49,13 @@ local function getVisibleParts(model)
 end
 
 -- Calcular centro de partes visibles
-local function getVisibleCenter(model)
-	local parts = getVisibleParts(model)
+local function getCenter(parts)
 	if #parts == 0 then return Vector3.new(0, 5, 0) end
 	local sum = Vector3.new(0, 0, 0)
 	for _, part in ipairs(parts) do
 		sum = sum + part.Position
 	end
 	return sum / #parts
-end
-
--- Mover solo las partes visibles por un offset
-local function moveVisibleByOffset(model, offset)
-	for _, part in ipairs(getVisibleParts(model)) do
-		part.CFrame = part.CFrame + offset
-	end
 end
 
 -- Mostrar E en pedestal vacio
@@ -81,12 +97,8 @@ function ModelManager.placeOnPedestal(model, pedestal)
 
 	local clone = model:Clone()
 
-	-- Eliminar FakeRootPart si existe (esta lejos del modelo real)
-	for _, part in ipairs(clone:GetDescendants()) do
-		if part:IsA("BasePart") and part.Name == "FakeRootPart" then
-			part:Destroy()
-		end
-	end
+	-- Limpiar partes problematicas
+	cleanModel(clone)
 
 	-- Desanclar todo
 	for _, part in ipairs(clone:GetDescendants()) do
@@ -103,10 +115,15 @@ function ModelManager.placeOnPedestal(model, pedestal)
 	local topY = platform.Position.Y + platform.Size.Y / 2 + 2
 	local targetPos = Vector3.new(platform.Position.X, topY, platform.Position.Z)
 
-	-- Mover modelo usando solo partes visibles
-	local center = getVisibleCenter(clone)
-	local offset = targetPos - center
-	moveVisibleByOffset(clone, offset)
+	-- Mover modelo: calcular offset y aplicarlo a cada parte
+	local parts = getVisibleParts(clone)
+	if #parts > 0 then
+		local center = getCenter(parts)
+		local offset = targetPos - center
+		for _, part in ipairs(parts) do
+			part.CFrame = part.CFrame + offset
+		end
+	end
 
 	-- Anclar todo
 	for _, part in ipairs(clone:GetDescendants()) do
@@ -117,20 +134,18 @@ function ModelManager.placeOnPedestal(model, pedestal)
 	end
 
 	ModelManager.hideEmptyLabel(pedestal)
-	print("Personaje colocado en pedestal, pos: " .. tostring(targetPos))
 end
 
 function ModelManager.moveModelTo(model, position)
-	-- Eliminar FakeRootPart
-	for _, part in ipairs(model:GetDescendants()) do
-		if part:IsA("BasePart") and part.Name == "FakeRootPart" then
-			part:Destroy()
+	cleanModel(model)
+	local parts = getVisibleParts(model)
+	if #parts > 0 then
+		local center = getCenter(parts)
+		local offset = position - center
+		for _, part in ipairs(parts) do
+			part.CFrame = part.CFrame + offset
 		end
 	end
-
-	local center = getVisibleCenter(model)
-	local offset = position - center
-	moveVisibleByOffset(model, offset)
 end
 
 function ModelManager.createLabels(pedestal, charName, rarity)
