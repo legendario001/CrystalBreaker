@@ -288,7 +288,7 @@ function ModelManager.createLabels(pedestal, charName, rarity)
         if labelParent then
                 -- Calcular offset dinamico: mitad de la parte + 2 studs de margen
                 local halfHeight = labelParent.Size.Y / 2
-                labelStudsOffset = Vector3.new(0, halfHeight + 2, 0)
+                labelStudsOffset = Vector3.new(0, halfHeight + 1, 0)
         else
                 local platform = pedestal:FindFirstChild("Platform")
                 if platform then
