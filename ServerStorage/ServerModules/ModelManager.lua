@@ -246,13 +246,22 @@ function ModelManager.moveModelTo(model, position)
 end
 
 -- ============================================
--- Crear etiquetas de nombre y nivel SOBRE la cabeza del personaje
--- Se buscan los labels del modelo colocado en el pedestal
--- y se parentan a la parte mas alta (cabeza)
+-- Nombres de rareza bonitos para los labels
+-- ============================================
+local rarityDisplayNames = {
+        Morado = "MITICO",
+        Rojo = "EPICO",
+        Amarillo = "RARO",
+        Azul = "INCOMUN",
+        Blanco = "COMUN"
+}
+
+-- ============================================
+-- Crear etiquetas de nombre y rareza SOBRE la cabeza del personaje
+-- Con estilo bonito: fondo oscuro, borde de rareza, texto brillante
 -- ============================================
 function ModelManager.createLabels(pedestal, charName, rarity)
         -- Buscar la parte mas alta del modelo (la cabeza)
-        -- El modelo clonado esta dentro del pedestal como hijo
         local highestPart = nil
         local highestY = -math.huge
 
@@ -270,72 +279,107 @@ function ModelManager.createLabels(pedestal, charName, rarity)
                 end
         end
 
-        -- Si no encontramos una parte, usar la Platform como fallback
         local labelParent = highestPart
-        local nameStudsOffset = Vector3.new(0, 2, 0)  -- 2 studs arriba de la parte mas alta
-        local levelStudsOffset = Vector3.new(0, 1, 0)  -- 1 stud arriba (debajo del nombre)
+        local labelStudsOffset = Vector3.new(0, 2, 0)
 
         if not labelParent then
                 local platform = pedestal:FindFirstChild("Platform")
                 if platform then
                         labelParent = platform
-                        nameStudsOffset = Vector3.new(0, 5, 0) -- fallback mas alto
-                        levelStudsOffset = Vector3.new(0, 4, 0)
+                        labelStudsOffset = Vector3.new(0, 5, 0)
                 else
                         return
                 end
         end
 
         -- Limpiar labels anteriores en el padre
-        local oldName = labelParent:FindFirstChild("CharNameGui")
-        if oldName then oldName:Destroy() end
-        local oldLevel = labelParent:FindFirstChild("CharLevelGui")
-        if oldLevel then oldLevel:Destroy() end
+        local oldLabel = labelParent:FindFirstChild("CharInfoGui")
+        if oldLabel then oldLabel:Destroy() end
 
-        -- Tambien limpiar labels de Platform si existen (migracion)
+        -- Tambien limpiar labels viejos de Platform si existen
         local platform = pedestal:FindFirstChild("Platform")
         if platform and platform ~= labelParent then
                 local pOldName = platform:FindFirstChild("CharNameGui")
                 if pOldName then pOldName:Destroy() end
                 local pOldLevel = platform:FindFirstChild("CharLevelGui")
                 if pOldLevel then pOldLevel:Destroy() end
+                local pOldInfo = platform:FindFirstChild("CharInfoGui")
+                if pOldInfo then pOldInfo:Destroy() end
         end
 
-        -- Etiqueta de NOMBRE (arriba)
-        local nameGui = Instance.new("BillboardGui")
-        nameGui.Name = "CharNameGui"
-        nameGui.Size = UDim2.new(4, 0,  0.5, 0)
-        nameGui.StudsOffset = nameStudsOffset
-        nameGui.AlwaysOnTop = false
-        nameGui.MaxDistance = 50
-        nameGui.Parent = labelParent
+        local rarityColor = rarityColors[rarity] or Color3.new(1, 1, 1)
+        local rarityDisplay = rarityDisplayNames[rarity] or string.upper(rarity)
 
+        -- ============================================
+        -- BILLBOARD GUI UNIFICADO (nombre + rareza + nivel)
+        -- ============================================
+        local infoGui = Instance.new("BillboardGui")
+        infoGui.Name = "CharInfoGui"
+        infoGui.Size = UDim2.new(5, 0, 2, 0)
+        infoGui.StudsOffset = labelStudsOffset
+        infoGui.AlwaysOnTop = false
+        infoGui.MaxDistance = 50
+        infoGui.Parent = labelParent
+
+        -- Fondo oscuro con bordes redondeados
+        local bg = Instance.new("Frame")
+        bg.Name = "Bg"
+        bg.Size = UDim2.new(1, 0, 1, 0)
+        bg.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+        bg.BackgroundTransparency = 0.45
+        bg.BorderSizePixel = 0
+        bg.Parent = infoGui
+        Instance.new("UICorner", bg).CornerRadius = UDim.new(0, 8)
+
+        -- Borde del color de la rareza
+        local bgStroke = Instance.new("UIStroke")
+        bgStroke.Color = rarityColor
+        bgStroke.Thickness = 2
+        bgStroke.Transparency = 0.2
+        bgStroke.Parent = bg
+
+        -- Fila 1: Nombre del personaje
         local nameLabel = Instance.new("TextLabel")
-        nameLabel.Size = UDim2.new(1, 0, 1, 0)
+        nameLabel.Name = "NameLabel"
+        nameLabel.Size = UDim2.new(1, 0, 0.4, 0)
+        nameLabel.Position = UDim2.new(0, 0, 0, 0)
         nameLabel.BackgroundTransparency = 1
         nameLabel.Text = charName
-        nameLabel.TextColor3 = rarityColors[rarity] or Color3.new(1, 1, 1)
+        nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
         nameLabel.TextScaled = true
         nameLabel.Font = Enum.Font.GothamBold
-        nameLabel.Parent = nameGui
+        nameLabel.Parent = bg
 
-        -- Etiqueta de NIVEL (debajo del nombre)
-        local levelGui = Instance.new("BillboardGui")
-        levelGui.Name = "CharLevelGui"
-        levelGui.Size = UDim2.new(2, 0, 0.5, 0)
-        levelGui.StudsOffset = levelStudsOffset
-        levelGui.AlwaysOnTop = false
-        levelGui.MaxDistance = 50
-        levelGui.Parent = labelParent
+        -- Fila 2: Rareza (con color)
+        local rarityLabel = Instance.new("TextLabel")
+        rarityLabel.Name = "RarityLabel"
+        rarityLabel.Size = UDim2.new(1, 0, 0.3, 0)
+        rarityLabel.Position = UDim2.new(0, 0, 0.4, 0)
+        rarityLabel.BackgroundTransparency = 1
+        rarityLabel.Text = rarityDisplay
+        rarityLabel.TextColor3 = rarityColor
+        rarityLabel.TextScaled = true
+        rarityLabel.Font = Enum.Font.GothamBlack
+        rarityLabel.Parent = bg
 
+        -- Brillo sutil en el texto de rareza
+        local rarityStroke = Instance.new("UIStroke")
+        rarityStroke.Color = Color3.fromRGB(255, 255, 255)
+        rarityStroke.Thickness = 0.8
+        rarityStroke.Transparency = 0.75
+        rarityStroke.Parent = rarityLabel
+
+        -- Fila 3: Nivel
         local levelLabel = Instance.new("TextLabel")
-        levelLabel.Size = UDim2.new(1, 0, 1, 0)
+        levelLabel.Name = "LevelLabel"
+        levelLabel.Size = UDim2.new(1, 0, 0.3, 0)
+        levelLabel.Position = UDim2.new(0, 0, 0.7, 0)
         levelLabel.BackgroundTransparency = 1
         levelLabel.Text = "Lv.1"
         levelLabel.TextColor3 = Color3.fromRGB(255, 255, 100)
         levelLabel.TextScaled = true
         levelLabel.Font = Enum.Font.GothamBold
-        levelLabel.Parent = levelGui
+        levelLabel.Parent = bg
 end
 
 -- ============================================
@@ -350,9 +394,12 @@ function ModelManager.clearPedestal(pedestal)
                 if oldName then oldName:Destroy() end
                 local oldLevel = platform:FindFirstChild("CharLevelGui")
                 if oldLevel then oldLevel:Destroy() end
+                local oldInfo = platform:FindFirstChild("CharInfoGui")
+                if oldInfo then oldInfo:Destroy() end
         end
 
-        -- Limpiar todo lo demas (modelos, etc) excepto Platform y PedestalColumn
+        -- Limpiar todo lo demas (modelos, labels en partes del modelo, etc)
+        -- excepto Platform y PedestalColumn
         for _, child in ipairs(pedestal:GetChildren()) do
                 if child.Name ~= "Platform" and child.Name ~= "PedestalColumn" then
                         child:Destroy()
