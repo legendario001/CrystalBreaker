@@ -17,7 +17,7 @@ local droppedChars = {}
 local PLACE_DISTANCE = 12
 
 -- ============================================
--- CREAR HERRAMIENTA DE CARGA (modelo pegado a la mano)
+-- CREAR HERRAMIENTA DE CARGA
 -- ============================================
 local function createCarryTool(player, model)
         local char = player.Character
@@ -35,9 +35,8 @@ local function createCarryTool(player, model)
         carryTool.Name = "Carrying"
         carryTool.RequiresHandle = true
         carryTool.CanBeDropped = false
-        carryTool.Grip = CFrame.new(0, -1.5, -1.5) * CFrame.Angles(0, math.rad(90), 0)
 
-        -- Handle invisible
+        -- Handle invisible que va en la mano
         local handle = Instance.new("Part")
         handle.Name = "Handle"
         handle.Size = Vector3.new(1, 1, 1)
@@ -50,16 +49,6 @@ local function createCarryTool(player, model)
         if model then
                 local modelClone = model:Clone()
 
-                -- Asegurar PrimaryPart
-                if not modelClone.PrimaryPart then
-                        for _, desc in ipairs(modelClone:GetDescendants()) do
-                                if desc:IsA("BasePart") then
-                                        modelClone.PrimaryPart = desc
-                                        break
-                                end
-                        end
-                end
-
                 -- Desanclar todo
                 for _, desc in ipairs(modelClone:GetDescendants()) do
                         if desc:IsA("BasePart") then
@@ -69,17 +58,28 @@ local function createCarryTool(player, model)
                         end
                 end
 
-                -- Weld todas las partes al PrimaryPart
-                ModelManager.weldModel(modelClone)
-
                 modelClone.Parent = carryTool
 
-                -- Weld PrimaryPart al handle
-                if modelClone.PrimaryPart then
-                        local weld = Instance.new("WeldConstraint")
-                        weld.Part0 = handle
-                        weld.Part1 = modelClone.PrimaryPart
-                        weld.Parent = handle
+                -- Mover el modelo para que su centro quede cerca del handle
+                pcall(function()
+                        local targetCF = handle.CFrame * CFrame.new(0, -2, -2)
+                        local currentCF, _ = modelClone:GetBoundingBox()
+                        local delta = targetCF * currentCF:Inverse()
+                        for _, part in ipairs(modelClone:GetDescendants()) do
+                                if part:IsA("BasePart") then
+                                        part.CFrame = delta * part.CFrame
+                                end
+                        end
+                end)
+
+                -- Weld todas las partes al handle
+                for _, desc in ipairs(modelClone:GetDescendants()) do
+                        if desc:IsA("BasePart") then
+                                local weld = Instance.new("WeldConstraint")
+                                weld.Part0 = handle
+                                weld.Part1 = desc
+                                weld.Parent = handle
+                        end
                 end
         end
 
@@ -355,7 +355,7 @@ Events.DropCharacter.OnServerEvent:Connect(function(player)
         if charData.model then
                 local dm = charData.model:Clone()
 
-                -- Desanclar primero
+                -- Desanclar todo
                 for _, p in ipairs(dm:GetDescendants()) do
                         if p:IsA("BasePart") then
                                 p.Anchored = false
@@ -364,14 +364,11 @@ Events.DropCharacter.OnServerEvent:Connect(function(player)
                         end
                 end
 
-                -- Parentear al workspace ANTES de weld
+                -- Parentear al workspace
                 dm.Parent = workspace
 
-                -- Weld todo (necesita estar en workspace)
-                ModelManager.weldModel(dm)
-
-                -- Mover con PivotTo
-                pcall(function() dm:PivotTo(CFrame.new(dropPos)) end)
+                -- Mover modelo a la posicion usando CFrame
+                ModelManager.moveModelTo(dm, dropPos)
 
                 -- Anclar en posicion
                 for _, p in ipairs(dm:GetDescendants()) do
