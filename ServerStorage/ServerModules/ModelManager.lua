@@ -1,7 +1,6 @@
 -- ============================================
 -- ModelManager (ModuleScript) - ServerStorage/ServerModules
--- Coloca modelos en pedestales, crea etiquetas, muestra E en vacios
--- Usa offset por parte - sin GetBoundingBox, sin ScaleTo, sin PivotTo
+-- Coloca modelos en pedestales - ignora FakeRootPart
 -- ============================================
 
 local ModelManager = {}
@@ -13,6 +12,35 @@ local rarityColors = {
 	Azul = Color3.fromRGB(85, 170, 255),
 	Blanco = Color3.fromRGB(220, 220, 220)
 }
+
+-- Obtener las partes visibles de un modelo (ignorar FakeRootPart)
+local function getVisibleParts(model)
+	local parts = {}
+	for _, part in ipairs(model:GetDescendants()) do
+		if part:IsA("BasePart") and part.Name ~= "FakeRootPart" then
+			table.insert(parts, part)
+		end
+	end
+	return parts
+end
+
+-- Calcular centro de partes visibles
+local function getVisibleCenter(model)
+	local parts = getVisibleParts(model)
+	if #parts == 0 then return Vector3.new(0, 5, 0) end
+	local sum = Vector3.new(0, 0, 0)
+	for _, part in ipairs(parts) do
+		sum = sum + part.Position
+	end
+	return sum / #parts
+end
+
+-- Mover solo las partes visibles por un offset
+local function moveVisibleByOffset(model, offset)
+	for _, part in ipairs(getVisibleParts(model)) do
+		part.CFrame = part.CFrame + offset
+	end
+end
 
 -- Mostrar E en pedestal vacio
 function ModelManager.showEmptyLabel(pedestal)
@@ -47,41 +75,18 @@ function ModelManager.hideEmptyLabel(pedestal)
 	end
 end
 
--- Calcular el centro de todas las partes de un modelo
-local function getModelCenter(model)
-	local sum = Vector3.new(0, 0, 0)
-	local count = 0
-	for _, part in ipairs(model:GetDescendants()) do
-		if part:IsA("BasePart") then
-			sum = sum + part.Position
-			count = count + 1
-		end
-	end
-	if count == 0 then return Vector3.new(0, 0, 0) end
-	return sum / count
-end
-
--- Mover todas las partes de un modelo por un offset
-local function moveModelByOffset(model, offset)
-	for _, part in ipairs(model:GetDescendants()) do
-		if part:IsA("BasePart") then
-			part.CFrame = part.CFrame + offset
-		end
-	end
-end
-
--- Mover modelo para que su centro quede en targetPosition
-local function moveModelCenterTo(model, targetPosition)
-	local center = getModelCenter(model)
-	local offset = targetPosition - center
-	moveModelByOffset(model, offset)
-end
-
 function ModelManager.placeOnPedestal(model, pedestal)
 	local platform = pedestal:FindFirstChild("Platform")
 	if not platform then return end
 
 	local clone = model:Clone()
+
+	-- Eliminar FakeRootPart si existe (esta lejos del modelo real)
+	for _, part in ipairs(clone:GetDescendants()) do
+		if part:IsA("BasePart") and part.Name == "FakeRootPart" then
+			part:Destroy()
+		end
+	end
 
 	-- Desanclar todo
 	for _, part in ipairs(clone:GetDescendants()) do
@@ -91,19 +96,19 @@ function ModelManager.placeOnPedestal(model, pedestal)
 		end
 	end
 
-	-- Parentear al pedestal PRIMERO
+	-- Parentear al pedestal
 	clone.Parent = pedestal
 
-	-- Calcular posicion objetivo: arriba de la plataforma
+	-- Calcular posicion objetivo
 	local topY = platform.Position.Y + platform.Size.Y / 2 + 2
 	local targetPos = Vector3.new(platform.Position.X, topY, platform.Position.Z)
 
-	-- Mover modelo para que su centro quede en targetPos
-	pcall(function()
-		moveModelCenterTo(clone, targetPos)
-	end)
+	-- Mover modelo usando solo partes visibles
+	local center = getVisibleCenter(clone)
+	local offset = targetPos - center
+	moveVisibleByOffset(clone, offset)
 
-	-- Anclar todo en su posicion final
+	-- Anclar todo
 	for _, part in ipairs(clone:GetDescendants()) do
 		if part:IsA("BasePart") then
 			part.Anchored = true
@@ -111,15 +116,21 @@ function ModelManager.placeOnPedestal(model, pedestal)
 		end
 	end
 
-	-- Ocultar la E
 	ModelManager.hideEmptyLabel(pedestal)
+	print("Personaje colocado en pedestal, pos: " .. tostring(targetPos))
 end
 
--- Mover modelo a una posicion (para drop)
 function ModelManager.moveModelTo(model, position)
-	pcall(function()
-		moveModelCenterTo(model, position)
-	end)
+	-- Eliminar FakeRootPart
+	for _, part in ipairs(model:GetDescendants()) do
+		if part:IsA("BasePart") and part.Name == "FakeRootPart" then
+			part:Destroy()
+		end
+	end
+
+	local center = getVisibleCenter(model)
+	local offset = position - center
+	moveVisibleByOffset(model, offset)
 end
 
 function ModelManager.createLabels(pedestal, charName, rarity)

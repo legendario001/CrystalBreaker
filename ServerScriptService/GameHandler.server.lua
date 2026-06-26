@@ -49,6 +49,13 @@ local function createCarryTool(player, model)
         if model then
                 local modelClone = model:Clone()
 
+                -- Eliminar FakeRootPart (esta lejos del modelo real)
+                for _, desc in ipairs(modelClone:GetDescendants()) do
+                        if desc:IsA("BasePart") and desc.Name == "FakeRootPart" then
+                                desc:Destroy()
+                        end
+                end
+
                 -- Desanclar todo
                 for _, desc in ipairs(modelClone:GetDescendants()) do
                         if desc:IsA("BasePart") then
@@ -60,8 +67,7 @@ local function createCarryTool(player, model)
 
                 modelClone.Parent = carryTool
 
-                -- Weld TODAS las partes directamente al handle
-                -- Roblox posiciona el handle en la mano automaticamente
+                -- Weld TODAS las partes visibles al handle
                 for _, desc in ipairs(modelClone:GetDescendants()) do
                         if desc:IsA("BasePart") then
                                 local weld = Instance.new("WeldConstraint")
