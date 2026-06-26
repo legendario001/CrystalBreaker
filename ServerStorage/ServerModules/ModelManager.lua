@@ -18,7 +18,6 @@ function ModelManager.showEmptyLabel(pedestal)
 	local platform = pedestal:FindFirstChild("Platform")
 	if not platform then return end
 
-	-- Quitar label anterior si existe
 	local old = platform:FindFirstChild("EmptyGui")
 	if old then old:Destroy() end
 
@@ -54,23 +53,33 @@ function ModelManager.placeOnPedestal(model, pedestal)
 	if not platform then return end
 
 	local clone = model:Clone()
+
+	-- Calcular posicion ANTES de parentear
+	local topY = platform.Position.Y + platform.Size.Y / 2
+
+	-- Primero parentear al workspace temporalmente para poder mover
+	clone.Parent = workspace
+
+	-- Asegurar que tiene PrimaryPart
+	if not clone.PrimaryPart then
+		for _, desc in ipairs(clone:GetDescendants()) do
+			if desc:IsA("BasePart") then
+				clone.PrimaryPart = desc
+				break
+			end
+		end
+	end
+
+	-- Mover todo el modelo junto usando PivotTo
+	pcall(function()
+		local targetCF = CFrame.new(platform.Position.X, topY + 2, platform.Position.Z)
+		clone:PivotTo(targetCF)
+	end)
+
+	-- Ahora parentear al pedestal (ya posicionado correctamente)
 	clone.Parent = pedestal
 
-	-- Escalar a tamaño apropiado (no gigante)
-	pcall(function()
-		local _, size = clone:GetBoundingBox()
-		local maxDim = math.max(size.X, size.Y, size.Z)
-		if maxDim > 3 then
-			clone:ScaleTo(3)
-		end
-	end)
-
-	pcall(function()
-		local topY = platform.Position.Y + platform.Size.Y / 2
-		local cf = CFrame.new(platform.Position.X, topY + 2, platform.Position.Z)
-		clone:PivotTo(cf)
-	end)
-
+	-- Anclar todas las partes DESPUES de posicionar
 	for _, part in ipairs(clone:GetDescendants()) do
 		if part:IsA("BasePart") then
 			part.Anchored = true
