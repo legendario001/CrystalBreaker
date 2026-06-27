@@ -13,14 +13,46 @@ local rarityColors = {
 }
 
 local rarityMoneyRate = {
-        Morado = 10,
-        Rojo = 7,
-        Amarillo = 5,
-        Azul = 3,
-        Blanco = 1
+        Morado = 150,
+        Rojo = 50,
+        Amarillo = 20,
+        Azul = 8,
+        Blanco = 2
 }
 
-local UPGRADE_BASE_COST = 5
+local UPGRADE_BASE_COST = 100
+
+-- ============================================
+-- Formato de dinero: K, M, B para adiccion visual
+-- 1,500 -> 1.5K  |  2,000,000 -> 2M  |  1,500,000,000 -> 1.5B
+-- ============================================
+function ModelManager.formatMoney(amount)
+        amount = amount or 0
+        if amount >= 1000000000 then
+                local b = amount / 1000000000
+                if b == math.floor(b) then
+                        return tostring(math.floor(b)) .. "B"
+                else
+                        return string.format("%.1fB", b)
+                end
+        elseif amount >= 1000000 then
+                local m = amount / 1000000
+                if m == math.floor(m) then
+                        return tostring(math.floor(m)) .. "M"
+                else
+                        return string.format("%.1fM", m)
+                end
+        elseif amount >= 10000 then
+                local k = amount / 1000
+                if k == math.floor(k) then
+                        return tostring(math.floor(k)) .. "K"
+                else
+                        return string.format("%.1fK", k)
+                end
+        else
+                return tostring(amount)
+        end
+end
 
 local MONEY_GREEN = Color3.fromRGB(76, 175, 80)
 local MONEY_GREEN_BRIGHT = Color3.fromRGB(129, 199, 132)
@@ -351,7 +383,7 @@ function ModelManager.createLabels(pedestal, charName, rarity, level)
         levelLabel.Position = UDim2.new(0, 0, 0.5, 0)
         levelLabel.BackgroundTransparency = 1
         levelLabel.RichText = true
-        levelLabel.Text = '<font color="' .. COLOR_LEVEL .. '">Lv.' .. level .. '</font><font color="' .. COLOR_SEPARATOR .. '">  |  </font><font color="' .. COLOR_MONEY .. '">+' .. currentRate .. '$/2s</font>'
+        levelLabel.Text = '<font color="' .. COLOR_LEVEL .. '">Lv.' .. level .. '</font><font color="' .. COLOR_SEPARATOR .. '">  |  </font><font color="' .. COLOR_MONEY .. '">+' .. ModelManager.formatMoney(currentRate) .. '$/2s</font>'
         levelLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
         levelLabel.TextScaled = true
         levelLabel.Font = Enum.Font.GothamBold
@@ -382,7 +414,7 @@ function ModelManager.createLabels(pedestal, charName, rarity, level)
                 nextLevelLabel.Position = UDim2.new(0, 0, 0.83, 0)
                 nextLevelLabel.BackgroundTransparency = 1
                 nextLevelLabel.RichText = true
-                nextLevelLabel.Text = '<font color="' .. COLOR_LABEL .. '">Siguiente: </font><font color="' .. COLOR_MONEY .. '">$' .. nextCost .. '</font>'
+                nextLevelLabel.Text = '<font color="' .. COLOR_LABEL .. '">Siguiente: </font><font color="' .. COLOR_MONEY .. '">$' .. ModelManager.formatMoney(nextCost) .. '</font>'
                 nextLevelLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
                 nextLevelLabel.TextScaled = true
                 nextLevelLabel.Font = Enum.Font.GothamBold
@@ -392,21 +424,40 @@ end
 
 -- ============================================
 -- Obtener la tasa de dinero
--- FIX: base * level garantiza incremento visible en cada nivel
--- Blanco: 1,2,3,4...  Azul: 3,6,9...  Morado: 10,20,30...
+-- ECONOMIA ADICTIVA: crecimiento exponencial con level^2
+-- Cada nivel siente que ganas MUCHO mas que el anterior
+-- Blanco: L1=2, L10=200, L50=5K, L100=20K
+-- Azul: L1=8, L10=800, L50=20K, L100=80K
+-- Amarillo: L1=20, L10=2K, L50=50K, L100=200K
+-- Rojo: L1=50, L10=5K, L50=125K, L100=500K
+-- Morado: L1=150, L10=15K, L50=375K, L100=1.5M
 -- ============================================
 function ModelManager.getMoneyRate(rarity, level)
         level = level or 1
         local base = rarityMoneyRate[rarity] or 1
-        return base * level
+        -- level^2 = crecimiento exponencial, cada nivel multiplica mas
+        local rate = math.floor(base * level * level)
+        -- Bonus de milestone: x2 en niveles 25, 50, 75
+        if level == 25 or level == 50 or level == 75 then
+                rate = rate * 2
+        end
+        -- Bonus maximo: x5 en nivel 100
+        if level >= 100 then
+                rate = rate * 5
+        end
+        return rate
 end
 
 -- ============================================
 -- Calcular costo de mejora
 -- ============================================
+-- ECONOMIA ADICTIVA: costos suben MUCHO mas rapido que ingresos
+-- L1->2: $100 | L10->11: $100K | L50->51: $12.5M | L80->81: $51.2M | L99->100: $97M
+-- Total L1->99: ~2.5B (necesitas MUCHO juego para maxear)
+-- ============================================
 function ModelManager.getUpgradeCost(currentLevel)
         if currentLevel >= 100 then return math.huge end
-        return math.floor(UPGRADE_BASE_COST * math.pow(currentLevel, 1.5))
+        return math.floor(UPGRADE_BASE_COST * math.pow(currentLevel, 3))
 end
 
 -- ============================================
@@ -645,7 +696,7 @@ function ModelManager.createUpgradeButton(pedestal, rarity, level)
         else
                 local cost = ModelManager.getUpgradeCost(level or 1)
                 costLabel.RichText = true
-                costLabel.Text = '<font color="' .. COLOR_LABEL .. '">Costo: </font><font color="' .. COLOR_MONEY .. '">$' .. cost .. '</font>'
+                costLabel.Text = '<font color="' .. COLOR_LABEL .. '">Costo: </font><font color="' .. COLOR_MONEY .. '">$' .. ModelManager.formatMoney(cost) .. '</font>'
                 costLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
         end
         costLabel.TextScaled = true
@@ -695,7 +746,7 @@ function ModelManager.updateUpgradeButtonUI(pedestal, rarity, level)
                         costLabel.Text = '<font color="' .. COLOR_MAX .. '">Nivel maximo!</font>'
                 else
                         costLabel.RichText = true
-                        costLabel.Text = '<font color="' .. COLOR_LABEL .. '">Costo: </font><font color="' .. COLOR_MONEY .. '">$' .. cost .. '</font>'
+                        costLabel.Text = '<font color="' .. COLOR_LABEL .. '">Costo: </font><font color="' .. COLOR_MONEY .. '">$' .. ModelManager.formatMoney(cost) .. '</font>'
                 end
         end
 
@@ -746,3 +797,4 @@ function ModelManager.clearPedestal(pedestal)
 end
 
 return ModelManager
+
