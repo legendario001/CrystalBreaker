@@ -155,16 +155,27 @@ end
 
 -- ============================================
 -- Calcular posicion de elementos frente al pedestal
--- Retorna: x, z hacia el centro de la base
+-- Retorna: x, y, z (incluye la altura Y del pedestal para pisos superiores)
+-- Busca la base recorriendo los padres hacia arriba
 -- ============================================
 local function getForwardPosition(pedestal, offsetStuds)
         local platform = pedestal:FindFirstChild("Platform")
-        if not platform then return pedestal.Position.X, pedestal.Position.Z end
+        if not platform then return pedestal.Position.X, pedestal.Position.Y, pedestal.Position.Z end
 
-        local baseFolder = pedestal.Parent
-        local base = baseFolder and baseFolder.Parent
+        -- Buscar la base recorriendo los padres hacia arriba
+        -- (el pedestal puede estar en base.Pedestals o base.FloorN.PedestalsN)
+        local base = nil
+        local current = pedestal.Parent
+        while current do
+                if current:FindFirstChild("BaseFloor") then
+                        base = current
+                        break
+                end
+                current = current.Parent
+        end
 
         local pileX = platform.Position.X
+        local pileY = platform.Position.Y -- Usar la Y del pedestal (funciona para cualquier piso)
         local pileZ = platform.Position.Z
 
         if base then
@@ -179,7 +190,7 @@ local function getForwardPosition(pedestal, offsetStuds)
                 end
         end
 
-        return pileX, pileZ
+        return pileX, pileY, pileZ
 end
 
 -- ============================================
@@ -470,17 +481,17 @@ function ModelManager.createMoneyPile(pedestal, rarity, level)
 
         ModelManager.removeMoneyPile(pedestal)
 
-        local pileX, pileZ = getForwardPosition(pedestal, 4)
+        local pileX, pileY, pileZ = getForwardPosition(pedestal, 4)
 
         local rarityColor = rarityColors[rarity] or Color3.fromRGB(220, 220, 220)
 
-        -- Moneda en el suelo
+        -- Moneda en el suelo (a la altura del pedestal - 0.75 para que quede sobre el piso)
         local moneyPile = Instance.new("Part")
         moneyPile.Name = "MoneyPile"
         moneyPile.Size = Vector3.new(2.2, 0.3, 2.2)
         moneyPile.Shape = Enum.PartType.Cylinder
         moneyPile.Orientation = Vector3.new(0, 0, 90)
-        moneyPile.Position = Vector3.new(pileX, 1.5, pileZ)
+        moneyPile.Position = Vector3.new(pileX, pileY - 0.75, pileZ)
         moneyPile.Anchored = true
         moneyPile.CanCollide = false
         moneyPile.Material = Enum.Material.SmoothPlastic
@@ -587,16 +598,16 @@ function ModelManager.createUpgradeButton(pedestal, rarity, level)
 
         ModelManager.removeUpgradeButton(pedestal)
 
-        local btnX, btnZ = getForwardPosition(pedestal, 7)
+        local btnX, btnY, btnZ = getForwardPosition(pedestal, 7)
         local rarityColor = rarityColors[rarity] or Color3.fromRGB(220, 220, 220)
         local isMaxLevel = (level or 1) >= 100
 
-        -- Boton visual
+        -- Boton visual (a la altura del pedestal - 0.75 para que quede sobre el piso)
         local upgradeBtn = Instance.new("Part")
         upgradeBtn.Name = "UpgradeButton"
         upgradeBtn.Size = Vector3.new(1.8, 0.4, 1.8)
         upgradeBtn.Shape = Enum.PartType.Block
-        upgradeBtn.Position = Vector3.new(btnX, 1.5, btnZ)
+        upgradeBtn.Position = Vector3.new(btnX, btnY - 0.75, btnZ)
         upgradeBtn.Anchored = true
         upgradeBtn.CanCollide = false
         upgradeBtn.Material = Enum.Material.SmoothPlastic
@@ -797,5 +808,6 @@ function ModelManager.clearPedestal(pedestal)
 end
 
 return ModelManager
+
 
 
