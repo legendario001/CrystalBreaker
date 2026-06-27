@@ -115,7 +115,7 @@ function BaseUpgradeManager.createUpgradeButton(base, player)
         levelLabel.Position = UDim2.new(0, 0, 0.3, 0)
         levelLabel.BackgroundTransparency = 1
         levelLabel.RichText = true
-        levelLabel.Text = '<font color="#B0BEC5">Nivel: </font><font color="#FFD700">' .. baseLevel .. '/2</font>'
+        levelLabel.Text = '<font color="#B0BEC5">Nivel: </font><font color="#FFD700">' .. baseLevel .. '/3</font>'
         levelLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
         levelLabel.TextScaled = true
         levelLabel.Font = Enum.Font.GothamBold
@@ -165,18 +165,18 @@ function BaseUpgradeManager.updateButtonUI(base, baseLevel)
 
         local levelLabel = bg:FindFirstChild("LevelLabel")
         if levelLabel then
-                if baseLevel >= 2 then
+                if baseLevel >= 3 then
                         levelLabel.RichText = true
-                        levelLabel.Text = '<font color="#FFD700">MAX NIVEL 2!</font>'
+                        levelLabel.Text = '<font color="#FFD700">MAX NIVEL 3!</font>'
                 else
                         levelLabel.RichText = true
-                        levelLabel.Text = '<font color="#B0BEC5">Nivel: </font><font color="#FFD700">' .. baseLevel .. '/2</font>'
+                        levelLabel.Text = '<font color="#B0BEC5">Nivel: </font><font color="#FFD700">' .. baseLevel .. '/3</font>'
                 end
         end
 
         local costLabel = bg:FindFirstChild("CostLabel")
         if costLabel then
-                if baseLevel >= 2 then
+                if baseLevel >= 3 then
                         costLabel.RichText = true
                         costLabel.Text = '<font color="#FFD700">Base mejorada!</font>'
                 else
@@ -187,26 +187,37 @@ function BaseUpgradeManager.updateButtonUI(base, baseLevel)
         end
 
         -- Si llego a max, quitar ClickDetector
-        if baseLevel >= 2 then
+        if baseLevel >= 3 then
                 local click = btn:FindFirstChild("UpgradeClick")
                 if click then click:Destroy() end
         end
 end
 
 -- ============================================
--- Activar el segundo piso: hacer visibles todas las partes
+-- Activar un piso (hacer visibles todas sus partes)
+-- Funciona para Floor2, Floor3, etc.
 -- ============================================
-function BaseUpgradeManager.activateFloor2(base)
-        local floor2 = base:FindFirstChild("Floor2")
-        if not floor2 then return end
+function BaseUpgradeManager.activateFloor(base, floorNum)
+        local floor = base:FindFirstChild("Floor" .. floorNum)
+        if not floor then return end
 
-        for _, desc in ipairs(floor2:GetDescendants()) do
+        for _, desc in ipairs(floor:GetDescendants()) do
                 if desc:IsA("BasePart") then
                         desc.Transparency = 0
                         desc.CanCollide = true
                         desc.CanQuery = true
                 end
         end
+end
+
+-- Activar segundo piso (compatibilidad)
+function BaseUpgradeManager.activateFloor2(base)
+        BaseUpgradeManager.activateFloor(base, 2)
+end
+
+-- Activar tercer piso
+function BaseUpgradeManager.activateFloor3(base)
+        BaseUpgradeManager.activateFloor(base, 3)
 end
 
 -- ============================================
@@ -218,5 +229,6 @@ function BaseUpgradeManager.removeUpgradeButton(base)
 end
 
 return BaseUpgradeManager
+
 
 
