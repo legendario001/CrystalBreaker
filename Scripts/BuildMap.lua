@@ -263,15 +263,27 @@ for baseNum = 1, 5 do
         floor2.Name = "Floor2"
         floor2.Parent = base
 
-        -- Suelo del segundo piso (MISMAS MEDIDAS que piso 1)
-        local floor2Floor = Instance.new("Part")
-        floor2Floor.Name = "Floor2Floor"
-        floor2Floor.Size = Vector3.new(40, 1, 85)
-        floor2Floor.Position = Vector3.new(baseX, 15.5, 72)
-        floor2Floor.Anchored = true
-        floor2Floor.Material = Enum.Material.SmoothPlastic
-        floor2Floor.Color = Color3.fromRGB(100, 100, 120)
-        floor2Floor.Parent = floor2
+        -- Suelo del segundo piso CON AGUJERO EN LA PARTE DE ATRAS
+        -- Base original: 40 wide (X), 85 long (Z), Z from 29.5 to 114.5
+        -- Hoyo: 8x8 studs en la parte de atras (Z=100 a Z=108)
+        -- Partimos el suelo en 2 partes: frontal (Z=30..100) y trasera (Z=108..114)
+        local floor2Front = Instance.new("Part")
+        floor2Front.Name = "Floor2FloorFront"
+        floor2Front.Size = Vector3.new(40, 1, 70)
+        floor2Front.Position = Vector3.new(baseX, 15.5, 65)
+        floor2Front.Anchored = true
+        floor2Front.Material = Enum.Material.SmoothPlastic
+        floor2Front.Color = Color3.fromRGB(100, 100, 120)
+        floor2Front.Parent = floor2
+
+        local floor2Back = Instance.new("Part")
+        floor2Back.Name = "Floor2FloorBack"
+        floor2Back.Size = Vector3.new(40, 1, 6)
+        floor2Back.Position = Vector3.new(baseX, 15.5, 111)
+        floor2Back.Anchored = true
+        floor2Back.Material = Enum.Material.SmoothPlastic
+        floor2Back.Color = Color3.fromRGB(100, 100, 120)
+        floor2Back.Parent = floor2
 
         -- Barandas del segundo piso (mismas medidas que base 40x85)
         local barColor = Color3.fromRGB(140, 140, 160)
@@ -312,32 +324,46 @@ for baseNum = 1, 5 do
         barFront.Color = barColor
         barFront.Parent = floor2
 
-        -- LUCES del segundo piso para que no quede oscuro
-        -- 6 PointLights distribuidas por el piso
-        for lightIdx = 1, 6 do
+        -- LUCES del segundo piso (brillo reducido para que no molesten)
+        -- 4 PointLights distribuidas por el piso
+        for lightIdx = 1, 4 do
                 local lightPart = Instance.new("Part")
                 lightPart.Name = "CeilingLight" .. lightIdx
                 lightPart.Size = Vector3.new(2, 0.3, 2)
-                -- Distribuir en 2 filas de 3 luces
-                local row = math.ceil(lightIdx / 3)
-                local col = ((lightIdx - 1) % 3) + 1
-                local lightX = baseX + (col - 2) * 14
-                local lightZ = 50 + (row - 1) * 25
+                -- Distribuir en 2 filas de 2 luces
+                local row = math.ceil(lightIdx / 2)
+                local col = ((lightIdx - 1) % 2) + 1
+                local lightX = baseX + (col - 1.5) * 18
+                local lightZ = 50 + (row - 1) * 30
                 lightPart.Position = Vector3.new(lightX, 18.5, lightZ)
                 lightPart.Anchored = true
                 lightPart.Material = Enum.Material.Neon
-                lightPart.Color = Color3.fromRGB(255, 245, 200)
-                lightPart.Transparency = 0
+                lightPart.Color = Color3.fromRGB(255, 240, 200)
+                lightPart.Transparency = 0.3
                 lightPart.Parent = floor2
 
-                -- PointLight para iluminar el area
+                -- PointLight con brillo bajo
                 local pl = Instance.new("PointLight")
-                pl.Color = Color3.fromRGB(255, 245, 220)
-                pl.Brightness = 2
-                pl.Range = 25
+                pl.Color = Color3.fromRGB(255, 240, 210)
+                pl.Brightness = 0.6
+                pl.Range = 18
                 pl.Shadows = false
                 pl.Parent = lightPart
         end
+
+        -- ESCALERA VERTICAL en el agujero de la parte trasera
+        -- TrussPart: Roblox permite escalar automaticamente
+        -- Va desde Y=1 (sobre piso 1) hasta Y=16 (sobre piso 2)
+        -- Altura total: 15 studs, centro en Y=8.5
+        -- Posicion: en el centro del agujero (Z=104)
+        local ladder = Instance.new("TrussPart")
+        ladder.Name = "Ladder"
+        ladder.Size = Vector3.new(2, 15, 2)
+        ladder.Position = Vector3.new(baseX, 8.5, 104)
+        ladder.Anchored = true
+        ladder.Material = Enum.Material.Metal
+        ladder.Color = Color3.fromRGB(120, 120, 130)
+        ladder.Parent = floor2
 
         -- Pedestales del PISO 2 (MISMAS POSICIONES relativas que piso 1)
         -- Piso 1: pedX = baseX ± 12, pedZ = 35 + (i-1)*13
@@ -393,5 +419,6 @@ for baseNum = 1, 5 do
 end
 
 print("=== MAPA CREADO EXITOSAMENTE ===")
+
 
 
