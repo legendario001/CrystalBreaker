@@ -27,6 +27,10 @@ local SOUND_UPGRADE       = "rbxassetid://203620899"
 local SOUND_CRYSTAL_BREAK = "rbxassetid://124054125419097"
 
 local function playSoundAt(soundId, position)
+    local sound = Instance.new("Sound")
+    sound.SoundId = soundId
+    sound.Volume = 0.6
+    -- Usar un Attachment en lugar de una Part para no ensuciar el Workspace
     local temp = Instance.new("Part")
     temp.Name = "SoundEmitter"
     temp.Size = Vector3.new(0.1, 0.1, 0.1)
@@ -34,15 +38,17 @@ local function playSoundAt(soundId, position)
     temp.Anchored = true
     temp.CanCollide = false
     temp.Transparency = 1
-    temp.Parent = Workspace
-    local sound = Instance.new("Sound")
-    sound.SoundId = soundId
-    sound.Volume = 0.6
+    -- Poner bajo Map para no interferir con busquedas de Cofres/Cristales
+    local map = Workspace:FindFirstChild("Map")
+    if map then
+        temp.Parent = map
+    else
+        temp.Parent = Workspace
+    end
     sound.Parent = temp
     sound:Play()
-    task.delay(3, function()
-        if temp and temp.Parent then temp:Destroy() end
-    end)
+    -- Auto-destruir despues de 3 segundos
+    Debris:AddItem(temp, 3)
 end
 
 local function playSoundForPlayer(soundId, player)
@@ -65,6 +71,19 @@ end
 
 local function isPlayerValid(player)
     return player ~= nil and player.Parent ~= nil
+end
+
+-- Verificar que un pedestal pertenece a la base del jugador
+local function isPedestalOwnedByPlayer(pedestal, player)
+    local base = BaseManager.getBase(player.UserId)
+    if not base then return false end
+    local pedestals = base:FindFirstChild("Pedestals")
+    if not pedestals then return false end
+    -- Verificar que el pedestal es hijo de la base del jugador
+    for _, ped in ipairs(pedestals:GetChildren()) do
+        if ped == pedestal then return true end
+    end
+    return false
 end
 
 local function getNextCharIndex(characters)
@@ -255,10 +274,11 @@ Events.ThrowBall.OnServerEvent:Connect(function(player, targetPos)
         local rt = nearest:FindFirstChild("Rarity")
         local rarity = rt and rt.Value or "Blanco"
         local pos = nearest.Position
-        -- Sonido de cristal rompiendose (antes de destruir)
+        local crystalColor = nearest.Color
+        -- Sonido de cristal rompiendose
         playSoundAt(SOUND_CRYSTAL_BREAK, pos)
         nearest:Destroy()
-        CrystalSpawner.spawnChest(pos, {color=nearest and nearest.Color, name=rarity}, player)
+        CrystalSpawner.spawnChest(pos, {color=crystalColor, name=rarity}, player)
     end)
     if not ok then warn("Error ThrowBall: "..tostring(err)) end
 end)
@@ -811,6 +831,7 @@ task.delay(3, function()
 end)
 
 print("=== GameHandler iniciado ===")
+
 
 
 
