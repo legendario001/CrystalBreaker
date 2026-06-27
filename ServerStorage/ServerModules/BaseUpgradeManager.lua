@@ -115,7 +115,7 @@ function BaseUpgradeManager.createUpgradeButton(base, player)
         levelLabel.Position = UDim2.new(0, 0, 0.3, 0)
         levelLabel.BackgroundTransparency = 1
         levelLabel.RichText = true
-        levelLabel.Text = '<font color="#B0BEC5">Nivel: </font><font color="#FFD700">' .. baseLevel .. '/3</font>'
+        levelLabel.Text = '<font color="#B0BEC5">Nivel: </font><font color="#FFD700">' .. baseLevel .. '/5</font>'
         levelLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
         levelLabel.TextScaled = true
         levelLabel.Font = Enum.Font.GothamBold
@@ -165,18 +165,18 @@ function BaseUpgradeManager.updateButtonUI(base, baseLevel)
 
         local levelLabel = bg:FindFirstChild("LevelLabel")
         if levelLabel then
-                if baseLevel >= 3 then
+                if baseLevel >= 5 then
                         levelLabel.RichText = true
-                        levelLabel.Text = '<font color="#FFD700">MAX NIVEL 3!</font>'
+                        levelLabel.Text = '<font color="#FFD700">MAX NIVEL 5!</font>'
                 else
                         levelLabel.RichText = true
-                        levelLabel.Text = '<font color="#B0BEC5">Nivel: </font><font color="#FFD700">' .. baseLevel .. '/3</font>'
+                        levelLabel.Text = '<font color="#B0BEC5">Nivel: </font><font color="#FFD700">' .. baseLevel .. '/5</font>'
                 end
         end
 
         local costLabel = bg:FindFirstChild("CostLabel")
         if costLabel then
-                if baseLevel >= 3 then
+                if baseLevel >= 5 then
                         costLabel.RichText = true
                         costLabel.Text = '<font color="#FFD700">Base mejorada!</font>'
                 else
@@ -187,7 +187,7 @@ function BaseUpgradeManager.updateButtonUI(base, baseLevel)
         end
 
         -- Si llego a max, quitar ClickDetector
-        if baseLevel >= 3 then
+        if baseLevel >= 5 then
                 local click = btn:FindFirstChild("UpgradeClick")
                 if click then click:Destroy() end
         end
@@ -232,6 +232,16 @@ function BaseUpgradeManager.activateFloor3(base)
         BaseUpgradeManager.activateFloor(base, 3)
 end
 
+-- Activar cuarto piso
+function BaseUpgradeManager.activateFloor4(base)
+        BaseUpgradeManager.activateFloor(base, 4)
+end
+
+-- Activar quinto piso
+function BaseUpgradeManager.activateFloor5(base)
+        BaseUpgradeManager.activateFloor(base, 5)
+end
+
 -- ============================================
 -- Eliminar el boton de mejora
 -- ============================================
@@ -241,6 +251,7 @@ function BaseUpgradeManager.removeUpgradeButton(base)
 end
 
 return BaseUpgradeManager
+
 
 
 
