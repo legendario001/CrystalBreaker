@@ -46,7 +46,7 @@ local function playSoundAt(soundId, position)
 end
 
 local function playSoundForPlayer(soundId, player)
-    if not isPlayerValid(player) then return end
+    if not player or not player.Parent then return end
     local char = player.Character
     if not char then return end
     local sound = Instance.new("Sound")
@@ -811,5 +811,6 @@ task.delay(3, function()
 end)
 
 print("=== GameHandler iniciado ===")
+
 
 
