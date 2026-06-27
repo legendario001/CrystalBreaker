@@ -928,8 +928,6 @@ Events.UpgradeBase.OnServerEvent:Connect(function(player)
         -- Activar segundo piso!
         BaseUpgradeManager.activateFloor2(base)
         BaseUpgradeManager.updateButtonUI(base, newLevel)
-        -- Crear boton de teletransporte ahora que la base esta mejorada
-        BaseUpgradeManager.createTeleportButton(base, player)
 
         -- Sonido de mejora (usamos el de upgrade)
         playSoundForPlayer(SOUND_UPGRADE, player)
@@ -939,64 +937,12 @@ Events.UpgradeBase.OnServerEvent:Connect(function(player)
     if not ok then warn("Error UpgradeBase: "..tostring(err)) end
 end)
 
--- ============================================
--- TELETRANSPORTAR entre pisos (tecla J o click en boton)
--- Alterna entre piso 1 (Y=3) y piso 2 (Y=18)
--- ============================================
-local teleportCooldowns = {}
-Events.TeleportBase.OnServerEvent:Connect(function(player)
-    if not BaseUpgradeManager then return end
-    if teleportCooldowns[player.UserId] then return end
-    teleportCooldowns[player.UserId] = true
-    task.delay(1, function() teleportCooldowns[player.UserId] = nil end)
-
-    local ok, err = pcall(function()
-        if not isPlayerValid(player) then return end
-
-        local base = BaseManager.getBase(player.UserId)
-        if not base then return end
-
-        -- Verificar que la base este mejorada
-        local baseLevel = BaseManager.getBaseLevel(player.UserId)
-        if baseLevel < 2 then return end
-
-        local char = player.Character
-        if not char then return end
-        local root = char:FindFirstChild("HumanoidRootPart")
-        if not root then return end
-
-        local currentY = root.Position.Y
-        -- Si esta en piso 1 (Y < 10), subir al piso 2
-        -- Si esta en piso 2 (Y >= 10), bajar al piso 1
-        local targetY
-        local floorName
-        if currentY < 10 then
-            -- Subir al piso 2 - teleportar al centro del piso 2
-            targetY = 18
-            floorName = "Piso 2"
-        else
-            -- Bajar al piso 1 - teleportar al centro del piso 1
-            targetY = 3
-            floorName = "Piso 1"
-        end
-
-        -- Mantener X y Z, solo cambiar Y (teleport vertical)
-        local newPos = Vector3.new(root.Position.X, targetY, root.Position.Z)
-        root.CFrame = CFrame.new(newPos, newPos + root.CFrame.LookVector)
-
-        -- Sonido
-        playSoundForPlayer(SOUND_UPGRADE, player)
-
-        print(player.Name .. " se teletransporto al " .. floorName)
-    end)
-    if not ok then warn("Error TeleportBase: "..tostring(err)) end
-end)
-
 task.delay(3, function()
     CrystalSpawner.spawnAll()
 end)
 
 print("=== GameHandler iniciado ===")
+
 
 
 
