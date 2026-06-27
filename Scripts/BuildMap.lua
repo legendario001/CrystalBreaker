@@ -256,150 +256,155 @@ for baseNum = 1, 5 do
         end
 
         -- ============================================
-        -- PISO 2 (OCULTO por defecto, se activa al mejorar la base)
-        -- Mismas medidas que el piso 1 (40x1x85), SIN sombras, SIN luces
+        -- FUNCION REUTILIZABLE PARA CREAR PISOS ADICIONALES
+        -- Crea un piso completo (suelo con agujero, barandas, escalera, pedestales)
         -- ============================================
-        local floor2 = Instance.new("Folder")
-        floor2.Name = "Floor2"
-        floor2.Parent = base
+        local FLOOR_HEIGHT = 17 -- distancia vertical entre pisos
+        local FLOOR2_Y = 18     -- piso 2 a esta altura
+        local FLOOR3_Y = FLOOR2_Y + FLOOR_HEIGHT -- piso 3 = 35
 
-        -- Altura del piso 2: Y=18 (centro del suelo)
-        local FLOOR2_Y = 18
+        local function createFloor(floorNum, floorY, ladderStartY)
+                local floor = Instance.new("Folder")
+                floor.Name = "Floor" .. floorNum
+                floor.Parent = base
 
-        -- Suelo del segundo piso CON AGUJERO EN LA PARTE DE ATRAS
-        -- Partimos el suelo en 2 partes: frontal y trasera (deja hueco para la escalera)
-        local floor2Front = Instance.new("Part")
-        floor2Front.Name = "Floor2FloorFront"
-        floor2Front.Size = Vector3.new(40, 1, 70)
-        floor2Front.Position = Vector3.new(baseX, FLOOR2_Y, 65)
-        floor2Front.Anchored = true
-        floor2Front.Material = Enum.Material.SmoothPlastic
-        floor2Front.Color = Color3.fromRGB(100, 100, 120)
-        floor2Front.CastShadow = false -- No proyectar sombras
-        floor2Front.Parent = floor2
+                -- Suelo CON AGUJERO EN LA PARTE DE ATRAS (para la escalera)
+                local floorFront = Instance.new("Part")
+                floorFront.Name = "Floor" .. floorNum .. "Front"
+                floorFront.Size = Vector3.new(40, 1, 70)
+                floorFront.Position = Vector3.new(baseX, floorY, 65)
+                floorFront.Anchored = true
+                floorFront.Material = Enum.Material.SmoothPlastic
+                floorFront.Color = Color3.fromRGB(100, 100, 120)
+                floorFront.CastShadow = false
+                floorFront.Parent = floor
 
-        local floor2Back = Instance.new("Part")
-        floor2Back.Name = "Floor2FloorBack"
-        floor2Back.Size = Vector3.new(40, 1, 6)
-        floor2Back.Position = Vector3.new(baseX, FLOOR2_Y, 111)
-        floor2Back.Anchored = true
-        floor2Back.Material = Enum.Material.SmoothPlastic
-        floor2Back.Color = Color3.fromRGB(100, 100, 120)
-        floor2Back.CastShadow = false
-        floor2Back.Parent = floor2
+                local floorBack = Instance.new("Part")
+                floorBack.Name = "Floor" .. floorNum .. "Back"
+                floorBack.Size = Vector3.new(40, 1, 6)
+                floorBack.Position = Vector3.new(baseX, floorY, 111)
+                floorBack.Anchored = true
+                floorBack.Material = Enum.Material.SmoothPlastic
+                floorBack.Color = Color3.fromRGB(100, 100, 120)
+                floorBack.CastShadow = false
+                floorBack.Parent = floor
 
-        -- Barandas del segundo piso (mismas medidas que base 40x85)
-        local barColor = Color3.fromRGB(140, 140, 160)
-        -- Baranda izquierda (largo 85)
-        local barL = Instance.new("Part")
-        barL.Name = "BarandL"
-        barL.Size = Vector3.new(0.5, 2, 85)
-        barL.Position = Vector3.new(baseX - 20, FLOOR2_Y + 1, 72)
-        barL.Anchored = true
-        barL.Material = Enum.Material.SmoothPlastic
-        barL.Color = barColor
-        barL.CastShadow = false
-        barL.Parent = floor2
-        -- Baranda derecha
-        local barR = Instance.new("Part")
-        barR.Name = "BarandR"
-        barR.Size = Vector3.new(0.5, 2, 85)
-        barR.Position = Vector3.new(baseX + 20, FLOOR2_Y + 1, 72)
-        barR.Anchored = true
-        barR.Material = Enum.Material.SmoothPlastic
-        barR.Color = barColor
-        barR.CastShadow = false
-        barR.Parent = floor2
-        -- Baranda trasera (largo 40)
-        local barBack = Instance.new("Part")
-        barBack.Name = "BarandBack"
-        barBack.Size = Vector3.new(40, 2, 0.5)
-        barBack.Position = Vector3.new(baseX, FLOOR2_Y + 1, 114)
-        barBack.Anchored = true
-        barBack.Material = Enum.Material.SmoothPlastic
-        barBack.Color = barColor
-        barBack.CastShadow = false
-        barBack.Parent = floor2
-        -- Baranda frontal (largo 40)
-        local barFront = Instance.new("Part")
-        barFront.Name = "BarandFront"
-        barFront.Size = Vector3.new(40, 2, 0.5)
-        barFront.Position = Vector3.new(baseX, FLOOR2_Y + 1, 30)
-        barFront.Anchored = true
-        barFront.Material = Enum.Material.SmoothPlastic
-        barFront.Color = barColor
-        barFront.CastShadow = false
-        barFront.Parent = floor2
+                -- Barandas (4 lados)
+                local barColor = Color3.fromRGB(140, 140, 160)
+                local barL = Instance.new("Part")
+                barL.Name = "BarandL" .. floorNum
+                barL.Size = Vector3.new(0.5, 2, 85)
+                barL.Position = Vector3.new(baseX - 20, floorY + 1, 72)
+                barL.Anchored = true
+                barL.Material = Enum.Material.SmoothPlastic
+                barL.Color = barColor
+                barL.CastShadow = false
+                barL.Parent = floor
 
-        -- ESCALERA VERTICAL en el agujero de la parte trasera
-        -- Va desde Y=1 (sobre piso 1) hasta Y=FLOOR2_Y (sobre piso 2)
-        local ladderHeight = FLOOR2_Y - 1
-        local ladder = Instance.new("TrussPart")
-        ladder.Name = "Ladder"
-        ladder.Size = Vector3.new(2, ladderHeight, 2)
-        ladder.Position = Vector3.new(baseX, 1 + ladderHeight/2, 104)
-        ladder.Anchored = true
-        ladder.Material = Enum.Material.Metal
-        ladder.Color = Color3.fromRGB(120, 120, 130)
-        ladder.CastShadow = false
-        ladder.Parent = floor2
+                local barR = Instance.new("Part")
+                barR.Name = "BarandR" .. floorNum
+                barR.Size = Vector3.new(0.5, 2, 85)
+                barR.Position = Vector3.new(baseX + 20, floorY + 1, 72)
+                barR.Anchored = true
+                barR.Material = Enum.Material.SmoothPlastic
+                barR.Color = barColor
+                barR.CastShadow = false
+                barR.Parent = floor
 
-        -- Pedestales del PISO 2 (MISMAS POSICIONES relativas que piso 1)
-        -- Piso 1: pedX = baseX ± 12, pedZ = 35 + (i-1)*13
-        -- Piso 2: mismo patron pero adaptado a la nueva altura FLOOR2_Y=18
-        local pedestals2 = Instance.new("Folder")
-        pedestals2.Name = "Pedestals2"
-        pedestals2.Parent = floor2
+                local barBack = Instance.new("Part")
+                barBack.Name = "BarandBack" .. floorNum
+                barBack.Size = Vector3.new(40, 2, 0.5)
+                barBack.Position = Vector3.new(baseX, floorY + 1, 114)
+                barBack.Anchored = true
+                barBack.Material = Enum.Material.SmoothPlastic
+                barBack.Color = barColor
+                barBack.CastShadow = false
+                barBack.Parent = floor
 
-        for i = 1, 10 do
-                local ped = Instance.new("Folder")
-                ped.Name = "Pedestal2_" .. i
-                ped.Parent = pedestals2
+                local barFront = Instance.new("Part")
+                barFront.Name = "BarandFront" .. floorNum
+                barFront.Size = Vector3.new(40, 2, 0.5)
+                barFront.Position = Vector3.new(baseX, floorY + 1, 30)
+                barFront.Anchored = true
+                barFront.Material = Enum.Material.SmoothPlastic
+                barFront.Color = barColor
+                barFront.CastShadow = false
+                barFront.Parent = floor
 
-                local pedX
-                local pedZ
-                if i <= 5 then
-                        pedX = baseX - 12
-                        pedZ = 35 + (i - 1) * 13
-                else
-                        pedX = baseX + 12
-                        pedZ = 35 + (i - 6) * 13
+                -- ESCALERA VERTICAL continua desde el piso anterior hasta este piso
+                local ladderHeight = floorY - ladderStartY
+                local ladder = Instance.new("TrussPart")
+                ladder.Name = "Ladder" .. floorNum
+                ladder.Size = Vector3.new(2, ladderHeight, 2)
+                ladder.Position = Vector3.new(baseX, ladderStartY + ladderHeight/2, 104)
+                ladder.Anchored = true
+                ladder.Material = Enum.Material.Metal
+                ladder.Color = Color3.fromRGB(120, 120, 130)
+                ladder.CastShadow = false
+                ladder.Parent = floor
+
+                -- Pedestales del piso (mismas posiciones relativas que piso 1)
+                local pedestalsN = Instance.new("Folder")
+                pedestalsN.Name = "Pedestals" .. floorNum
+                pedestalsN.Parent = floor
+
+                for i = 1, 10 do
+                        local ped = Instance.new("Folder")
+                        ped.Name = "Pedestal" .. floorNum .. "_" .. i
+                        ped.Parent = pedestalsN
+
+                        local pedX
+                        local pedZ
+                        if i <= 5 then
+                                pedX = baseX - 12
+                                pedZ = 35 + (i - 1) * 13
+                        else
+                                pedX = baseX + 12
+                                pedZ = 35 + (i - 6) * 13
+                        end
+
+                        local pedCol = Instance.new("Part")
+                        pedCol.Name = "PedestalColumn"
+                        pedCol.Size = Vector3.new(3, 2, 3)
+                        pedCol.Position = Vector3.new(pedX, floorY + 1, pedZ)
+                        pedCol.Anchored = true
+                        pedCol.Material = Enum.Material.SmoothPlastic
+                        pedCol.Color = Color3.fromRGB(70, 70, 90)
+                        pedCol.CastShadow = false
+                        pedCol.Parent = ped
+
+                        local platform = Instance.new("Part")
+                        platform.Name = "Platform"
+                        platform.Size = Vector3.new(4, 0.5, 4)
+                        platform.Position = Vector3.new(pedX, floorY + 2.25, pedZ)
+                        platform.Anchored = true
+                        platform.Material = Enum.Material.SmoothPlastic
+                        platform.Color = Color3.fromRGB(90, 90, 110)
+                        platform.CastShadow = false
+                        platform.Parent = ped
                 end
 
-                -- Columna del pedestal piso 2 (sobre el suelo Y=FLOOR2_Y)
-                local pedCol = Instance.new("Part")
-                pedCol.Name = "PedestalColumn"
-                pedCol.Size = Vector3.new(3, 2, 3)
-                pedCol.Position = Vector3.new(pedX, FLOOR2_Y + 1, pedZ)
-                pedCol.Anchored = true
-                pedCol.Material = Enum.Material.SmoothPlastic
-                pedCol.Color = Color3.fromRGB(70, 70, 90)
-                pedCol.CastShadow = false
-                pedCol.Parent = ped
-
-                -- Plataforma del pedestal piso 2
-                local platform = Instance.new("Part")
-                platform.Name = "Platform"
-                platform.Size = Vector3.new(4, 0.5, 4)
-                platform.Position = Vector3.new(pedX, FLOOR2_Y + 2.25, pedZ)
-                platform.Anchored = true
-                platform.Material = Enum.Material.SmoothPlastic
-                platform.Color = Color3.fromRGB(90, 90, 110)
-                platform.CastShadow = false
-                platform.Parent = ped
-        end
-
-        -- OCULTAR el piso 2 por defecto
-        for _, desc in ipairs(floor2:GetDescendants()) do
-                if desc:IsA("BasePart") then
-                        desc.Transparency = 1
-                        desc.CanCollide = false
-                        desc.CanQuery = false
+                -- OCULTAR el piso por defecto
+                for _, desc in ipairs(floor:GetDescendants()) do
+                        if desc:IsA("BasePart") then
+                                desc.Transparency = 1
+                                desc.CanCollide = false
+                                desc.CanQuery = false
+                        end
                 end
+
+                return floor
         end
+
+        -- Crear PISO 2 (escalera sube desde Y=1 del piso 1)
+        local floor2 = createFloor(2, FLOOR2_Y, 1)
+
+        -- Crear PISO 3 (escalera sube desde Y=FLOOR2_Y del piso 2, escalera continua)
+        local floor3 = createFloor(3, FLOOR3_Y, FLOOR2_Y)
 end
 
 print("=== MAPA CREADO EXITOSAMENTE ===")
+
 
 
 
