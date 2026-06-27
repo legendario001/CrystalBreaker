@@ -15,9 +15,9 @@ local assignedBases = {}
 local playerBases = {}
 local baseLevels = {} -- [userId] = nivel (1=sin mejora, 2=segundo piso)
 
--- Costo de mejora (1M por ahora, ajustable en el futuro)
+-- Costo de mejora (10 para testear, ajustable en el futuro)
 local UPGRADE_COSTS = {
-        [2] = 1000000,   -- Nivel 1 -> 2: 1M
+        [2] = 10,         -- Nivel 1 -> 2: $10 (TEST)
         -- [3] = 50000000, -- futuro: Nivel 2 -> 3: 50M
 }
 
@@ -114,3 +114,4 @@ function BaseManager.release(userId)
 end
 
 return BaseManager
+
