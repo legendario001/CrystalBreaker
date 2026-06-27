@@ -19,6 +19,46 @@ local upgradeButtonCooldowns = {}
 local throwCooldowns = {}
 local pickupCooldowns = {}
 
+-- ============================================
+-- SONIDOS DEL JUEGO
+-- ============================================
+local SOUND_COLLECT_MONEY = "rbxassetid://79392333090964"
+local SOUND_UPGRADE       = "rbxassetid://203620899"
+local SOUND_CRYSTAL_BREAK = "rbxassetid://124054125419097"
+
+local function playSoundAt(soundId, position)
+    local temp = Instance.new("Part")
+    temp.Name = "SoundEmitter"
+    temp.Size = Vector3.new(0.1, 0.1, 0.1)
+    temp.Position = position
+    temp.Anchored = true
+    temp.CanCollide = false
+    temp.Transparency = 1
+    temp.Parent = Workspace
+    local sound = Instance.new("Sound")
+    sound.SoundId = soundId
+    sound.Volume = 0.6
+    sound.Parent = temp
+    sound:Play()
+    task.delay(3, function()
+        if temp and temp.Parent then temp:Destroy() end
+    end)
+end
+
+local function playSoundForPlayer(soundId, player)
+    if not isPlayerValid(player) then return end
+    local char = player.Character
+    if not char then return end
+    local sound = Instance.new("Sound")
+    sound.SoundId = soundId
+    sound.Volume = 0.5
+    sound.Parent = char
+    sound:Play()
+    task.delay(3, function()
+        if sound and sound.Parent then sound:Destroy() end
+    end)
+end
+
 local function isValid(instance)
     return instance ~= nil and instance.Parent ~= nil
 end
@@ -131,6 +171,8 @@ local function setupMoneyPileEvents(moneyPile)
     if collectEvent then
         collectEvent.Event:Connect(function(player, amount)
             addMoney(player, amount)
+            -- Sonido de recoger dinero
+            playSoundForPlayer(SOUND_COLLECT_MONEY, player)
         end)
     end
 end
@@ -180,6 +222,8 @@ local function setupUpgradeButtonEvents(pedestal, upgradeBtn, charIdx)
                 end
             end
             print(player.Name.." mejoro "..charData.name.." a Lv."..charData.level.." (-$"..cost..")")
+            -- Sonido de mejora
+            playSoundForPlayer(SOUND_UPGRADE, player)
         end)
         if not ok then warn("Error en upgrade btn: "..tostring(err)) end
     end)
@@ -211,6 +255,8 @@ Events.ThrowBall.OnServerEvent:Connect(function(player, targetPos)
         local rt = nearest:FindFirstChild("Rarity")
         local rarity = rt and rt.Value or "Blanco"
         local pos = nearest.Position
+        -- Sonido de cristal rompiendose (antes de destruir)
+        playSoundAt(SOUND_CRYSTAL_BREAK, pos)
         nearest:Destroy()
         CrystalSpawner.spawnChest(pos, {color=nearest and nearest.Color, name=rarity}, player)
     end)
@@ -490,6 +536,8 @@ Events.UpgradeCharacter.OnServerEvent:Connect(function(player)
             end
         end
         print(player.Name.." mejoro "..charData.name.." a Lv."..charData.level.." (-$"..cost..")")
+        -- Sonido de mejora
+        playSoundForPlayer(SOUND_UPGRADE, player)
     end)
     if not ok then warn("Error UpgradeCharacter: "..tostring(err)) end
 end)
@@ -763,4 +811,5 @@ task.delay(3, function()
 end)
 
 print("=== GameHandler iniciado ===")
+
 
