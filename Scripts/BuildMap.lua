@@ -324,29 +324,40 @@ for baseNum = 1, 5 do
         barFront.Color = barColor
         barFront.Parent = floor2
 
-        -- LUCES del segundo piso (brillo reducido para que no molesten)
-        -- 4 PointLights distribuidas por el piso
+        -- LUCES del segundo piso (colgando DEBAJO del piso, como lamparas)
+        -- Estan por debajo del suelo del piso 2 (Y=15.5) para iluminar hacia abajo
+        -- hacia la base original
         for lightIdx = 1, 4 do
+                local lightX = baseX + ((lightIdx - 1) % 2 - 0.5) * 18
+                local lightZ = 50 + math.floor((lightIdx - 1) / 2) * 30
+
+                -- Cable corto de la lampara (del techo hacia abajo)
+                local cable = Instance.new("Part")
+                cable.Name = "LightCable" .. lightIdx
+                cable.Size = Vector3.new(0.1, 1.5, 0.1)
+                cable.Position = Vector3.new(lightX, 14.75, lightZ)
+                cable.Anchored = true
+                cable.Material = Enum.Material.SmoothPlastic
+                cable.Color = Color3.fromRGB(60, 60, 60)
+                cable.Parent = floor2
+
+                -- Lampara (parte colgante debajo del piso 2)
                 local lightPart = Instance.new("Part")
                 lightPart.Name = "CeilingLight" .. lightIdx
-                lightPart.Size = Vector3.new(2, 0.3, 2)
-                -- Distribuir en 2 filas de 2 luces
-                local row = math.ceil(lightIdx / 2)
-                local col = ((lightIdx - 1) % 2) + 1
-                local lightX = baseX + (col - 1.5) * 18
-                local lightZ = 50 + (row - 1) * 30
-                lightPart.Position = Vector3.new(lightX, 18.5, lightZ)
+                lightPart.Shape = Enum.PartType.Ball
+                lightPart.Size = Vector3.new(1.5, 1.5, 1.5)
+                lightPart.Position = Vector3.new(lightX, 13.5, lightZ)
                 lightPart.Anchored = true
                 lightPart.Material = Enum.Material.Neon
                 lightPart.Color = Color3.fromRGB(255, 240, 200)
-                lightPart.Transparency = 0.3
+                lightPart.Transparency = 0.1
                 lightPart.Parent = floor2
 
-                -- PointLight con brillo bajo
+                -- PointLight ILUMINANDO HACIA ABAJO (hacia la base original)
                 local pl = Instance.new("PointLight")
                 pl.Color = Color3.fromRGB(255, 240, 210)
-                pl.Brightness = 0.6
-                pl.Range = 18
+                pl.Brightness = 1.2
+                pl.Range = 22
                 pl.Shadows = false
                 pl.Parent = lightPart
         end
@@ -419,6 +430,7 @@ for baseNum = 1, 5 do
 end
 
 print("=== MAPA CREADO EXITOSAMENTE ===")
+
 
 
 
