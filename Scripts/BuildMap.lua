@@ -261,7 +261,6 @@ for baseNum = 1, 5 do
         -- ============================================
         local FLOOR_HEIGHT = 17 -- distancia vertical entre pisos
         local FLOOR2_Y = 18     -- piso 2 a esta altura
-        local FLOOR3_Y = FLOOR2_Y + FLOOR_HEIGHT -- piso 3 = 35
 
         local function createFloor(floorNum, floorY, ladderStartY)
                 local floor = Instance.new("Folder")
@@ -428,10 +427,20 @@ for baseNum = 1, 5 do
         local floor2 = createFloor(2, FLOOR2_Y, 1)
 
         -- Crear PISO 3 (escalera sube desde Y=FLOOR2_Y del piso 2, escalera continua)
+        local FLOOR3_Y = FLOOR2_Y + FLOOR_HEIGHT
         local floor3 = createFloor(3, FLOOR3_Y, FLOOR2_Y)
+
+        -- Crear PISO 4 (escalera sube desde Y=FLOOR3_Y del piso 3, escalera continua)
+        local FLOOR4_Y = FLOOR3_Y + FLOOR_HEIGHT
+        local floor4 = createFloor(4, FLOOR4_Y, FLOOR3_Y)
+
+        -- Crear PISO 5 (escalera sube desde Y=FLOOR4_Y del piso 4, escalera continua)
+        local FLOOR5_Y = FLOOR4_Y + FLOOR_HEIGHT
+        local floor5 = createFloor(5, FLOOR5_Y, FLOOR4_Y)
 end
 
 print("=== MAPA CREADO EXITOSAMENTE ===")
+
 
 
 
