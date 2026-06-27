@@ -742,7 +742,7 @@ task.spawn(function()
                         if bg and bg.Parent then
                             local lbl = bg:FindFirstChild("MoneyLabel")
                             if lbl and lbl.Parent then
-                                lbl.Text = "$" .. mv.Value
+                                lbl.Text = "$" .. ModelManager.formatMoney(mv.Value)
                             end
                         end
                     end
@@ -841,6 +841,7 @@ task.delay(3, function()
 end)
 
 print("=== GameHandler iniciado ===")
+
 
 
 
