@@ -439,42 +439,57 @@ Events.UpgradeCharacter.OnServerEvent:Connect(function(player)
         local root = pchar:FindFirstChild("HumanoidRootPart")
         if not root then return end
 
+        -- Buscar el UpgradeButton MAS CERCANO al jugador
+        local closestDist = math.huge
+        local closestEntry = nil
+        local closestPedestal = nil
+
         for _, entry in ipairs(iterateCharacters(data.characters)) do
             local charData = entry.data
             if not charData.pedestal then continue end
             if not isValid(charData.pedestal) then charData.pedestal=nil continue end
 
-            local platform = charData.pedestal:FindFirstChild("Platform")
-            if not platform then continue end
-            if (platform.Position - root.Position).Magnitude >= 15 then continue end
+            -- Usar la posicion del UpgradeButton (no del pedestal)
+            local upgradeBtn = charData.pedestal:FindFirstChild("UpgradeButton")
+            if not upgradeBtn then continue end
 
-            local currentLevel = charData.level or 1
-            if currentLevel >= 100 then return end
-            local cost = ModelManager.getUpgradeCost(currentLevel)
-            if (data.money or 0) < cost then return end
-
-            data.money = data.money - cost
-            charData.level = currentLevel + 1
-
-            local leaderstats = player:FindFirstChild("leaderstats")
-            if leaderstats then
-                local coins = leaderstats:FindFirstChild("Coins")
-                if coins then coins.Value = data.money end
+            local dist = (upgradeBtn.Position - root.Position).Magnitude
+            if dist < closestDist then
+                closestDist = dist
+                closestEntry = entry
+                closestPedestal = charData.pedestal
             end
-            Events.MoneyUpdate:FireClient(player, data.money)
-
-            if isValid(charData.pedestal) then
-                ModelManager.createLabels(charData.pedestal, charData.name, charData.rarity, charData.level)
-                ModelManager.updateUpgradeButtonUI(charData.pedestal, charData.rarity, charData.level)
-                local mp = charData.pedestal:FindFirstChild("MoneyPile")
-                if mp then
-                    local lt = mp:FindFirstChild("CharLevel")
-                    if lt then lt.Value = charData.level end
-                end
-            end
-            print(player.Name.." mejoro "..charData.name.." a Lv."..charData.level.." (-$"..cost..")")
-            return
         end
+
+        -- Verificar que esta suficientemente cerca del boton (8 studs)
+        if not closestEntry or closestDist >= 8 then return end
+
+        local charData = closestEntry.data
+        local currentLevel = charData.level or 1
+        if currentLevel >= 100 then return end
+        local cost = ModelManager.getUpgradeCost(currentLevel)
+        if (data.money or 0) < cost then return end
+
+        data.money = data.money - cost
+        charData.level = currentLevel + 1
+
+        local leaderstats = player:FindFirstChild("leaderstats")
+        if leaderstats then
+            local coins = leaderstats:FindFirstChild("Coins")
+            if coins then coins.Value = data.money end
+        end
+        Events.MoneyUpdate:FireClient(player, data.money)
+
+        if isValid(closestPedestal) then
+            ModelManager.createLabels(closestPedestal, charData.name, charData.rarity, charData.level)
+            ModelManager.updateUpgradeButtonUI(closestPedestal, charData.rarity, charData.level)
+            local mp = closestPedestal:FindFirstChild("MoneyPile")
+            if mp then
+                local lt = mp:FindFirstChild("CharLevel")
+                if lt then lt.Value = charData.level end
+            end
+        end
+        print(player.Name.." mejoro "..charData.name.." a Lv."..charData.level.." (-$"..cost..")")
     end)
     if not ok then warn("Error UpgradeCharacter: "..tostring(err)) end
 end)
@@ -642,9 +657,17 @@ task.spawn(function()
                     local rate = ModelManager.getMoneyRate(rarityTag.Value, lvl)
                     mv.Value = mv.Value + rate
 
-                    -- ELIMINADO: actualizacion de UI desde servidor
-                    -- La UI del MoneyPile se actualiza solo cuando el jugador
-                    -- recolecta el dinero, no en cada tick
+                    -- Actualizar UI del MoneyPile para que se vea el dinero acumulado
+                    local bb = moneyPile:FindFirstChild("MoneyGui")
+                    if bb and bb.Parent then
+                        local bg = bb:FindFirstChild("Frame")
+                        if bg and bg.Parent then
+                            local lbl = bg:FindFirstChild("MoneyLabel")
+                            if lbl and lbl.Parent then
+                                lbl.Text = "$" .. mv.Value
+                            end
+                        end
+                    end
                 end)
                 if not ok then warn("[MoneyTimer] "..tostring(err)) end
             end
@@ -740,3 +763,4 @@ task.delay(3, function()
 end)
 
 print("=== GameHandler iniciado ===")
+
