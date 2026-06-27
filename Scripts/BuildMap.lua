@@ -151,109 +151,220 @@ basesFolder.Name = "Bases"
 basesFolder.Parent = map
 
 for baseNum = 1, 5 do
-	local base = Instance.new("Folder")
-	base.Name = "Base" .. baseNum
-	base.Parent = basesFolder
+        local base = Instance.new("Folder")
+        base.Name = "Base" .. baseNum
+        base.Parent = basesFolder
 
-	local baseX = (baseNum - 3) * 50
+        local baseX = (baseNum - 3) * 50
 
-	-- Suelo de la base
-	local baseFloor = Instance.new("Part")
-	baseFloor.Name = "BaseFloor"
-	baseFloor.Size = Vector3.new(40, 1, 85)
-	baseFloor.Position = Vector3.new(baseX, 0.5, 72)
-	baseFloor.Anchored = true
-	baseFloor.Material = Enum.Material.SmoothPlastic
-	baseFloor.Color = Color3.fromRGB(100, 100, 120)
-	baseFloor.Parent = base
+        -- Suelo de la base
+        local baseFloor = Instance.new("Part")
+        baseFloor.Name = "BaseFloor"
+        baseFloor.Size = Vector3.new(40, 1, 85)
+        baseFloor.Position = Vector3.new(baseX, 0.5, 72)
+        baseFloor.Anchored = true
+        baseFloor.Material = Enum.Material.SmoothPlastic
+        baseFloor.Color = Color3.fromRGB(100, 100, 120)
+        baseFloor.Parent = base
 
-	-- Poste del letrero
-	local signPost = Instance.new("Part")
-	signPost.Name = "BaseSignPost"
-	signPost.Size = Vector3.new(0.5, 4, 0.5)
-	signPost.Position = Vector3.new(baseX, 2.5, 29)
-	signPost.Anchored = true
-	signPost.Material = Enum.Material.SmoothPlastic
-	signPost.Color = Color3.fromRGB(60, 60, 80)
-	signPost.Parent = base
+        -- Poste del letrero
+        local signPost = Instance.new("Part")
+        signPost.Name = "BaseSignPost"
+        signPost.Size = Vector3.new(0.5, 4, 0.5)
+        signPost.Position = Vector3.new(baseX, 2.5, 29)
+        signPost.Anchored = true
+        signPost.Material = Enum.Material.SmoothPlastic
+        signPost.Color = Color3.fromRGB(60, 60, 80)
+        signPost.Parent = base
 
-	-- Letrero de la base
-	local sign = Instance.new("Part")
-	sign.Name = "BaseSign"
-	sign.Size = Vector3.new(8, 3, 0.3)
-	sign.Position = Vector3.new(baseX, 4.5, 29)
-	sign.Anchored = true
-	sign.Material = Enum.Material.SmoothPlastic
-	sign.Color = Color3.fromRGB(50, 50, 70)
-	sign.Parent = base
+        -- Letrero de la base
+        local sign = Instance.new("Part")
+        sign.Name = "BaseSign"
+        sign.Size = Vector3.new(8, 3, 0.3)
+        sign.Position = Vector3.new(baseX, 4.5, 29)
+        sign.Anchored = true
+        sign.Material = Enum.Material.SmoothPlastic
+        sign.Color = Color3.fromRGB(50, 50, 70)
+        sign.Parent = base
 
-	-- SurfaceGui del letrero (avatar + nombre)
-	local sg = Instance.new("SurfaceGui")
-	sg.Face = Enum.NormalId.Front
-	sg.Parent = sign
+        -- SurfaceGui del letrero (avatar + nombre)
+        local sg = Instance.new("SurfaceGui")
+        sg.Face = Enum.NormalId.Front
+        sg.Parent = sign
 
-	-- Avatar del jugador (mitad superior)
-	local playerFaceLabel = Instance.new("ImageLabel")
-	playerFaceLabel.Name = "PlayerFace"
-	playerFaceLabel.Size = UDim2.new(0.5, 0, 0.5, 0)
-	playerFaceLabel.Position = UDim2.new(0.25, 0, 0, 0)
-	playerFaceLabel.BackgroundTransparency = 1
-	playerFaceLabel.Image = ""
-	playerFaceLabel.ScaleType = Enum.ScaleType.Fit
-	playerFaceLabel.Parent = sg
+        -- Avatar del jugador (mitad superior)
+        local playerFaceLabel = Instance.new("ImageLabel")
+        playerFaceLabel.Name = "PlayerFace"
+        playerFaceLabel.Size = UDim2.new(0.5, 0, 0.5, 0)
+        playerFaceLabel.Position = UDim2.new(0.25, 0, 0, 0)
+        playerFaceLabel.BackgroundTransparency = 1
+        playerFaceLabel.Image = ""
+        playerFaceLabel.ScaleType = Enum.ScaleType.Fit
+        playerFaceLabel.Parent = sg
 
-	-- Nombre del jugador (mitad inferior)
-	local playerNameLabel = Instance.new("TextLabel")
-	playerNameLabel.Name = "PlayerName"
-	playerNameLabel.Size = UDim2.new(1, 0, 0.5, 0)
-	playerNameLabel.Position = UDim2.new(0, 0, 0.5, 0)
-	playerNameLabel.BackgroundTransparency = 1
-	playerNameLabel.Text = "Libre"
-	playerNameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-	playerNameLabel.TextScaled = true
-	playerNameLabel.Font = Enum.Font.GothamBold
-	playerNameLabel.Parent = sg
+        -- Nombre del jugador (mitad inferior)
+        local playerNameLabel = Instance.new("TextLabel")
+        playerNameLabel.Name = "PlayerName"
+        playerNameLabel.Size = UDim2.new(1, 0, 0.5, 0)
+        playerNameLabel.Position = UDim2.new(0, 0, 0.5, 0)
+        playerNameLabel.BackgroundTransparency = 1
+        playerNameLabel.Text = "Libre"
+        playerNameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        playerNameLabel.TextScaled = true
+        playerNameLabel.Font = Enum.Font.GothamBold
+        playerNameLabel.Parent = sg
 
-	-- Pedestales de la base (10 total: 5 izquierda, 5 derecha)
-	local pedestals = Instance.new("Folder")
-	pedestals.Name = "Pedestals"
-	pedestals.Parent = base
+        -- Pedestales de la base (10 total: 5 izquierda, 5 derecha) - PISO 1
+        local pedestals = Instance.new("Folder")
+        pedestals.Name = "Pedestals"
+        pedestals.Parent = base
 
-	for i = 1, 10 do
-		local ped = Instance.new("Folder")
-		ped.Name = "Pedestal" .. i
-		ped.Parent = pedestals
+        for i = 1, 10 do
+                local ped = Instance.new("Folder")
+                ped.Name = "Pedestal" .. i
+                ped.Parent = pedestals
 
-		local pedX
-		local pedZ
-		if i <= 5 then
-			pedX = baseX - 12
-			pedZ = 35 + (i - 1) * 13
-		else
-			pedX = baseX + 12
-			pedZ = 35 + (i - 6) * 13
-		end
+                local pedX
+                local pedZ
+                if i <= 5 then
+                        pedX = baseX - 12
+                        pedZ = 35 + (i - 1) * 13
+                else
+                        pedX = baseX + 12
+                        pedZ = 35 + (i - 6) * 13
+                end
 
-		-- Columna del pedestal
-		local pedCol = Instance.new("Part")
-		pedCol.Name = "PedestalColumn"
-		pedCol.Size = Vector3.new(3, 2, 3)
-		pedCol.Position = Vector3.new(pedX, 1, pedZ)
-		pedCol.Anchored = true
-		pedCol.Material = Enum.Material.SmoothPlastic
-		pedCol.Color = Color3.fromRGB(70, 70, 90)
-		pedCol.Parent = ped
+                -- Columna del pedestal
+                local pedCol = Instance.new("Part")
+                pedCol.Name = "PedestalColumn"
+                pedCol.Size = Vector3.new(3, 2, 3)
+                pedCol.Position = Vector3.new(pedX, 1, pedZ)
+                pedCol.Anchored = true
+                pedCol.Material = Enum.Material.SmoothPlastic
+                pedCol.Color = Color3.fromRGB(70, 70, 90)
+                pedCol.Parent = ped
 
-		-- Plataforma del pedestal
-		local platform = Instance.new("Part")
-		platform.Name = "Platform"
-		platform.Size = Vector3.new(4, 0.5, 4)
-		platform.Position = Vector3.new(pedX, 2.25, pedZ)
-		platform.Anchored = true
-		platform.Material = Enum.Material.SmoothPlastic
-		platform.Color = Color3.fromRGB(90, 90, 110)
-		platform.Parent = ped
-	end
+                -- Plataforma del pedestal
+                local platform = Instance.new("Part")
+                platform.Name = "Platform"
+                platform.Size = Vector3.new(4, 0.5, 4)
+                platform.Position = Vector3.new(pedX, 2.25, pedZ)
+                platform.Anchored = true
+                platform.Material = Enum.Material.SmoothPlastic
+                platform.Color = Color3.fromRGB(90, 90, 110)
+                platform.Parent = ped
+        end
+
+        -- ============================================
+        -- PISO 2 (OCULTO por defecto, se activa al mejorar la base)
+        -- ============================================
+        local floor2 = Instance.new("Folder")
+        floor2.Name = "Floor2"
+        floor2.Parent = base
+
+        -- Suelo del segundo piso (centrado sobre la base, mas pequeño)
+        local floor2Floor = Instance.new("Part")
+        floor2Floor.Name = "Floor2Floor"
+        floor2Floor.Size = Vector3.new(36, 1, 75)
+        floor2Floor.Position = Vector3.new(baseX, 15.5, 72)
+        floor2Floor.Anchored = true
+        floor2Floor.Material = Enum.Material.SmoothPlastic
+        floor2Floor.Color = Color3.fromRGB(110, 110, 130)
+        floor2Floor.Parent = floor2
+
+        -- Barandas del segundo piso (para que no se caigan)
+        local barColor = Color3.fromRGB(140, 140, 160)
+        -- Baranda izquierda
+        local barL = Instance.new("Part")
+        barL.Name = "BarandL"
+        barL.Size = Vector3.new(0.5, 2, 75)
+        barL.Position = Vector3.new(baseX - 18, 16.5, 72)
+        barL.Anchored = true
+        barL.Material = Enum.Material.SmoothPlastic
+        barL.Color = barColor
+        barL.Parent = floor2
+        -- Baranda derecha
+        local barR = Instance.new("Part")
+        barR.Name = "BarandR"
+        barR.Size = Vector3.new(0.5, 2, 75)
+        barR.Position = Vector3.new(baseX + 18, 16.5, 72)
+        barR.Anchored = true
+        barR.Material = Enum.Material.SmoothPlastic
+        barR.Color = barColor
+        barR.Parent = floor2
+        -- Baranda trasera
+        local barBack = Instance.new("Part")
+        barBack.Name = "BarandBack"
+        barBack.Size = Vector3.new(37, 2, 0.5)
+        barBack.Position = Vector3.new(baseX, 16.5, 109)
+        barBack.Anchored = true
+        barBack.Material = Enum.Material.SmoothPlastic
+        barBack.Color = barColor
+        barBack.Parent = floor2
+
+        -- Escalera para subir al segundo piso
+        -- Escalera como rampa inclinada
+        local stairs = Instance.new("Part")
+        stairs.Name = "Stairs"
+        stairs.Size = Vector3.new(4, 0.5, 16)
+        -- Inclinacion: parte baja en y=2.5, parte alta en y=15.5
+        -- Posicion: en el centro frontal del piso 2
+        stairs.CFrame = CFrame.new(Vector3.new(baseX, 9, 26)) * CFrame.Angles(math.rad(-39), 0, 0)
+        stairs.Anchored = true
+        stairs.Material = Enum.Material.SmoothPlastic
+        stairs.Color = Color3.fromRGB(80, 80, 100)
+        stairs.Parent = floor2
+
+        -- Pedestales del PISO 2 (10 total: 5 izquierda, 5 derecha)
+        local pedestals2 = Instance.new("Folder")
+        pedestals2.Name = "Pedestals2"
+        pedestals2.Parent = floor2
+
+        for i = 1, 10 do
+                local ped = Instance.new("Folder")
+                ped.Name = "Pedestal2_" .. i
+                ped.Parent = pedestals2
+
+                local pedX
+                local pedZ
+                if i <= 5 then
+                        pedX = baseX - 12
+                        pedZ = 50 + (i - 1) * 8
+                else
+                        pedX = baseX + 12
+                        pedZ = 50 + (i - 6) * 8
+                end
+
+                -- Columna del pedestal piso 2
+                local pedCol = Instance.new("Part")
+                pedCol.Name = "PedestalColumn"
+                pedCol.Size = Vector3.new(3, 2, 3)
+                pedCol.Position = Vector3.new(pedX, 16, pedZ)
+                pedCol.Anchored = true
+                pedCol.Material = Enum.Material.SmoothPlastic
+                pedCol.Color = Color3.fromRGB(70, 70, 90)
+                pedCol.Parent = ped
+
+                -- Plataforma del pedestal piso 2
+                local platform = Instance.new("Part")
+                platform.Name = "Platform"
+                platform.Size = Vector3.new(4, 0.5, 4)
+                platform.Position = Vector3.new(pedX, 17.25, pedZ)
+                platform.Anchored = true
+                platform.Material = Enum.Material.SmoothPlastic
+                platform.Color = Color3.fromRGB(90, 90, 110)
+                platform.Parent = ped
+        end
+
+        -- OCULTAR el piso 2 por defecto
+        for _, desc in ipairs(floor2:GetDescendants()) do
+                if desc:IsA("BasePart") then
+                        desc.Transparency = 1
+                        desc.CanCollide = false
+                        desc.CanQuery = false
+                end
+        end
 end
 
 print("=== MAPA CREADO EXITOSAMENTE ===")
+
