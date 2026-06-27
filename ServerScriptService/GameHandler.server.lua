@@ -77,11 +77,11 @@ end
 local function isPedestalOwnedByPlayer(pedestal, player)
     local base = BaseManager.getBase(player.UserId)
     if not base then return false end
-    local pedestals = base:FindFirstChild("Pedestals")
-    if not pedestals then return false end
-    -- Verificar que el pedestal es hijo de la base del jugador
-    for _, ped in ipairs(pedestals:GetChildren()) do
-        if ped == pedestal then return true end
+    -- Verificar que el pedestal es descendiente de la base del jugador
+    local current = pedestal.Parent
+    while current do
+        if current == base then return true end
+        current = current.Parent
     end
     return false
 end
@@ -184,11 +184,13 @@ local function showEmptyLabels(base)
     end
 end
 
-local function setupMoneyPileEvents(moneyPile)
+local function setupMoneyPileEvents(pedestal, moneyPile)
     if not moneyPile then return end
     local collectEvent = moneyPile:WaitForChild("CollectEvent", 5)
     if collectEvent then
         collectEvent.Event:Connect(function(player, amount)
+            -- Solo el dueño de la base puede recoger el dinero
+            if not isPedestalOwnedByPlayer(pedestal, player) then return end
             addMoney(player, amount)
             -- Sonido de recoger dinero
             playSoundForPlayer(SOUND_COLLECT_MONEY, player)
@@ -215,6 +217,8 @@ local function setupUpgradeButtonEvents(pedestal, upgradeBtn, charIdx)
             if not charData then return end
             if not isValid(charData.pedestal) then charData.pedestal=nil return end
             if charData.pedestal ~= pedestal then return end
+            -- Solo mejorar si el pedestal es de la base del jugador
+            if not isPedestalOwnedByPlayer(pedestal, player) then return end
 
             local currentLevel = charData.level or 1
             if currentLevel >= 100 then return end
@@ -436,7 +440,7 @@ Events.PlaceCharacter.OnServerEvent:Connect(function(player)
         ModelManager.createLabels(nearestFree, charData.name, charData.rarity, charData.level)
 
         local moneyPile = ModelManager.createMoneyPile(nearestFree, charData.rarity, charData.level)
-        setupMoneyPileEvents(moneyPile)
+        setupMoneyPileEvents(nearestFree, moneyPile)
         local upgradeBtn = ModelManager.createUpgradeButton(nearestFree, charData.rarity, charData.level)
         setupUpgradeButtonEvents(nearestFree, upgradeBtn, charIdx)
 
@@ -461,6 +465,8 @@ Events.RemoveFromPedestal.OnServerEvent:Connect(function(player)
             local charData = entry.data
             if charData.pedestal then
                 if not isValid(charData.pedestal) then charData.pedestal=nil continue end
+                -- Solo pedestales de la base del jugador
+                if not isPedestalOwnedByPlayer(charData.pedestal, player) then continue end
                 local platform = charData.pedestal:FindFirstChild("Platform")
                 if platform then
                     local d = (platform.Position - root.Position).Magnitude
@@ -516,6 +522,8 @@ Events.UpgradeCharacter.OnServerEvent:Connect(function(player)
             local charData = entry.data
             if not charData.pedestal then continue end
             if not isValid(charData.pedestal) then charData.pedestal=nil continue end
+            -- Solo pedestales de la base del jugador
+            if not isPedestalOwnedByPlayer(charData.pedestal, player) then continue end
 
             -- Usar la posicion del UpgradeButton (no del pedestal)
             local upgradeBtn = charData.pedestal:FindFirstChild("UpgradeButton")
@@ -833,6 +841,7 @@ task.delay(3, function()
 end)
 
 print("=== GameHandler iniciado ===")
+
 
 
 
