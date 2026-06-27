@@ -4,7 +4,32 @@ local Workspace = game:GetService("Workspace")
 local Debris = game:GetService("Debris")
 
 local CrystalSpawner = require(ServerStorage.ServerModules.CrystalSpawner)
-local BaseManager = require(ServerStorage.ServerModules.BaseManager)
+-- BaseManager con proteccion - si falla, el juego avisa pero no crashea
+local BaseManager
+local ok_bm, err_bm = pcall(function()
+    BaseManager = require(ServerStorage.ServerModules.BaseManager)
+end)
+if not ok_bm or not BaseManager then
+    warn("[CRITICAL] BaseManager no se pudo cargar: " .. tostring(err_bm))
+    -- Crear un BaseManager vacio para evitar crashes
+    BaseManager = {
+        getBase = function() return nil end,
+        assign = function() return nil end,
+        release = function() end,
+        getBaseLevel = function() return 1 end,
+        setBaseLevel = function() end,
+        getUpgradeCost = function() return math.huge end,
+    }
+else
+    -- Verificar que tiene las funciones necesarias
+    if type(BaseManager.assign) ~= "function" then
+        warn("[CRITICAL] BaseManager.assign no es una funcion! Revisa BaseManager.lua")
+    end
+    if type(BaseManager.getBase) ~= "function" then
+        warn("[CRITICAL] BaseManager.getBase no es una funcion! Revisa BaseManager.lua")
+    end
+    print("[OK] BaseManager cargado correctamente")
+end
 local CharacterManager = require(ServerStorage.ServerModules.CharacterManager)
 local ModelManager = require(ServerStorage.ServerModules.ModelManager)
 -- BaseUpgradeManager es opcional - si falla, el juego sigue sin mejora de base
