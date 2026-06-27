@@ -23,6 +23,7 @@ local RemoveFromPedestalEvent = ReplicatedStorage:WaitForChild("RemoveFromPedest
 local PickupDroppedEvent = ReplicatedStorage:WaitForChild("PickupDropped", 15)
 local MoneyUpdateEvent = ReplicatedStorage:WaitForChild("MoneyUpdate", 15)
 local UpgradeCharacterEvent = ReplicatedStorage:WaitForChild("UpgradeCharacter", 15)
+local UpgradeBaseEvent = ReplicatedStorage:WaitForChild("UpgradeBase", 15)
 
 -- Animacion cacheada
 local cachedThrowAnim = Instance.new("Animation")
@@ -424,6 +425,12 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
             if UpgradeCharacterEvent then UpgradeCharacterEvent:FireServer() end
             task.delay(0.3, function() upgradeDebounce = false end)
         end
+
+    elseif input.KeyCode == Enum.KeyCode.H then
+        -- Mejorar base (solo si no esta cargando nada)
+        if not isCarrying and UpgradeBaseEvent then
+            UpgradeBaseEvent:FireServer()
+        end
     end
 end)
 
@@ -468,4 +475,5 @@ end)
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
