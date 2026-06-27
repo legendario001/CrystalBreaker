@@ -907,7 +907,7 @@ Events.UpgradeBase.OnServerEvent:Connect(function(player)
         if not base then return end
 
         local currentLevel = BaseManager.getBaseLevel(player.UserId)
-        if currentLevel >= 2 then return end -- Max level por ahora
+        if currentLevel >= 3 then return end -- Max level (3 pisos)
 
         local cost = BaseManager.getUpgradeCost(currentLevel)
         if (data.money or 0) < cost then return end
@@ -925,8 +925,12 @@ Events.UpgradeBase.OnServerEvent:Connect(function(player)
         end
         Events.MoneyUpdate:FireClient(player, data.money)
 
-        -- Activar segundo piso!
-        BaseUpgradeManager.activateFloor2(base)
+        -- Activar el piso correspondiente al nuevo nivel
+        if newLevel == 2 then
+            BaseUpgradeManager.activateFloor2(base)
+        elseif newLevel == 3 then
+            BaseUpgradeManager.activateFloor3(base)
+        end
         BaseUpgradeManager.updateButtonUI(base, newLevel)
 
         -- Sonido de mejora (usamos el de upgrade)
@@ -942,6 +946,7 @@ task.delay(3, function()
 end)
 
 print("=== GameHandler iniciado ===")
+
 
 
 
