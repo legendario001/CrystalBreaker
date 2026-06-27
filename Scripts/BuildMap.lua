@@ -257,28 +257,29 @@ for baseNum = 1, 5 do
 
         -- ============================================
         -- PISO 2 (OCULTO por defecto, se activa al mejorar la base)
+        -- Mismas medidas que el piso 1 (40x1x85), con luces, SIN escalera
         -- ============================================
         local floor2 = Instance.new("Folder")
         floor2.Name = "Floor2"
         floor2.Parent = base
 
-        -- Suelo del segundo piso (centrado sobre la base, mas pequeño)
+        -- Suelo del segundo piso (MISMAS MEDIDAS que piso 1)
         local floor2Floor = Instance.new("Part")
         floor2Floor.Name = "Floor2Floor"
-        floor2Floor.Size = Vector3.new(36, 1, 75)
+        floor2Floor.Size = Vector3.new(40, 1, 85)
         floor2Floor.Position = Vector3.new(baseX, 15.5, 72)
         floor2Floor.Anchored = true
         floor2Floor.Material = Enum.Material.SmoothPlastic
-        floor2Floor.Color = Color3.fromRGB(110, 110, 130)
+        floor2Floor.Color = Color3.fromRGB(100, 100, 120)
         floor2Floor.Parent = floor2
 
-        -- Barandas del segundo piso (para que no se caigan)
+        -- Barandas del segundo piso (mismas medidas que base 40x85)
         local barColor = Color3.fromRGB(140, 140, 160)
-        -- Baranda izquierda
+        -- Baranda izquierda (largo 85)
         local barL = Instance.new("Part")
         barL.Name = "BarandL"
-        barL.Size = Vector3.new(0.5, 2, 75)
-        barL.Position = Vector3.new(baseX - 18, 16.5, 72)
+        barL.Size = Vector3.new(0.5, 2, 85)
+        barL.Position = Vector3.new(baseX - 20, 16.5, 72)
         barL.Anchored = true
         barL.Material = Enum.Material.SmoothPlastic
         barL.Color = barColor
@@ -286,36 +287,61 @@ for baseNum = 1, 5 do
         -- Baranda derecha
         local barR = Instance.new("Part")
         barR.Name = "BarandR"
-        barR.Size = Vector3.new(0.5, 2, 75)
-        barR.Position = Vector3.new(baseX + 18, 16.5, 72)
+        barR.Size = Vector3.new(0.5, 2, 85)
+        barR.Position = Vector3.new(baseX + 20, 16.5, 72)
         barR.Anchored = true
         barR.Material = Enum.Material.SmoothPlastic
         barR.Color = barColor
         barR.Parent = floor2
-        -- Baranda trasera
+        -- Baranda trasera (largo 40)
         local barBack = Instance.new("Part")
         barBack.Name = "BarandBack"
-        barBack.Size = Vector3.new(37, 2, 0.5)
-        barBack.Position = Vector3.new(baseX, 16.5, 109)
+        barBack.Size = Vector3.new(40, 2, 0.5)
+        barBack.Position = Vector3.new(baseX, 16.5, 114)
         barBack.Anchored = true
         barBack.Material = Enum.Material.SmoothPlastic
         barBack.Color = barColor
         barBack.Parent = floor2
+        -- Baranda frontal (largo 40)
+        local barFront = Instance.new("Part")
+        barFront.Name = "BarandFront"
+        barFront.Size = Vector3.new(40, 2, 0.5)
+        barFront.Position = Vector3.new(baseX, 16.5, 30)
+        barFront.Anchored = true
+        barFront.Material = Enum.Material.SmoothPlastic
+        barFront.Color = barColor
+        barFront.Parent = floor2
 
-        -- Escalera para subir al segundo piso
-        -- Escalera como rampa inclinada
-        local stairs = Instance.new("Part")
-        stairs.Name = "Stairs"
-        stairs.Size = Vector3.new(4, 0.5, 16)
-        -- Inclinacion: parte baja en y=2.5, parte alta en y=15.5
-        -- Posicion: en el centro frontal del piso 2
-        stairs.CFrame = CFrame.new(Vector3.new(baseX, 9, 26)) * CFrame.Angles(math.rad(-39), 0, 0)
-        stairs.Anchored = true
-        stairs.Material = Enum.Material.SmoothPlastic
-        stairs.Color = Color3.fromRGB(80, 80, 100)
-        stairs.Parent = floor2
+        -- LUCES del segundo piso para que no quede oscuro
+        -- 6 PointLights distribuidas por el piso
+        for lightIdx = 1, 6 do
+                local lightPart = Instance.new("Part")
+                lightPart.Name = "CeilingLight" .. lightIdx
+                lightPart.Size = Vector3.new(2, 0.3, 2)
+                -- Distribuir en 2 filas de 3 luces
+                local row = math.ceil(lightIdx / 3)
+                local col = ((lightIdx - 1) % 3) + 1
+                local lightX = baseX + (col - 2) * 14
+                local lightZ = 50 + (row - 1) * 25
+                lightPart.Position = Vector3.new(lightX, 18.5, lightZ)
+                lightPart.Anchored = true
+                lightPart.Material = Enum.Material.Neon
+                lightPart.Color = Color3.fromRGB(255, 245, 200)
+                lightPart.Transparency = 0
+                lightPart.Parent = floor2
 
-        -- Pedestales del PISO 2 (10 total: 5 izquierda, 5 derecha)
+                -- PointLight para iluminar el area
+                local pl = Instance.new("PointLight")
+                pl.Color = Color3.fromRGB(255, 245, 220)
+                pl.Brightness = 2
+                pl.Range = 25
+                pl.Shadows = false
+                pl.Parent = lightPart
+        end
+
+        -- Pedestales del PISO 2 (MISMAS POSICIONES relativas que piso 1)
+        -- Piso 1: pedX = baseX ± 12, pedZ = 35 + (i-1)*13
+        -- Piso 2: mismo patron pero en Y=16 (suelo en 15.5)
         local pedestals2 = Instance.new("Folder")
         pedestals2.Name = "Pedestals2"
         pedestals2.Parent = floor2
@@ -329,10 +355,10 @@ for baseNum = 1, 5 do
                 local pedZ
                 if i <= 5 then
                         pedX = baseX - 12
-                        pedZ = 50 + (i - 1) * 8
+                        pedZ = 35 + (i - 1) * 13
                 else
                         pedX = baseX + 12
-                        pedZ = 50 + (i - 6) * 8
+                        pedZ = 35 + (i - 6) * 13
                 end
 
                 -- Columna del pedestal piso 2
@@ -367,4 +393,5 @@ for baseNum = 1, 5 do
 end
 
 print("=== MAPA CREADO EXITOSAMENTE ===")
+
 
