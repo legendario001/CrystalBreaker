@@ -196,6 +196,7 @@ end
 -- ============================================
 -- Activar un piso (hacer visibles todas sus partes)
 -- Funciona para Floor2, Floor3, etc.
+-- Respeta la transparencia original de las decoraciones de nube
 -- ============================================
 function BaseUpgradeManager.activateFloor(base, floorNum)
         local floor = base:FindFirstChild("Floor" .. floorNum)
@@ -203,7 +204,18 @@ function BaseUpgradeManager.activateFloor(base, floorNum)
 
         for _, desc in ipairs(floor:GetDescendants()) do
                 if desc:IsA("BasePart") then
-                        desc.Transparency = 0
+                        -- Restaurar transparencia: partes con nombre "CloudDecor" o suelos
+                        -- tienen transparencia ligera para efecto nube
+                        local name = desc.Name
+                        if string.find(name, "CloudDecor") then
+                                desc.Transparency = 0.15
+                        elseif string.find(name, "Front") or string.find(name, "Back") then
+                                -- Suelos del piso: ligera transparencia estilo nube
+                                desc.Transparency = 0.05
+                        else
+                                -- Barandas, pedestales, escalera: opacos
+                                desc.Transparency = 0
+                        end
                         desc.CanCollide = true
                         desc.CanQuery = true
                 end
