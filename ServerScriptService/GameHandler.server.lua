@@ -389,15 +389,6 @@ Events.PlaceCharacter.OnServerEvent:Connect(function(player)
         local charData = data.characters[data.carrying]
         if not charData or charData.pedestal then return end
 
-        local char = player.Character
-        local bp = player:FindFirstChild("Backpack")
-        if char then
-            local t = char:FindFirstChild("Carrying") if t then t:Destroy() end
-        end
-        if bp then
-            local t = bp:FindFirstChild("Carrying") if t then t:Destroy() end
-        end
-
         local pchar = player.Character
         if not pchar then return end
         local root = pchar:FindFirstChild("HumanoidRootPart")
@@ -426,7 +417,18 @@ Events.PlaceCharacter.OnServerEvent:Connect(function(player)
                 if d < nearestDist then nearestDist=d nearestFree=ped end
             end
         end
+        -- Si no hay pedestal libre cerca, NO destruir la herramienta
         if not nearestFree then return end
+
+        -- SOLO ahora destruir la herramienta (ya tenemos pedestal seguro)
+        local char = player.Character
+        if char then
+            local t = char:FindFirstChild("Carrying") if t then t:Destroy() end
+        end
+        local bp = player:FindFirstChild("Backpack")
+        if bp then
+            local t = bp:FindFirstChild("Carrying") if t then t:Destroy() end
+        end
 
         local charIdx = data.carrying
         if charData.model then ModelManager.placeOnPedestal(charData.model, nearestFree) end
@@ -831,6 +833,7 @@ task.delay(3, function()
 end)
 
 print("=== GameHandler iniciado ===")
+
 
 
 
