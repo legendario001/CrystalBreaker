@@ -298,16 +298,16 @@ function ModelManager.createLabels(pedestal, charName, rarity, level)
         end
 
         local labelParent = highestPart
-        local labelStudsOffset = Vector3.new(0, 2, 0)
+        local labelStudsOffset = Vector3.new(0, 1, 0)
 
         if labelParent then
                 local halfHeight = labelParent.Size.Y / 2
-                labelStudsOffset = Vector3.new(0, halfHeight + 1, 0)
+                labelStudsOffset = Vector3.new(0, halfHeight + 0.3, 0)
         else
                 local platform = pedestal:FindFirstChild("Platform")
                 if platform then
                         labelParent = platform
-                        labelStudsOffset = Vector3.new(0, 5, 0)
+                        labelStudsOffset = Vector3.new(0, 3.5, 0)
                 else
                         return
                 end
@@ -797,4 +797,5 @@ function ModelManager.clearPedestal(pedestal)
 end
 
 return ModelManager
+
 
