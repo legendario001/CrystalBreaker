@@ -24,7 +24,6 @@ local PickupDroppedEvent = ReplicatedStorage:WaitForChild("PickupDropped", 15)
 local MoneyUpdateEvent = ReplicatedStorage:WaitForChild("MoneyUpdate", 15)
 local UpgradeCharacterEvent = ReplicatedStorage:WaitForChild("UpgradeCharacter", 15)
 local UpgradeBaseEvent = ReplicatedStorage:WaitForChild("UpgradeBase", 15)
-local TeleportBaseEvent = ReplicatedStorage:WaitForChild("TeleportBase", 15)
 
 -- Animacion cacheada
 local cachedThrowAnim = Instance.new("Animation")
@@ -432,12 +431,6 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
         if not isCarrying and UpgradeBaseEvent then
             UpgradeBaseEvent:FireServer()
         end
-
-    elseif input.KeyCode == Enum.KeyCode.J then
-        -- Teletransportar entre pisos (solo si no esta cargando nada)
-        if not isCarrying and TeleportBaseEvent then
-            TeleportBaseEvent:FireServer()
-        end
     end
 end)
 
@@ -482,6 +475,7 @@ end)
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
 
 
