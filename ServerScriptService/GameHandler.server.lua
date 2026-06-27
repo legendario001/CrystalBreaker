@@ -103,6 +103,38 @@ local function isValid(instance)
     return instance ~= nil and instance.Parent ~= nil
 end
 
+-- ============================================
+-- Helper: Obtener TODOS los pedestales de una base (piso 1, 2, 3, 4, 5)
+-- Retorna una lista plana de todos los folders de pedestal
+-- ============================================
+local function getAllPedestals(base)
+    local allPedestals = {}
+    if not base then return allPedestals end
+
+    -- Piso 1: base.Pedestals
+    local floor1Peds = base:FindFirstChild("Pedestals")
+    if floor1Peds then
+        for _, ped in ipairs(floor1Peds:GetChildren()) do
+            table.insert(allPedestals, ped)
+        end
+    end
+
+    -- Pisos 2-5: base.FloorN.PedestalsN
+    for floorNum = 2, 5 do
+        local floor = base:FindFirstChild("Floor" .. floorNum)
+        if floor then
+            local peds = floor:FindFirstChild("Pedestals" .. floorNum)
+            if peds then
+                for _, ped in ipairs(peds:GetChildren()) do
+                    table.insert(allPedestals, ped)
+                end
+            end
+        end
+    end
+
+    return allPedestals
+end
+
 local function isPlayerValid(player)
     return player ~= nil and player.Parent ~= nil
 end
@@ -434,11 +466,12 @@ Events.PlaceCharacter.OnServerEvent:Connect(function(player)
 
         local base = BaseManager.getBase(player.UserId)
         if not base then return end
-        local pedestals = base:FindFirstChild("Pedestals")
-        if not pedestals then return end
+        -- FIX: Buscar en TODOS los pisos (1, 2, 3, 4, 5)
+        local allPedestals = getAllPedestals(base)
+        if #allPedestals == 0 then return end
 
         local nearestFree, nearestDist = nil, PLACE_DISTANCE
-        for _, ped in ipairs(pedestals:GetChildren()) do
+        for _, ped in ipairs(allPedestals) do
             local platform = ped:FindFirstChild("Platform")
             if not platform then continue end
             local hasModel = false
@@ -907,7 +940,7 @@ Events.UpgradeBase.OnServerEvent:Connect(function(player)
         if not base then return end
 
         local currentLevel = BaseManager.getBaseLevel(player.UserId)
-        if currentLevel >= 3 then return end -- Max level (3 pisos)
+        if currentLevel >= 5 then return end -- Max level (5 pisos)
 
         local cost = BaseManager.getUpgradeCost(currentLevel)
         if (data.money or 0) < cost then return end
@@ -930,6 +963,10 @@ Events.UpgradeBase.OnServerEvent:Connect(function(player)
             BaseUpgradeManager.activateFloor2(base)
         elseif newLevel == 3 then
             BaseUpgradeManager.activateFloor3(base)
+        elseif newLevel == 4 then
+            BaseUpgradeManager.activateFloor4(base)
+        elseif newLevel == 5 then
+            BaseUpgradeManager.activateFloor5(base)
         end
         BaseUpgradeManager.updateButtonUI(base, newLevel)
 
@@ -946,6 +983,7 @@ task.delay(3, function()
 end)
 
 print("=== GameHandler iniciado ===")
+
 
 
 
