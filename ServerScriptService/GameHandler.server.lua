@@ -7,7 +7,15 @@ local CrystalSpawner = require(ServerStorage.ServerModules.CrystalSpawner)
 local BaseManager = require(ServerStorage.ServerModules.BaseManager)
 local CharacterManager = require(ServerStorage.ServerModules.CharacterManager)
 local ModelManager = require(ServerStorage.ServerModules.ModelManager)
-local BaseUpgradeManager = require(ServerStorage.ServerModules.BaseUpgradeManager)
+-- BaseUpgradeManager es opcional - si falla, el juego sigue sin mejora de base
+local BaseUpgradeManager
+local ok_bum, err_bum = pcall(function()
+    BaseUpgradeManager = require(ServerStorage.ServerModules.BaseUpgradeManager)
+end)
+if not ok_bum then
+    warn("BaseUpgradeManager no se pudo cargar: " .. tostring(err_bum))
+    BaseUpgradeManager = nil
+end
 local Events = require(game:GetService("ReplicatedStorage").RemoteEvents)
 
 local playerData = {}
@@ -777,15 +785,19 @@ Players.PlayerAdded:Connect(function(player)
         local base = BaseManager.assign(player)
         if base then
             showEmptyLabels(base)
-            -- Crear boton de mejorar base
-            BaseUpgradeManager.createUpgradeButton(base, player)
+            -- Crear boton de mejorar base (solo si BaseUpgradeManager cargo)
+            if BaseUpgradeManager then
+                BaseUpgradeManager.createUpgradeButton(base, player)
+            end
         else
             task.delay(5, function()
                 if not isPlayerValid(player) then return end
                 base = BaseManager.assign(player)
                 if base then
                     showEmptyLabels(base)
-                    BaseUpgradeManager.createUpgradeButton(base, player)
+                    if BaseUpgradeManager then
+                        BaseUpgradeManager.createUpgradeButton(base, player)
+                    end
                 end
             end)
         end
@@ -840,10 +852,12 @@ Players.PlayerRemoving:Connect(function(player)
         end
     end
 
-    -- Limpiar boton de mejora de base
-    local base = BaseManager.getBase(userId)
-    if base then
-        BaseUpgradeManager.removeUpgradeButton(base)
+    -- Limpiar boton de mejora de base (solo si BaseUpgradeManager cargo)
+    if BaseUpgradeManager then
+        local base = BaseManager.getBase(userId)
+        if base then
+            BaseUpgradeManager.removeUpgradeButton(base)
+        end
     end
 
     BaseManager.release(userId)
@@ -854,6 +868,7 @@ end)
 -- ============================================
 local baseUpgradeCooldowns = {}
 Events.UpgradeBase.OnServerEvent:Connect(function(player)
+    if not BaseUpgradeManager then return end -- Si no cargo, ignorar
     if baseUpgradeCooldowns[player.UserId] then return end
     baseUpgradeCooldowns[player.UserId] = true
     task.delay(0.5, function() baseUpgradeCooldowns[player.UserId] = nil end)
@@ -902,6 +917,7 @@ task.delay(3, function()
 end)
 
 print("=== GameHandler iniciado ===")
+
 
 
 
