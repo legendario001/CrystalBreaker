@@ -280,7 +280,7 @@ for baseNum = 1, 5 do
                 floorFront.Anchored = true
                 floorFront.Material = Enum.Material.SmoothPlastic
                 floorFront.Color = cloudFloorColor
-                floorFront.Transparency = 0.05 -- Casi opaco, ligero efecto etereo
+                
                 floorFront.CastShadow = false
                 floorFront.Parent = floor
 
@@ -291,7 +291,7 @@ for baseNum = 1, 5 do
                 floorBack.Anchored = true
                 floorBack.Material = Enum.Material.SmoothPlastic
                 floorBack.Color = cloudFloorColor
-                floorBack.Transparency = 0.05
+                
                 floorBack.CastShadow = false
                 floorBack.Parent = floor
 
@@ -312,7 +312,7 @@ for baseNum = 1, 5 do
                         cloudDecor.Anchored = true
                         cloudDecor.Material = Enum.Material.SmoothPlastic
                         cloudDecor.Color = cloudDecorColor
-                        cloudDecor.Transparency = 0.15
+                        cloudDecor.Transparency = 0.05
                         cloudDecor.CastShadow = false
                         cloudDecor.Parent = floor
                 end
@@ -323,7 +323,7 @@ for baseNum = 1, 5 do
                 barL.Size = Vector3.new(0.5, 2, 85)
                 barL.Position = Vector3.new(baseX - 20, floorY + 1, 72)
                 barL.Anchored = true
-                barL.Material = Enum.Material.Neon
+                barL.Material = Enum.Material.SmoothPlastic
                 barL.Color = cloudBarColor
                 barL.CastShadow = false
                 barL.Parent = floor
@@ -333,7 +333,7 @@ for baseNum = 1, 5 do
                 barR.Size = Vector3.new(0.5, 2, 85)
                 barR.Position = Vector3.new(baseX + 20, floorY + 1, 72)
                 barR.Anchored = true
-                barR.Material = Enum.Material.Neon
+                barR.Material = Enum.Material.SmoothPlastic
                 barR.Color = cloudBarColor
                 barR.CastShadow = false
                 barR.Parent = floor
@@ -343,7 +343,7 @@ for baseNum = 1, 5 do
                 barBack.Size = Vector3.new(40, 2, 0.5)
                 barBack.Position = Vector3.new(baseX, floorY + 1, 114)
                 barBack.Anchored = true
-                barBack.Material = Enum.Material.Neon
+                barBack.Material = Enum.Material.SmoothPlastic
                 barBack.Color = cloudBarColor
                 barBack.CastShadow = false
                 barBack.Parent = floor
@@ -353,7 +353,7 @@ for baseNum = 1, 5 do
                 barFront.Size = Vector3.new(40, 2, 0.5)
                 barFront.Position = Vector3.new(baseX, floorY + 1, 30)
                 barFront.Anchored = true
-                barFront.Material = Enum.Material.Neon
+                barFront.Material = Enum.Material.SmoothPlastic
                 barFront.Color = cloudBarColor
                 barFront.CastShadow = false
                 barFront.Parent = floor
@@ -440,6 +440,7 @@ for baseNum = 1, 5 do
 end
 
 print("=== MAPA CREADO EXITOSAMENTE ===")
+
 
 
 
