@@ -266,9 +266,21 @@ RunService.Heartbeat:Connect(function(dt)
             if bases then
                 for _, base in ipairs(bases:GetChildren()) do
                     if found then break end
-                    local pedestals = base:FindFirstChild("Pedestals")
-                    if pedestals then
-                        for _, ped in ipairs(pedestals:GetChildren()) do
+                    -- Buscar en TODOS los pisos (1, 2, 3, 4, 5)
+                    local allPedestalFolders = {}
+                    local p1 = base:FindFirstChild("Pedestals")
+                    if p1 then table.insert(allPedestalFolders, p1) end
+                    for floorNum = 2, 5 do
+                        local floor = base:FindFirstChild("Floor" .. floorNum)
+                        if floor then
+                            local peds = floor:FindFirstChild("Pedestals" .. floorNum)
+                            if peds then table.insert(allPedestalFolders, peds) end
+                        end
+                    end
+                    -- Buscar UpgradeButtons en todos los pedestales
+                    for _, pedFolder in ipairs(allPedestalFolders) do
+                        if found then break end
+                        for _, ped in ipairs(pedFolder:GetChildren()) do
                             local btn = ped:FindFirstChild("UpgradeButton")
                             if btn and (btn.Position - root.Position).Magnitude < 8 then
                                 found = true break
@@ -475,6 +487,7 @@ end)
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
 
 
