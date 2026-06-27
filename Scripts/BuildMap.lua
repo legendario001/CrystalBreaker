@@ -268,9 +268,9 @@ for baseNum = 1, 5 do
                 floor.Parent = base
 
                 -- COLORES ESTILO NUBE (blancos suaves, sin texturas complejas)
-                local cloudFloorColor = Color3.fromRGB(245, 248, 252)  -- Blanco azulado muy claro
-                local cloudBarColor = Color3.fromRGB(255, 255, 255)    -- Blanco puro
-                local cloudPedColor = Color3.fromRGB(235, 240, 248)    -- Blanco grisaceo muy claro
+                local cloudFloorColor = Color3.fromRGB(180, 185, 195)  -- Gris claro (menos brillo)
+                local cloudBarColor = Color3.fromRGB(200, 205, 215)    -- Gris claro medio
+                local cloudPedColor = Color3.fromRGB(170, 175, 185)    -- Gris claro oscuro
 
                 -- Suelo CON AGUJERO EN LA PARTE DE ATRAS (estilo nube: blanco, ligera transparencia)
                 local floorFront = Instance.new("Part")
@@ -297,7 +297,7 @@ for baseNum = 1, 5 do
 
                 -- DECORACION: pequeñas "nubes" en las esquinas del piso (partes blancas redondeadas)
                 -- Solo 4 partes extra por piso, muy ligero
-                local cloudDecorColor = Color3.fromRGB(255, 255, 255)
+                local cloudDecorColor = Color3.fromRGB(190, 195, 205)  -- Gris claro (sin brillo)
                 local corners = {
                         {x = baseX - 18, z = 35},
                         {x = baseX + 18, z = 35},
@@ -440,6 +440,7 @@ for baseNum = 1, 5 do
 end
 
 print("=== MAPA CREADO EXITOSAMENTE ===")
+
 
 
 
