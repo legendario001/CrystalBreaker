@@ -215,6 +215,127 @@ end
 function BaseUpgradeManager.removeUpgradeButton(base)
         local old = base:FindFirstChild("BaseUpgradeButton")
         if old then old:Destroy() end
+        -- Tambien limpiar boton de teletransporte
+        BaseUpgradeManager.removeTeleportButton(base)
+end
+
+-- ============================================
+-- Crear boton de TELETRANSPORTE (al lado del boton de mejorar)
+-- Solo aparece cuando la base esta mejorada (nivel 2)
+-- ============================================
+function BaseUpgradeManager.createTeleportButton(base, player)
+        if not base then return nil end
+
+        BaseUpgradeManager.removeTeleportButton(base)
+
+        local baseLevel = BaseManager.getBaseLevel(player.UserId)
+        if baseLevel < 2 then return nil end -- Solo si ya mejoro
+
+        local baseFloor = base:FindFirstChild("BaseFloor")
+        if not baseFloor then return nil end
+
+        local baseX = baseFloor.Position.X
+        -- Boton al lado del de mejorar (5 studs a la derecha)
+        local btnPos = Vector3.new(baseX + 6, 1.5, 95)
+
+        local teleBtn = Instance.new("Part")
+        teleBtn.Name = "TeleportButton"
+        teleBtn.Size = Vector3.new(4, 0.5, 4)
+        teleBtn.Position = btnPos
+        teleBtn.Anchored = true
+        teleBtn.CanCollide = false
+        teleBtn.Material = Enum.Material.SmoothPlastic
+        teleBtn.Color = Color3.fromRGB(100, 150, 255) -- Azul
+        teleBtn.Transparency = 0.2
+        teleBtn.Parent = base
+
+        local ownerTag = Instance.new("ObjectValue")
+        ownerTag.Name = "Owner"
+        ownerTag.Value = player
+        ownerTag.Parent = teleBtn
+
+        local click = Instance.new("ClickDetector")
+        click.Name = "TeleportClick"
+        click.MaxActivationDistance = 12
+        click.Parent = teleBtn
+
+        local teleEvent = Instance.new("BindableEvent")
+        teleEvent.Name = "TeleportEvent"
+        teleEvent.Parent = teleBtn
+
+        click.MouseClick:Connect(function(clickingPlayer)
+                if clickingPlayer == player then
+                        teleEvent:Fire(clickingPlayer)
+                end
+        end)
+
+        -- Billboard con info
+        local bb = Instance.new("BillboardGui")
+        bb.Name = "TeleportGui"
+        bb.Size = UDim2.new(4, 0, 2, 0)
+        bb.StudsOffset = Vector3.new(0, 3, 0)
+        bb.AlwaysOnTop = false
+        bb.MaxDistance = 60
+        bb.Parent = teleBtn
+
+        local bg = Instance.new("Frame")
+        bg.Size = UDim2.new(1, 0, 1, 0)
+        bg.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+        bg.BackgroundTransparency = 0.4
+        bg.BorderSizePixel = 0
+        bg.Parent = bb
+        Instance.new("UICorner", bg).CornerRadius = UDim.new(0, 8)
+
+        local stroke = Instance.new("UIStroke")
+        stroke.Color = Color3.fromRGB(100, 150, 255)
+        stroke.Thickness = 2
+        stroke.Transparency = 0.2
+        stroke.Parent = bg
+
+        -- Titulo
+        local titleLabel = Instance.new("TextLabel")
+        titleLabel.Size = UDim2.new(1, 0, 0.35, 0)
+        titleLabel.BackgroundTransparency = 1
+        titleLabel.Text = "TELETRANSPORTE"
+        titleLabel.TextColor3 = Color3.fromRGB(150, 200, 255)
+        titleLabel.TextScaled = true
+        titleLabel.Font = Enum.Font.GothamBlack
+        titleLabel.Parent = bg
+
+        -- Subtitulo
+        local subLabel = Instance.new("TextLabel")
+        subLabel.Size = UDim2.new(1, 0, 0.3, 0)
+        subLabel.Position = UDim2.new(0, 0, 0.35, 0)
+        subLabel.BackgroundTransparency = 1
+        subLabel.RichText = true
+        subLabel.Text = '<font color="#B0BEC5">Cambio de piso</font>'
+        subLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        subLabel.TextScaled = true
+        subLabel.Font = Enum.Font.GothamBold
+        subLabel.Parent = bg
+
+        -- Hint de tecla
+        local hintLabel = Instance.new("TextLabel")
+        hintLabel.Size = UDim2.new(1, 0, 0.35, 0)
+        hintLabel.Position = UDim2.new(0, 0, 0.65, 0)
+        hintLabel.BackgroundTransparency = 1
+        hintLabel.RichText = true
+        hintLabel.Text = '<font color="#B0BEC5">Presiona </font><font color="#64B5FF">J</font>'
+        hintLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        hintLabel.TextScaled = true
+        hintLabel.Font = Enum.Font.GothamBold
+        hintLabel.Parent = bg
+
+        return teleBtn
+end
+
+-- ============================================
+-- Eliminar boton de teletransporte
+-- ============================================
+function BaseUpgradeManager.removeTeleportButton(base)
+        local old = base:FindFirstChild("TeleportButton")
+        if old then old:Destroy() end
 end
 
 return BaseUpgradeManager
+
