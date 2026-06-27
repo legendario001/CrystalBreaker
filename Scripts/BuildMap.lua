@@ -257,32 +257,35 @@ for baseNum = 1, 5 do
 
         -- ============================================
         -- PISO 2 (OCULTO por defecto, se activa al mejorar la base)
-        -- Mismas medidas que el piso 1 (40x1x85), con luces, SIN escalera
+        -- Mismas medidas que el piso 1 (40x1x85), SIN sombras, SIN luces
         -- ============================================
         local floor2 = Instance.new("Folder")
         floor2.Name = "Floor2"
         floor2.Parent = base
 
+        -- Altura del piso 2: Y=18 (centro del suelo)
+        local FLOOR2_Y = 18
+
         -- Suelo del segundo piso CON AGUJERO EN LA PARTE DE ATRAS
-        -- Base original: 40 wide (X), 85 long (Z), Z from 29.5 to 114.5
-        -- Hoyo: 8x8 studs en la parte de atras (Z=100 a Z=108)
-        -- Partimos el suelo en 2 partes: frontal (Z=30..100) y trasera (Z=108..114)
+        -- Partimos el suelo en 2 partes: frontal y trasera (deja hueco para la escalera)
         local floor2Front = Instance.new("Part")
         floor2Front.Name = "Floor2FloorFront"
         floor2Front.Size = Vector3.new(40, 1, 70)
-        floor2Front.Position = Vector3.new(baseX, 15.5, 65)
+        floor2Front.Position = Vector3.new(baseX, FLOOR2_Y, 65)
         floor2Front.Anchored = true
         floor2Front.Material = Enum.Material.SmoothPlastic
         floor2Front.Color = Color3.fromRGB(100, 100, 120)
+        floor2Front.CastShadow = false -- No proyectar sombras
         floor2Front.Parent = floor2
 
         local floor2Back = Instance.new("Part")
         floor2Back.Name = "Floor2FloorBack"
         floor2Back.Size = Vector3.new(40, 1, 6)
-        floor2Back.Position = Vector3.new(baseX, 15.5, 111)
+        floor2Back.Position = Vector3.new(baseX, FLOOR2_Y, 111)
         floor2Back.Anchored = true
         floor2Back.Material = Enum.Material.SmoothPlastic
         floor2Back.Color = Color3.fromRGB(100, 100, 120)
+        floor2Back.CastShadow = false
         floor2Back.Parent = floor2
 
         -- Barandas del segundo piso (mismas medidas que base 40x85)
@@ -291,94 +294,59 @@ for baseNum = 1, 5 do
         local barL = Instance.new("Part")
         barL.Name = "BarandL"
         barL.Size = Vector3.new(0.5, 2, 85)
-        barL.Position = Vector3.new(baseX - 20, 16.5, 72)
+        barL.Position = Vector3.new(baseX - 20, FLOOR2_Y + 1, 72)
         barL.Anchored = true
         barL.Material = Enum.Material.SmoothPlastic
         barL.Color = barColor
+        barL.CastShadow = false
         barL.Parent = floor2
         -- Baranda derecha
         local barR = Instance.new("Part")
         barR.Name = "BarandR"
         barR.Size = Vector3.new(0.5, 2, 85)
-        barR.Position = Vector3.new(baseX + 20, 16.5, 72)
+        barR.Position = Vector3.new(baseX + 20, FLOOR2_Y + 1, 72)
         barR.Anchored = true
         barR.Material = Enum.Material.SmoothPlastic
         barR.Color = barColor
+        barR.CastShadow = false
         barR.Parent = floor2
         -- Baranda trasera (largo 40)
         local barBack = Instance.new("Part")
         barBack.Name = "BarandBack"
         barBack.Size = Vector3.new(40, 2, 0.5)
-        barBack.Position = Vector3.new(baseX, 16.5, 114)
+        barBack.Position = Vector3.new(baseX, FLOOR2_Y + 1, 114)
         barBack.Anchored = true
         barBack.Material = Enum.Material.SmoothPlastic
         barBack.Color = barColor
+        barBack.CastShadow = false
         barBack.Parent = floor2
         -- Baranda frontal (largo 40)
         local barFront = Instance.new("Part")
         barFront.Name = "BarandFront"
         barFront.Size = Vector3.new(40, 2, 0.5)
-        barFront.Position = Vector3.new(baseX, 16.5, 30)
+        barFront.Position = Vector3.new(baseX, FLOOR2_Y + 1, 30)
         barFront.Anchored = true
         barFront.Material = Enum.Material.SmoothPlastic
         barFront.Color = barColor
+        barFront.CastShadow = false
         barFront.Parent = floor2
 
-        -- LUCES del segundo piso (colgando DEBAJO del piso, como lamparas)
-        -- Estan por debajo del suelo del piso 2 (Y=15.5) para iluminar hacia abajo
-        -- hacia la base original
-        for lightIdx = 1, 4 do
-                local lightX = baseX + ((lightIdx - 1) % 2 - 0.5) * 18
-                local lightZ = 50 + math.floor((lightIdx - 1) / 2) * 30
-
-                -- Cable corto de la lampara (del techo hacia abajo)
-                local cable = Instance.new("Part")
-                cable.Name = "LightCable" .. lightIdx
-                cable.Size = Vector3.new(0.1, 1.5, 0.1)
-                cable.Position = Vector3.new(lightX, 14.75, lightZ)
-                cable.Anchored = true
-                cable.Material = Enum.Material.SmoothPlastic
-                cable.Color = Color3.fromRGB(60, 60, 60)
-                cable.Parent = floor2
-
-                -- Lampara (parte colgante debajo del piso 2)
-                local lightPart = Instance.new("Part")
-                lightPart.Name = "CeilingLight" .. lightIdx
-                lightPart.Shape = Enum.PartType.Ball
-                lightPart.Size = Vector3.new(1.5, 1.5, 1.5)
-                lightPart.Position = Vector3.new(lightX, 13.5, lightZ)
-                lightPart.Anchored = true
-                lightPart.Material = Enum.Material.Neon
-                lightPart.Color = Color3.fromRGB(255, 240, 200)
-                lightPart.Transparency = 0.1
-                lightPart.Parent = floor2
-
-                -- PointLight ILUMINANDO HACIA ABAJO (hacia la base original)
-                local pl = Instance.new("PointLight")
-                pl.Color = Color3.fromRGB(255, 240, 210)
-                pl.Brightness = 1.2
-                pl.Range = 22
-                pl.Shadows = false
-                pl.Parent = lightPart
-        end
-
         -- ESCALERA VERTICAL en el agujero de la parte trasera
-        -- TrussPart: Roblox permite escalar automaticamente
-        -- Va desde Y=1 (sobre piso 1) hasta Y=16 (sobre piso 2)
-        -- Altura total: 15 studs, centro en Y=8.5
-        -- Posicion: en el centro del agujero (Z=104)
+        -- Va desde Y=1 (sobre piso 1) hasta Y=FLOOR2_Y (sobre piso 2)
+        local ladderHeight = FLOOR2_Y - 1
         local ladder = Instance.new("TrussPart")
         ladder.Name = "Ladder"
-        ladder.Size = Vector3.new(2, 15, 2)
-        ladder.Position = Vector3.new(baseX, 8.5, 104)
+        ladder.Size = Vector3.new(2, ladderHeight, 2)
+        ladder.Position = Vector3.new(baseX, 1 + ladderHeight/2, 104)
         ladder.Anchored = true
         ladder.Material = Enum.Material.Metal
         ladder.Color = Color3.fromRGB(120, 120, 130)
+        ladder.CastShadow = false
         ladder.Parent = floor2
 
         -- Pedestales del PISO 2 (MISMAS POSICIONES relativas que piso 1)
         -- Piso 1: pedX = baseX ± 12, pedZ = 35 + (i-1)*13
-        -- Piso 2: mismo patron pero en Y=16 (suelo en 15.5)
+        -- Piso 2: mismo patron pero adaptado a la nueva altura FLOOR2_Y=18
         local pedestals2 = Instance.new("Folder")
         pedestals2.Name = "Pedestals2"
         pedestals2.Parent = floor2
@@ -398,24 +366,26 @@ for baseNum = 1, 5 do
                         pedZ = 35 + (i - 6) * 13
                 end
 
-                -- Columna del pedestal piso 2
+                -- Columna del pedestal piso 2 (sobre el suelo Y=FLOOR2_Y)
                 local pedCol = Instance.new("Part")
                 pedCol.Name = "PedestalColumn"
                 pedCol.Size = Vector3.new(3, 2, 3)
-                pedCol.Position = Vector3.new(pedX, 16, pedZ)
+                pedCol.Position = Vector3.new(pedX, FLOOR2_Y + 1, pedZ)
                 pedCol.Anchored = true
                 pedCol.Material = Enum.Material.SmoothPlastic
                 pedCol.Color = Color3.fromRGB(70, 70, 90)
+                pedCol.CastShadow = false
                 pedCol.Parent = ped
 
                 -- Plataforma del pedestal piso 2
                 local platform = Instance.new("Part")
                 platform.Name = "Platform"
                 platform.Size = Vector3.new(4, 0.5, 4)
-                platform.Position = Vector3.new(pedX, 17.25, pedZ)
+                platform.Position = Vector3.new(pedX, FLOOR2_Y + 2.25, pedZ)
                 platform.Anchored = true
                 platform.Material = Enum.Material.SmoothPlastic
                 platform.Color = Color3.fromRGB(90, 90, 110)
+                platform.CastShadow = false
                 platform.Parent = ped
         end
 
@@ -430,6 +400,7 @@ for baseNum = 1, 5 do
 end
 
 print("=== MAPA CREADO EXITOSAMENTE ===")
+
 
 
 
