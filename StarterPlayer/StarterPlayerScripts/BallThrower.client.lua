@@ -269,7 +269,7 @@ RunService.Heartbeat:Connect(function(dt)
                     if pedestals then
                         for _, ped in ipairs(pedestals:GetChildren()) do
                             local btn = ped:FindFirstChild("UpgradeButton")
-                            if btn and (btn.Position - root.Position).Magnitude < 10 then
+                            if btn and (btn.Position - root.Position).Magnitude < 8 then
                                 found = true break
                             end
                         end
@@ -468,3 +468,4 @@ end)
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
