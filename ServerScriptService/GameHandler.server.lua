@@ -7,6 +7,7 @@ local CrystalSpawner = require(ServerStorage.ServerModules.CrystalSpawner)
 local BaseManager = require(ServerStorage.ServerModules.BaseManager)
 local CharacterManager = require(ServerStorage.ServerModules.CharacterManager)
 local ModelManager = require(ServerStorage.ServerModules.ModelManager)
+local BaseUpgradeManager = require(ServerStorage.ServerModules.BaseUpgradeManager)
 local Events = require(game:GetService("ReplicatedStorage").RemoteEvents)
 
 local playerData = {}
@@ -776,11 +777,16 @@ Players.PlayerAdded:Connect(function(player)
         local base = BaseManager.assign(player)
         if base then
             showEmptyLabels(base)
+            -- Crear boton de mejorar base
+            BaseUpgradeManager.createUpgradeButton(base, player)
         else
             task.delay(5, function()
                 if not isPlayerValid(player) then return end
                 base = BaseManager.assign(player)
-                if base then showEmptyLabels(base) end
+                if base then
+                    showEmptyLabels(base)
+                    BaseUpgradeManager.createUpgradeButton(base, player)
+                end
             end)
         end
     end)
@@ -833,7 +839,62 @@ Players.PlayerRemoving:Connect(function(player)
             upgradeButtonCooldowns[key] = nil
         end
     end
+
+    -- Limpiar boton de mejora de base
+    local base = BaseManager.getBase(userId)
+    if base then
+        BaseUpgradeManager.removeUpgradeButton(base)
+    end
+
     BaseManager.release(userId)
+end)
+
+-- ============================================
+-- MEJORAR BASE (tecla H o click en boton)
+-- ============================================
+local baseUpgradeCooldowns = {}
+Events.UpgradeBase.OnServerEvent:Connect(function(player)
+    if baseUpgradeCooldowns[player.UserId] then return end
+    baseUpgradeCooldowns[player.UserId] = true
+    task.delay(0.5, function() baseUpgradeCooldowns[player.UserId] = nil end)
+
+    local ok, err = pcall(function()
+        if not isPlayerValid(player) then return end
+        local data = playerData[player.UserId]
+        if not data then return end
+
+        local base = BaseManager.getBase(player.UserId)
+        if not base then return end
+
+        local currentLevel = BaseManager.getBaseLevel(player.UserId)
+        if currentLevel >= 2 then return end -- Max level por ahora
+
+        local cost = BaseManager.getUpgradeCost(currentLevel)
+        if (data.money or 0) < cost then return end
+
+        -- Pagar y subir nivel
+        data.money = data.money - cost
+        BaseManager.setBaseLevel(player.UserId, currentLevel + 1)
+        local newLevel = BaseManager.getBaseLevel(player.UserId)
+
+        -- Actualizar leaderstats
+        local leaderstats = player:FindFirstChild("leaderstats")
+        if leaderstats then
+            local coins = leaderstats:FindFirstChild("Coins")
+            if coins then coins.Value = data.money end
+        end
+        Events.MoneyUpdate:FireClient(player, data.money)
+
+        -- Activar segundo piso!
+        BaseUpgradeManager.activateFloor2(base)
+        BaseUpgradeManager.updateButtonUI(base, newLevel)
+
+        -- Sonido de mejora (usamos el de upgrade)
+        playSoundForPlayer(SOUND_UPGRADE, player)
+
+        print(player.Name.." mejoro su base a Nivel " .. newLevel .. " (-$" .. ModelManager.formatMoney(cost) .. ")")
+    end)
+    if not ok then warn("Error UpgradeBase: "..tostring(err)) end
 end)
 
 task.delay(3, function()
@@ -841,6 +902,7 @@ task.delay(3, function()
 end)
 
 print("=== GameHandler iniciado ===")
+
 
 
 
