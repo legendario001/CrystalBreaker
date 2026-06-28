@@ -73,7 +73,7 @@ local function createCrystal(position, crystalType, parent)
         local bb = Instance.new("BillboardGui")
         bb.Name = "RarityLabel"
         bb.Size = UDim2.new(4, 0, 1.5, 0)
-        bb.StudsOffset = Vector3.new(0, 4, 0)
+        bb.StudsOffset = Vector3.new(0, 7, 0)
         bb.AlwaysOnTop = false
         bb.MaxDistance = 60
         bb.Parent = crystal
@@ -139,7 +139,7 @@ function CrystalSpawner.spawnChest(position, crystalType, player)
                         chest.CanCollide = false
                 end
                 chest.Name = "Chest"
-                chest.Position = position + Vector3.new(0, -4, 0)
+                chest.Position = position + Vector3.new(0, -1, 0)
                 -- Cambiar color del cofre segun la rareza
                 if chest:IsA("BasePart") then
                         chest.Color = crystalType.color
@@ -158,7 +158,7 @@ function CrystalSpawner.spawnChest(position, crystalType, player)
                 chest.Material = Enum.Material.SmoothPlastic
                 chest.Anchored = true
                 chest.CanCollide = false
-                chest.Position = position + Vector3.new(0, -4, 0)
+                chest.Position = position + Vector3.new(0, -1, 0)
                 chest.Color = crystalType.color
                 chest.Parent = workspace
         end
@@ -242,7 +242,7 @@ function CrystalSpawner.spawnChest(position, crystalType, player)
                 end
                 -- Tiempo agotado: regenerar cristal y borrar cofre
                 if chest and chest.Parent then
-                        local pos = chest.Position + Vector3.new(0, 4, 0)
+                        local pos = chest.Position + Vector3.new(0, 1, 0)
                         chest:Destroy()
                         CrystalSpawner.respawn(pos)
                 end
@@ -322,5 +322,6 @@ function CrystalSpawner.respawn(oldPos)
 end
 
 return CrystalSpawner
+
 
 
