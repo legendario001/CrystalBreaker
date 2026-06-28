@@ -24,6 +24,7 @@ local PickupDroppedEvent = ReplicatedStorage:WaitForChild("PickupDropped", 15)
 local MoneyUpdateEvent = ReplicatedStorage:WaitForChild("MoneyUpdate", 15)
 local UpgradeCharacterEvent = ReplicatedStorage:WaitForChild("UpgradeCharacter", 15)
 local UpgradeBaseEvent = ReplicatedStorage:WaitForChild("UpgradeBase", 15)
+local ChestOpenEvent = ReplicatedStorage:WaitForChild("ChestOpen", 15)
 
 -- Animacion cacheada
 local cachedThrowAnim = Instance.new("Animation")
@@ -484,9 +485,185 @@ MoneyUpdateEvent.OnClientEvent:Connect(function(amount)
     moneyLabel.Text = tostring(amount)
 end)
 
+-- ============================================
+-- ANIMACION DE APERTURA DE COFRE
+-- Aparece un cuadro con signo de interrogacion que gira
+-- Al final revela el personaje ganado
+-- ============================================
+local TweenService = game:GetService("TweenService")
+local isChestAnimating = false
+
+ChestOpenEvent.OnClientEvent:Connect(function(rarityName, rarityColor, charName)
+    if isChestAnimating then return end
+    isChestAnimating = true
+
+    -- Fondo oscuro que cubre toda la pantalla
+    local backdrop = Instance.new("Frame")
+    backdrop.Name = "ChestBackdrop"
+    backdrop.Size = UDim2.new(1, 0, 1, 0)
+    backdrop.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    backdrop.BackgroundTransparency = 0.5
+    backdrop.BorderSizePixel = 0
+    backdrop.ZIndex = 100
+    backdrop.Parent = screenGui
+
+    -- Contenedor central
+    local container = Instance.new("Frame")
+    container.Name = "ChestContainer"
+    container.Size = UDim2.new(0, 300, 0, 400)
+    container.Position = UDim2.new(0.5, -150, 0.5, -200)
+    container.BackgroundTransparency = 1
+    container.ZIndex = 101
+    container.Parent = backdrop
+
+    -- Cuadro del cofre (gira)
+    local box = Instance.new("Frame")
+    box.Name = "ChestBox"
+    box.Size = UDim2.new(0, 200, 0, 200)
+    box.Position = UDim2.new(0.5, -100, 0, 50)
+    box.BackgroundColor3 = rarityColor
+    box.BorderSizePixel = 0
+    box.ZIndex = 102
+    box.Parent = container
+    Instance.new("UICorner", box).CornerRadius = UDim.new(0, 20)
+
+    -- Borde brillante
+    local boxStroke = Instance.new("UIStroke")
+    boxStroke.Color = Color3.fromRGB(255, 255, 255)
+    boxStroke.Thickness = 4
+    boxStroke.Transparency = 0.2
+    boxStroke.Parent = box
+
+    -- Signo de interrogacion
+    local questionMark = Instance.new("TextLabel")
+    questionMark.Name = "QuestionMark"
+    questionMark.Size = UDim2.new(1, 0, 1, 0)
+    questionMark.BackgroundTransparency = 1
+    questionMark.Text = "?"
+    questionMark.TextColor3 = Color3.fromRGB(255, 255, 255)
+    questionMark.TextScaled = true
+    questionMark.Font = Enum.Font.GothamBlack
+    questionMark.ZIndex = 103
+    questionMark.Parent = box
+
+    -- Texto superior "ABRIENDO COFRE"
+    local titleLabel = Instance.new("TextLabel")
+    titleLabel.Name = "TitleLabel"
+    titleLabel.Size = UDim2.new(1, 0, 0, 40)
+    titleLabel.Position = UDim2.new(0, 0, 0, 0)
+    titleLabel.BackgroundTransparency = 1
+    titleLabel.Text = "ABRIENDO COFRE..."
+    titleLabel.TextColor3 = rarityColor
+    titleLabel.TextScaled = true
+    titleLabel.Font = Enum.Font.GothamBlack
+    titleLabel.ZIndex = 102
+    titleLabel.Parent = container
+
+    -- Texto de rareza (debajo del cuadro)
+    local rarityLabel = Instance.new("TextLabel")
+    rarityLabel.Name = "RarityLabel"
+    rarityLabel.Size = UDim2.new(1, 0, 0, 35)
+    rarityLabel.Position = UDim2.new(0, 0, 0, 270)
+    rarityLabel.BackgroundTransparency = 1
+    rarityLabel.Text = rarityName
+    rarityLabel.TextColor3 = rarityColor
+    rarityLabel.TextScaled = true
+    rarityLabel.Font = Enum.Font.GothamBold
+    rarityLabel.ZIndex = 102
+    rarityLabel.Parent = container
+
+    -- Texto del personaje ganado (oculto al inicio)
+    local resultLabel = Instance.new("TextLabel")
+    resultLabel.Name = "ResultLabel"
+    resultLabel.Size = UDim2.new(1, 0, 0, 40)
+    resultLabel.Position = UDim2.new(0, 0, 0, 320)
+    resultLabel.BackgroundTransparency = 1
+    resultLabel.Text = ""
+    resultLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    resultLabel.TextScaled = true
+    resultLabel.Font = Enum.Font.GothamBold
+    resultLabel.ZIndex = 102
+    resultLabel.Parent = container
+
+    -- Animacion: girar el cuadro por 6 segundos
+    -- Velocidad variable: empieza lento, acelera, frena al final
+    local totalDuration = 6.5
+    local startTime = tick()
+
+    -- Tween de rotacion continua (gira multiples veces)
+    local rotationTween = TweenService:Create(
+        box,
+        TweenInfo.new(0.5, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1, false, 0),
+        {Rotation = 360}
+    )
+    rotationTween:Play()
+
+    -- Efecto de pulso (escala)
+    local pulseTween = TweenService:Create(
+        box,
+        TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true, 0),
+        {Size = UDim2.new(0, 220, 0, 220)}
+    )
+    pulseTween:Play()
+
+    -- Esperar casi hasta el final (5.5s) para mostrar el resultado
+    task.delay(5.5, function()
+        if not box or not box.Parent then return end
+        -- Detener animaciones
+        rotationTween:Cancel()
+        pulseTween:Cancel()
+
+        -- Resetear rotacion y tamano
+        box.Rotation = 0
+        box.Size = UDim2.new(0, 200, 0, 200)
+
+        -- Cambiar el signo de interrogacion por una estrella/check
+        questionMark.Text = "★"
+        questionMark.TextColor3 = Color3.fromRGB(255, 215, 0)
+
+        -- Efecto de aparicion del resultado
+        titleLabel.Text = "¡FELICIDADES!"
+        titleLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
+        resultLabel.Text = charName
+
+        -- Flash de brillo
+        local flashTween = TweenService:Create(
+            box,
+            TweenInfo.new(0.3, Enum.EasingStyle.Bounce, Enum.EasingDirection.Out),
+            {BackgroundColor3 = Color3.fromRGB(255, 215, 0)}
+        )
+        flashTween:Play()
+
+        -- Expandir el resultado
+        resultLabel.TextTransparency = 1
+        local revealTween = TweenService:Create(
+            resultLabel,
+            TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+            {TextTransparency = 0}
+        )
+        revealTween:Play()
+    end)
+
+    -- Al final (6.5s) eliminar todo
+    task.delay(totalDuration, function()
+        if backdrop and backdrop.Parent then
+            local fadeOut = TweenService:Create(
+                backdrop,
+                TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                {BackgroundTransparency = 1}
+            )
+            fadeOut:Play()
+            fadeOut.Completed:Wait()
+            backdrop:Destroy()
+        end
+        isChestAnimating = false
+    end)
+end)
+
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
 
 
