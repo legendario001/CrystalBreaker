@@ -392,7 +392,7 @@ Events.PickupChest.OnServerEvent:Connect(function(player)
         data.carrying = charIndex
         createCarryTool(player, model)
 
-        local pos = nearest.Position + Vector3.new(0, 4, 0)
+        local pos = nearest.Position + Vector3.new(0, 1, 0)
         nearest:Destroy()
         CrystalSpawner.respawn(pos)
         print(player.Name.." obtuvo "..charName.." ["..rarity.."]")
@@ -983,6 +983,7 @@ task.delay(3, function()
 end)
 
 print("=== GameHandler iniciado ===")
+
 
 
 
