@@ -59,6 +59,7 @@ local pickupCooldowns = {}
 local SOUND_COLLECT_MONEY = "rbxassetid://79392333090964"
 local SOUND_UPGRADE       = "rbxassetid://203620899"
 local SOUND_CRYSTAL_BREAK = "rbxassetid://124054125419097"
+local SOUND_CHEST_OPEN    = "rbxassetid://116517233858315" -- 6.56s animacion apertura cofre
 
 local function playSoundAt(soundId, position)
     local sound = Instance.new("Sound")
@@ -357,7 +358,7 @@ end)
 Events.PickupChest.OnServerEvent:Connect(function(player)
     if pickupCooldowns[player.UserId] then return end
     pickupCooldowns[player.UserId] = true
-    task.delay(0.5, function() pickupCooldowns[player.UserId] = nil end)
+    task.delay(8, function() pickupCooldowns[player.UserId] = nil end) -- 8s cooldown (animacion + margen)
 
     local ok, err = pcall(function()
         local char = player.Character
@@ -367,9 +368,13 @@ Events.PickupChest.OnServerEvent:Connect(function(player)
         local data = playerData[player.UserId]
         if not data or data.carrying then return end
 
+        -- Buscar cofre cercano (que no este abriendo ya)
         local nearest, nearDist = nil, 15
         for _, obj in ipairs(workspace:GetChildren()) do
             if obj.Name == "Chest" then
+                -- Ignorar cofres que ya se estan abriendo
+                local opening = obj:FindFirstChild("Opening")
+                if opening and opening.Value then continue end
                 local owner = obj:FindFirstChild("Owner")
                 if owner and owner.Value == player then
                     local d = (obj.Position - root.Position).Magnitude
@@ -381,15 +386,55 @@ Events.PickupChest.OnServerEvent:Connect(function(player)
 
         local rt = nearest:FindFirstChild("Rarity")
         local rarity = rt and rt.Value or "Blanco"
+
+        -- Marcar el cofre como "abriendo" para que no se pueda recoger otra vez
+        local openingTag = Instance.new("BoolValue")
+        openingTag.Name = "Opening"
+        openingTag.Value = true
+        openingTag.Parent = nearest
+
+        -- Encontrar displayName de la rareza
+        local displayName = rarity
+        local rarityColor = Color3.fromRGB(220, 220, 220)
+        local rarityDisplayNames = {
+            Morado = "MITICO", Rojo = "EPICO", Amarillo = "RARO",
+            Azul = "INCOMUN", Blanco = "COMUN"
+        }
+        local rarityColors = {
+            Morado = Color3.fromRGB(170, 85, 255), Rojo = Color3.fromRGB(255, 80, 80),
+            Amarillo = Color3.fromRGB(255, 255, 100), Azul = Color3.fromRGB(85, 170, 255),
+            Blanco = Color3.fromRGB(220, 220, 220)
+        }
+        displayName = rarityDisplayNames[rarity] or string.upper(rarity)
+        rarityColor = rarityColors[rarity] or Color3.fromRGB(220, 220, 220)
+
+        -- Obtener el personaje ganado AHORA (para mostrarlo al final de la animacion)
         local model, folder = CharacterManager.getRandomModel(rarity)
         local charName = model and model.Name or (rarity.." Personaje")
-        local charIndex = getNextCharIndex(data.characters)
 
-        data.characters[charIndex] = {
+        -- Enviar evento al cliente para que inicie la animacion de apertura
+        Events.ChestOpen:FireClient(player, displayName, rarityColor, charName)
+
+        -- Reproducir sonido de apertura (solo el jugador lo escucha)
+        playSoundForPlayer(SOUND_CHEST_OPEN, player)
+
+        -- Esperar a que termine la animacion (6.56 segundos)
+        task.wait(6.6)
+
+        -- Verificar que el jugador sigue conectado y el cofre sigue ahi
+        if not isPlayerValid(player) then return end
+        if not nearest or not nearest.Parent then return end
+
+        -- Dar el personaje al jugador
+        local currentData = playerData[player.UserId]
+        if not currentData or currentData.carrying then return end
+
+        local charIndex = getNextCharIndex(currentData.characters)
+        currentData.characters[charIndex] = {
             name=charName, rarity=rarity, level=1,
             model=model, folder=folder, pedestal=nil
         }
-        data.carrying = charIndex
+        currentData.carrying = charIndex
         createCarryTool(player, model)
 
         local pos = nearest.Position + Vector3.new(0, 1, 0)
@@ -983,6 +1028,7 @@ task.delay(3, function()
 end)
 
 print("=== GameHandler iniciado ===")
+
 
 
 
