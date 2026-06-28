@@ -16,7 +16,8 @@ local eventNames = {
         "PickupDropped",
         "MoneyUpdate",
         "UpgradeCharacter",
-        "UpgradeBase"
+        "UpgradeBase",
+        "ChestOpen"
 }
 
 for _, name in ipairs(eventNames) do
@@ -32,6 +33,7 @@ for _, name in ipairs(eventNames) do
 end
 
 return events
+
 
 
 
