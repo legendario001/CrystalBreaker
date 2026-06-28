@@ -341,7 +341,7 @@ function ModelManager.createLabels(pedestal, charName, rarity, level)
         infoGui.Name = "CharInfoGui"
         infoGui.Size = UDim2.new(5, 0, 2.5, 0)
         infoGui.StudsOffset = labelStudsOffset
-        infoGui.AlwaysOnTop = false
+        infoGui.AlwaysOnTop = true  -- Nombre SIEMPRE encima del cuerpo del personaje
         infoGui.MaxDistance = 50
         infoGui.Parent = labelParent
 
@@ -808,6 +808,7 @@ function ModelManager.clearPedestal(pedestal)
 end
 
 return ModelManager
+
 
 
 
