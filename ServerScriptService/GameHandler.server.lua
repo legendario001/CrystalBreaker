@@ -86,7 +86,7 @@ local function playSoundAt(soundId, position)
     Debris:AddItem(temp, 3)
 end
 
-local function playSoundForPlayer(soundId, player)
+local function playSoundForPlayer(soundId, player, duration)
     if not player or not player.Parent then return end
     local char = player.Character
     if not char then return end
@@ -95,7 +95,9 @@ local function playSoundForPlayer(soundId, player)
     sound.Volume = 0.5
     sound.Parent = char
     sound:Play()
-    task.delay(3, function()
+    -- Duracion: usar la pasada como parametro, o 3s por defecto
+    local waitTime = duration or 3
+    task.delay(waitTime, function()
         if sound and sound.Parent then sound:Destroy() end
     end)
 end
@@ -415,8 +417,8 @@ Events.PickupChest.OnServerEvent:Connect(function(player)
         -- Enviar evento al cliente para que inicie la animacion de apertura
         Events.ChestOpen:FireClient(player, displayName, rarityColor, charName)
 
-        -- Reproducir sonido de apertura (solo el jugador lo escucha)
-        playSoundForPlayer(SOUND_CHEST_OPEN, player)
+        -- Reproducir sonido de apertura (7s para que suene completo, el audio dura 6.56s)
+        playSoundForPlayer(SOUND_CHEST_OPEN, player, 7)
 
         -- Esperar a que termine la animacion (6.56 segundos)
         task.wait(6.6)
@@ -1028,6 +1030,7 @@ task.delay(3, function()
 end)
 
 print("=== GameHandler iniciado ===")
+
 
 
 
