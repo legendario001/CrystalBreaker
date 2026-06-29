@@ -414,6 +414,13 @@ Events.PickupChest.OnServerEvent:Connect(function(player)
         local model, folder = CharacterManager.getRandomModel(rarity)
         local charName = model and model.Name or (rarity.." Personaje")
 
+        -- Guardar posicion del cofre ANTES de destruirlo (para respawn del cristal)
+        local chestPos = nearest.Position + Vector3.new(0, 1, 0)
+
+        -- DESTRUIR EL COFRE INMEDIATAMENTE al recogerlo (no esperar a que termine el spin)
+        nearest:Destroy()
+        CrystalSpawner.respawn(chestPos)
+
         -- Enviar evento al cliente para que inicie la animacion de apertura
         Events.ChestOpen:FireClient(player, displayName, rarityColor, charName)
 
@@ -423,9 +430,8 @@ Events.PickupChest.OnServerEvent:Connect(function(player)
         -- Esperar a que termine la animacion (6.56 segundos)
         task.wait(6.6)
 
-        -- Verificar que el jugador sigue conectado y el cofre sigue ahi
+        -- Verificar que el jugador sigue conectado
         if not isPlayerValid(player) then return end
-        if not nearest or not nearest.Parent then return end
 
         -- Dar el personaje al jugador
         local currentData = playerData[player.UserId]
@@ -439,9 +445,6 @@ Events.PickupChest.OnServerEvent:Connect(function(player)
         currentData.carrying = charIndex
         createCarryTool(player, model)
 
-        local pos = nearest.Position + Vector3.new(0, 1, 0)
-        nearest:Destroy()
-        CrystalSpawner.respawn(pos)
         print(player.Name.." obtuvo "..charName.." ["..rarity.."]")
     end)
     if not ok then warn("Error PickupChest: "..tostring(err)) end
@@ -1030,6 +1033,7 @@ task.delay(3, function()
 end)
 
 print("=== GameHandler iniciado ===")
+
 
 
 
