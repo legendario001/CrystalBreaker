@@ -1034,18 +1034,31 @@ end)
 
 -- ============================================
 -- SISTEMA DE FUSION DE PERSONAJES
--- Posicion de la maquina: centro de los 3 TextBlocks
--- TextBlockA: -142.298, 10.877, 20.737
--- TextBlockB: -142.354, 10.825, 11.037
--- TexFusedItem: -142.354, 10.777, 1.027
+-- MECANICA: el jugador carga un personaje, se acerca a la maquina,
+-- presiona E para depositarlo en Slot A o B. Cuando ambos slots estan llenos
+-- con personajes identicos, puede presionar FUSIONAR.
 -- ============================================
 local FUSION_MACHINE_CENTER = Vector3.new(-142.3, 10.8, 11.0)
 local FUSION_PROXIMITY = 20 -- studs
 
--- Proximity detection: enviar lista de personajes al cliente cuando esta cerca
+-- Slots de fusion por jugador: fusionSlots[userId] = { slotA = charIdx or nil, slotB = charIdx or nil }
+local fusionSlots = {}
+
+-- Helper: obtener info de un personaje para enviar al cliente
+local function getCharInfo(charData, index)
+    return {
+        index = index,
+        name = charData.name,
+        rarity = charData.rarity,
+        level = charData.level or 1,
+        fusionLevel = charData.fusionLevel or 0
+    }
+end
+
+-- Proximity detection: enviar estado de fusion al cliente cuando esta cerca
 task.spawn(function()
     while true do
-        task.wait(1)
+        task.wait(0.5)
         for userId, data in pairs(playerData) do
             local player = Players:GetPlayerByUserId(userId)
             if player and player.Character then
@@ -1053,21 +1066,26 @@ task.spawn(function()
                 if root then
                     local dist = (root.Position - FUSION_MACHINE_CENTER).Magnitude
                     if dist < FUSION_PROXIMITY then
-                        -- Construir lista de personajes para el cliente
-                        local charList = {}
-                        for i, charData in pairs(data.characters) do
-                            if charData and i ~= data.carrying then
-                                table.insert(charList, {
-                                    index = i,
-                                    name = charData.name,
-                                    rarity = charData.rarity,
-                                    level = charData.level or 1,
-                                    fusionLevel = charData.fusionLevel or 0,
-                                    onPedestal = charData.pedestal ~= nil
-                                })
-                            end
+                        -- Esta cerca: enviar estado de fusion
+                        local slots = fusionSlots[userId] or { slotA = nil, slotB = nil }
+                        local slotAInfo = nil
+                        local slotBInfo = nil
+                        if slots.slotA and data.characters[slots.slotA] then
+                            slotAInfo = getCharInfo(data.characters[slots.slotA], slots.slotA)
                         end
-                        Events.FusionUIUpdate:FireClient(player, charList)
+                        if slots.slotB and data.characters[slots.slotB] then
+                            slotBInfo = getCharInfo(data.characters[slots.slotB], slots.slotB)
+                        end
+                        -- Info del personaje que lleva en la mano (si hay)
+                        local carryingInfo = nil
+                        if data.carrying and data.characters[data.carrying] then
+                            carryingInfo = getCharInfo(data.characters[data.carrying], data.carrying)
+                        end
+                        Events.FusionUIUpdate:FireClient(player, {
+                            slotA = slotAInfo,
+                            slotB = slotBInfo,
+                            carrying = carryingInfo
+                        })
                     end
                 end
             end
@@ -1075,37 +1093,76 @@ task.spawn(function()
     end
 end)
 
--- Manejar fusion de personajes
-Events.FuseCharacters.OnServerEvent:Connect(function(player, idxA, idxB)
+-- Manejar deposito de personaje en slot de fusion
+Events.DepositCharacter.OnServerEvent:Connect(function(player)
+    local ok, err = pcall(function()
+        if not isPlayerValid(player) then return end
+        local data = playerData[player.UserId]
+        if not data then return end
+        if not data.carrying then return end -- debe estar cargando algo
+
+        -- Verificar cercania a la maquina
+        local char = player.Character
+        if not char then return end
+        local root = char:FindFirstChild("HumanoidRootPart")
+        if not root then return end
+        local dist = (root.Position - FUSION_MACHINE_CENTER).Magnitude
+        if dist > FUSION_PROXIMITY then return end
+
+        -- Inicializar slots si no existen
+        if not fusionSlots[player.UserId] then
+            fusionSlots[player.UserId] = { slotA = nil, slotB = nil }
+        end
+        local slots = fusionSlots[player.UserId]
+
+        -- Si el personaje ya esta en un slot, no hacer nada
+        if slots.slotA == data.carrying or slots.slotB == data.carrying then return end
+
+        -- Depositar en el primer slot vacio
+        if not slots.slotA then
+            slots.slotA = data.carrying
+        elseif not slots.slotB then
+            slots.slotB = data.carrying
+        else
+            return -- ambos slots llenos
+        end
+
+        -- Quitar de la mano del jugador (destruir carry tool)
+        if char then
+            local tool = char:FindFirstChild("Carrying")
+            if tool then tool:Destroy() end
+        end
+        local bp = player:FindFirstChild("Backpack")
+        if bp then
+            local tool = bp:FindFirstChild("Carrying")
+            if tool then tool:Destroy() end
+        end
+
+        data.carrying = nil
+        print(player.Name .. " deposito personaje en maquina de fusion")
+    end)
+    if not ok then warn("Error DepositCharacter: "..tostring(err)) end
+end)
+
+-- Manejar fusion de personajes (usa los slots almacenados)
+Events.FuseCharacters.OnServerEvent:Connect(function(player)
     local ok, err = pcall(function()
         if not isPlayerValid(player) then return end
         local data = playerData[player.UserId]
         if not data then return end
         if data.carrying then return end -- no debe estar cargando nada
 
-        local charA = data.characters[idxA]
-        local charB = data.characters[idxB]
+        local slots = fusionSlots[player.UserId]
+        if not slots or not slots.slotA or not slots.slotB then return end
+
+        local charA = data.characters[slots.slotA]
+        local charB = data.characters[slots.slotB]
         if not charA or not charB then return end
-        if idxA == idxB then return end
 
         -- Validar: mismo nombre, misma rareza, mismo fusionLevel
         if charA.name ~= charB.name then return end
         if charA.rarity ~= charB.rarity then return end
         if (charA.fusionLevel or 0) ~= (charB.fusionLevel or 0) then return end
-
-        -- Remover de pedestales si aplican
-        if charA.pedestal and isValid(charA.pedestal) then
-            ModelManager.clearPedestal(charA.pedestal)
-            ModelManager.removeMoneyPile(charA.pedestal)
-            ModelManager.removeUpgradeButton(charA.pedestal)
-            charA.pedestal = nil
-        end
-        if charB.pedestal and isValid(charB.pedestal) then
-            ModelManager.clearPedestal(charB.pedestal)
-            ModelManager.removeMoneyPile(charB.pedestal)
-            ModelManager.removeUpgradeButton(charB.pedestal)
-            charB.pedestal = nil
-        end
 
         -- Crear personaje fusionado
         local newFusionLevel = (charA.fusionLevel or 0) + 1
@@ -1118,8 +1175,11 @@ Events.FuseCharacters.OnServerEvent:Connect(function(player, idxA, idxB)
         end
 
         -- Eliminar los 2 originales
-        data.characters[idxA] = nil
-        data.characters[idxB] = nil
+        data.characters[slots.slotA] = nil
+        data.characters[slots.slotB] = nil
+
+        -- Limpiar slots
+        fusionSlots[player.UserId] = { slotA = nil, slotB = nil }
 
         -- Crear el personaje fusionado
         local newIdx = getNextCharIndex(data.characters)
@@ -1133,7 +1193,7 @@ Events.FuseCharacters.OnServerEvent:Connect(function(player, idxA, idxB)
             fusionLevel = newFusionLevel
         }
 
-        -- Dar al jugador como carrying
+        -- Dar al jugador como carrying (sale por el output de la maquina)
         data.carrying = newIdx
         createCarryTool(player, charA.model)
 
@@ -1145,11 +1205,29 @@ Events.FuseCharacters.OnServerEvent:Connect(function(player, idxA, idxB)
     if not ok then warn("Error FuseCharacters: "..tostring(err)) end
 end)
 
+-- Limpiar slots de fusion cuando el jugador sale
+-- (agregar al PlayerRemoving existente)
+local originalPlayerRemoving = nil
+-- El PlayerRemoving ya esta conectado, agregamos limpieza de slots al final
+task.spawn(function()
+    while true do
+        task.wait(5)
+        -- Limpiar slots de jugadores que ya no estan
+        for userId, _ in pairs(fusionSlots) do
+            local player = Players:GetPlayerByUserId(userId)
+            if not player then
+                fusionSlots[userId] = nil
+            end
+        end
+    end
+end)
+
 task.delay(3, function()
     CrystalSpawner.spawnAll()
 end)
 
 print("=== GameHandler iniciado ===")
+
 
 
 
