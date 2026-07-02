@@ -356,9 +356,16 @@ function ModelManager.createLabels(pedestal, charName, rarity, level, fusionLeve
         Instance.new("UICorner", bg).CornerRadius = UDim.new(0, 8)
 
         local bgStroke = Instance.new("UIStroke")
-        bgStroke.Color = rarityColor
-        bgStroke.Thickness = 2
-        bgStroke.Transparency = 0.2
+        -- Si esta fusionado, el borde del cartel es dorado brillante (efecto visual distintivo)
+        if fusionLevel > 0 then
+                bgStroke.Color = Color3.fromRGB(255, 215, 0)
+                bgStroke.Thickness = 3
+                bgStroke.Transparency = 0.1
+        else
+                bgStroke.Color = rarityColor
+                bgStroke.Thickness = 2
+                bgStroke.Transparency = 0.2
+        end
         bgStroke.Parent = bg
 
         -- Fila 1: Nombre (blanco + Fusion en dorado si aplica)
@@ -373,6 +380,15 @@ function ModelManager.createLabels(pedestal, charName, rarity, level, fusionLeve
                         fusionSuffix = " Fusion " .. (roman[fusionLevel] or tostring(fusionLevel))
                 end
                 nameLabel.Text = '<font color="#FFFFFF">' .. charName .. '</font><font color="#FFD700">' .. fusionSuffix .. '</font>'
+                -- EFECTO VISUAL: UIStroke dorado brillante para personajes fusionados
+                -- Es ligero (no causa lag) y hace que el nombre se distinga facilmente
+                local fusionGlow = Instance.new("UIStroke")
+                fusionGlow.Name = "FusionGlow"
+                fusionGlow.Color = Color3.fromRGB(255, 215, 0)
+                fusionGlow.Thickness = 1.5
+                fusionGlow.Transparency = 0.3
+                fusionGlow.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
+                fusionGlow.Parent = nameLabel
         else
                 nameLabel.Text = '<font color="#FFFFFF">' .. charName .. '</font>'
         end
@@ -835,6 +851,7 @@ function ModelManager.clearPedestal(pedestal)
 end
 
 return ModelManager
+
 
 
 
