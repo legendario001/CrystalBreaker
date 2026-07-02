@@ -1109,6 +1109,14 @@ Events.DepositCharacter.OnServerEvent:Connect(function(player)
         local dist = (root.Position - FUSION_MACHINE_CENTER).Magnitude
         if dist > FUSION_PROXIMITY then return end
 
+        -- BLOQUEAR personajes fusionados (no se pueden volver a fusionar)
+        local charData = data.characters[data.carrying]
+        if not charData then return end
+        if (charData.fusionLevel or 0) > 0 then
+            print(player.Name .. " intento depositar personaje fusionado (bloqueado)")
+            return
+        end
+
         -- Inicializar slots si no existen
         if not fusionSlots[player.UserId] then
             fusionSlots[player.UserId] = { slotA = nil, slotB = nil }
@@ -1142,6 +1150,48 @@ Events.DepositCharacter.OnServerEvent:Connect(function(player)
         print(player.Name .. " deposito personaje en maquina de fusion")
     end)
     if not ok then warn("Error DepositCharacter: "..tostring(err)) end
+end)
+
+-- Manejar remocion de personaje de slot de fusion (click izquierdo en slot)
+Events.RemoveFromFusionSlot.OnServerEvent:Connect(function(player, slotName)
+    local ok, err = pcall(function()
+        if not isPlayerValid(player) then return end
+        local data = playerData[player.UserId]
+        if not data then return end
+        if data.carrying then return end -- no debe estar cargando nada
+
+        local slots = fusionSlots[player.UserId]
+        if not slots then return end
+
+        -- slotName debe ser "A" o "B"
+        local slotKey = nil
+        if slotName == "A" then
+            slotKey = "slotA"
+        elseif slotName == "B" then
+            slotKey = "slotB"
+        else
+            return
+        end
+
+        local charIdx = slots[slotKey]
+        if not charIdx then return end -- slot vacio
+
+        local charData = data.characters[charIdx]
+        if not charData then
+            slots[slotKey] = nil
+            return
+        end
+
+        -- Devolver el personaje a la mano del jugador
+        data.carrying = charIdx
+        createCarryTool(player, charData.model)
+
+        -- Limpiar el slot
+        slots[slotKey] = nil
+
+        print(player.Name .. " quito personaje del slot " .. slotName .. " de la maquina de fusion")
+    end)
+    if not ok then warn("Error RemoveFromFusionSlot: "..tostring(err)) end
 end)
 
 -- Manejar fusion de personajes (usa los slots almacenados)
@@ -1227,6 +1277,7 @@ task.delay(3, function()
 end)
 
 print("=== GameHandler iniciado ===")
+
 
 
 
