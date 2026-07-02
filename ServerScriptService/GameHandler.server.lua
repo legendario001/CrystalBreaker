@@ -97,46 +97,92 @@ end
 
 -- ============================================
 -- EFECTO VISUAL: Cristal rompiendose en pedazos
--- Crea pequeños fragmentos que se expulsan en direcciones aleatorias
+-- Usa el modelo CrystalShardModel de ServerStorage (clona 10 veces)
+-- Cada clon sale volando en direccion aleatoria con rotacion aleatoria
 -- Usa Debris para auto-eliminar (sin lag, sin limpieza manual)
 -- ============================================
+local ServerStorage = game:GetService("ServerStorage")
+
 local function createCrystalBreakEffect(position, color)
-    local NUM_SHARDS = 12 -- numero de fragmentos (ligero, no causa lag)
+    -- Buscar el modelo de cristal roto en ServerStorage
+    local shardTemplate = ServerStorage:FindFirstChild("CrystalShardModel")
+    if not shardTemplate then
+        warn("CrystalShardModel no encontrado en ServerStorage - efecto visual omitido")
+        return
+    end
+
+    local NUM_SHARDS = 10 -- numero de fragmentos a clonar (ligero)
     for i = 1, NUM_SHARDS do
-        local shard = Instance.new("Part")
-        shard.Name = "CrystalShard"
-        -- Tamaño aleatorio pequeño
-        local size = math.random(5, 15) / 10 -- 0.5 a 1.5 studs
-        shard.Size = Vector3.new(size, size, size)
-        shard.Shape = Enum.PartType.Ball
-        shard.Position = position + Vector3.new(
-            math.random(-3, 3),
-            math.random(0, 4),
-            math.random(-3, 3)
-        )
-        shard.Anchored = false
-        shard.CanCollide = false
-        shard.CanQuery = false
-        shard.Massless = true
-        shard.Material = Enum.Material.Ice
-        shard.Transparency = 0.1
-        shard.Color = color
+        local shard = shardTemplate:Clone()
+        shard.Name = "CrystalShardEffect"
+
+        -- Posicion aleatoria cerca del cristal roto
+        local offsetX = math.random(-3, 3)
+        local offsetY = math.random(0, 4)
+        local offsetZ = math.random(-3, 3)
+
+        -- Configurar todas las partes del modelo clonado
+        for _, desc in ipairs(shard:GetDescendants()) do
+            if desc:IsA("BasePart") then
+                -- Posicion relativa al offset
+                desc.Position = desc.Position + Vector3.new(offsetX, offsetY, offsetZ) + position - shardTemplate:GetPivot().Position
+                desc.Anchored = false
+                desc.CanCollide = false
+                desc.CanQuery = false
+                desc.Massless = true
+                -- Cambiar color al del cristal roto
+                desc.Color = color
+                -- Material cristalino
+                desc.Material = Enum.Material.Ice
+                desc.Transparency = 0.1
+            end
+        end
+
+        -- Si el propio template es una Part (no un Model)
+        if shard:IsA("BasePart") then
+            shard.Position = position + Vector3.new(offsetX, offsetY, offsetZ)
+            shard.Anchored = false
+            shard.CanCollide = false
+            shard.CanQuery = false
+            shard.Massless = true
+            shard.Color = color
+            shard.Material = Enum.Material.Ice
+            shard.Transparency = 0.1
+        end
+
+        -- Rotacion aleatoria para que cada fragmento se vea diferente
+        shard:PivotTo(shard:GetPivot() * CFrame.Angles(
+            math.rad(math.random(0, 360)),
+            math.rad(math.random(0, 360)),
+            math.rad(math.random(0, 360))
+        ))
+
         shard.Parent = Workspace
 
         -- Velocidad aleatoria para expulsar los fragmentos
-        local velocity = Vector3.new(
-            math.random(-30, 30),
-            math.random(20, 50),
-            math.random(-30, 30)
-        )
-        shard.AssemblyLinearVelocity = velocity
+        -- Aplicar a la parte principal o al PrimaryPart
+        local mainPart = nil
+        if shard:IsA("BasePart") then
+            mainPart = shard
+        else
+            mainPart = shard.PrimaryPart or shard:FindFirstChildWhichIsA("BasePart")
+        end
 
-        -- Velocidad angular para que giren
-        shard.AssemblyAngularVelocity = Vector3.new(
-            math.random(-20, 20),
-            math.random(-20, 20),
-            math.random(-20, 20)
-        )
+        if mainPart then
+            local velocity = Vector3.new(
+                math.random(-30, 30),
+                math.random(20, 50),
+                math.random(-30, 30)
+            )
+            mainPart.AssemblyLinearVelocity = velocity
+
+            -- Velocidad angular para que giren
+            mainPart.AssemblyAngularVelocity = Vector3.new(
+                math.random(-20, 20),
+                math.random(-20, 20),
+                math.random(-20, 20)
+            )
+        end
 
         -- Auto-eliminar despues de 2 segundos (sin lag)
         Debris:AddItem(shard, 2)
@@ -1349,6 +1395,7 @@ task.delay(3, function()
 end)
 
 print("=== GameHandler iniciado ===")
+
 
 
 
