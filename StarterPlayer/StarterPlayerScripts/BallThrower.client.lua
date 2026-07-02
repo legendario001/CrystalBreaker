@@ -858,7 +858,6 @@ Instance.new("UICorner", charScroll).CornerRadius = UDim.new(0, 8)
 
 local charListLayout = Instance.new("UIListLayout")
 charListLayout.FillDirection = Enum.FillDirection.Horizontal
-charListLayout.Wrap = true
 charListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
 charListLayout.Padding = UDim.new(0, 5)
 charListLayout.Parent = charScroll
@@ -1068,6 +1067,7 @@ end)
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
 
 
