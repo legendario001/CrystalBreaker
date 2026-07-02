@@ -60,6 +60,8 @@ local SOUND_COLLECT_MONEY = "rbxassetid://79392333090964"
 local SOUND_UPGRADE       = "rbxassetid://203620899"
 local SOUND_CRYSTAL_BREAK = "rbxassetid://124054125419097"
 local SOUND_CHEST_OPEN    = "rbxassetid://116517233858315" -- 6.56s animacion apertura cofre
+local SOUND_FUSION_NEAR   = "rbxassetid://86261914368076"  -- 5.2s sonido al acercarse a la maquina
+local SOUND_FUSION_ACTIVATE = "rbxassetid://5509750509"   -- sonido al hacer click en fusionar
 
 local function playSoundAt(soundId, position)
     local sound = Instance.new("Sound")
@@ -1043,6 +1045,8 @@ local FUSION_PROXIMITY = 20 -- studs
 
 -- Slots de fusion por jugador: fusionSlots[userId] = { slotA = charIdx or nil, slotB = charIdx or nil }
 local fusionSlots = {}
+-- Trackear jugadores que ya escucharon el sonido de proximidad (para que suene 1 vez por visita)
+local fusionSoundPlayed = {}
 
 -- Helper: obtener info de un personaje para enviar al cliente
 local function getCharInfo(charData, index)
@@ -1066,6 +1070,11 @@ task.spawn(function()
                 if root then
                     local dist = (root.Position - FUSION_MACHINE_CENTER).Magnitude
                     if dist < FUSION_PROXIMITY then
+                        -- SONIDO DE PROXIMIDAD: suena 1 vez cuando el jugador se acerca
+                        if not fusionSoundPlayed[userId] then
+                            fusionSoundPlayed[userId] = true
+                            playSoundForPlayer(SOUND_FUSION_NEAR, player, 6)
+                        end
                         -- Esta cerca: enviar estado de fusion
                         local slots = fusionSlots[userId] or { slotA = nil, slotB = nil }
                         local slotAInfo = nil
@@ -1086,6 +1095,9 @@ task.spawn(function()
                             slotB = slotBInfo,
                             carrying = carryingInfo
                         })
+                    else
+                        -- Se alejo: resetear flag del sonido para que suene otra vez al volver
+                        fusionSoundPlayed[userId] = nil
                     end
                 end
             end
@@ -1247,7 +1259,9 @@ Events.FuseCharacters.OnServerEvent:Connect(function(player)
         data.carrying = newIdx
         createCarryTool(player, charA.model)
 
-        -- Sonido de mejora
+        -- Sonido de activacion de fusion (al hacer click en FUSIONAR)
+        playSoundForPlayer(SOUND_FUSION_ACTIVATE, player, 5)
+        -- Sonido de mejora adicional
         playSoundForPlayer(SOUND_UPGRADE, player)
 
         print(player.Name .. " fuciono " .. charA.name .. " + " .. charB.name .. " = " .. fusedName .. " (x" .. math.pow(3, newFusionLevel) .. ")")
@@ -1277,6 +1291,7 @@ task.delay(3, function()
 end)
 
 print("=== GameHandler iniciado ===")
+
 
 
 
