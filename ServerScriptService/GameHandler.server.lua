@@ -305,12 +305,14 @@ local function setupUpgradeButtonEvents(pedestal, upgradeBtn, charIdx)
             Events.MoneyUpdate:FireClient(player, data.money)
 
             if isValid(pedestal) then
-                ModelManager.createLabels(pedestal, charData.name, charData.rarity, charData.level)
+                ModelManager.createLabels(pedestal, charData.name, charData.rarity, charData.level, charData.fusionLevel or 0)
                 ModelManager.updateUpgradeButtonUI(pedestal, charData.rarity, charData.level)
                 local mp = pedestal:FindFirstChild("MoneyPile")
                 if mp then
                     local lt = mp:FindFirstChild("CharLevel")
                     if lt then lt.Value = charData.level end
+                    local flt = mp:FindFirstChild("FusionLevel")
+                    if flt then flt.Value = charData.fusionLevel or 0 end
                 end
             end
             print(player.Name.." mejoro "..charData.name.." a Lv."..charData.level.." (-$"..cost..")")
@@ -554,11 +556,11 @@ Events.PlaceCharacter.OnServerEvent:Connect(function(player)
         local charIdx = data.carrying
         if charData.model then ModelManager.placeOnPedestal(charData.model, nearestFree) end
         charData.pedestal = nearestFree
-        ModelManager.createLabels(nearestFree, charData.name, charData.rarity, charData.level)
+        ModelManager.createLabels(nearestFree, charData.name, charData.rarity, charData.level, charData.fusionLevel or 0)
 
-        local moneyPile = ModelManager.createMoneyPile(nearestFree, charData.rarity, charData.level)
+        local moneyPile = ModelManager.createMoneyPile(nearestFree, charData.rarity, charData.level, charData.fusionLevel or 0)
         setupMoneyPileEvents(nearestFree, moneyPile)
-        local upgradeBtn = ModelManager.createUpgradeButton(nearestFree, charData.rarity, charData.level)
+        local upgradeBtn = ModelManager.createUpgradeButton(nearestFree, charData.rarity, charData.level, charData.fusionLevel or 0)
         setupUpgradeButtonEvents(nearestFree, upgradeBtn, charIdx)
 
         data.carrying = nil
@@ -674,7 +676,7 @@ Events.UpgradeCharacter.OnServerEvent:Connect(function(player)
         Events.MoneyUpdate:FireClient(player, data.money)
 
         if isValid(closestPedestal) then
-            ModelManager.createLabels(closestPedestal, charData.name, charData.rarity, charData.level)
+            ModelManager.createLabels(closestPedestal, charData.name, charData.rarity, charData.level, charData.fusionLevel or 0)
             ModelManager.updateUpgradeButtonUI(closestPedestal, charData.rarity, charData.level)
             local mp = closestPedestal:FindFirstChild("MoneyPile")
             if mp then
@@ -848,8 +850,10 @@ task.spawn(function()
                     if not mv or not rarityTag then return end
 
                     local levelTag = moneyPile:FindFirstChild("CharLevel")
+                    local fusionLevelTag = moneyPile:FindFirstChild("FusionLevel")
                     local lvl = (levelTag and levelTag.Value) or 1
-                    local rate = ModelManager.getMoneyRate(rarityTag.Value, lvl)
+                    local fLvl = (fusionLevelTag and fusionLevelTag.Value) or 0
+                    local rate = ModelManager.getMoneyRate(rarityTag.Value, lvl, fLvl)
                     mv.Value = mv.Value + rate
 
                     -- Actualizar UI del MoneyPile para que se vea el dinero acumulado
@@ -1028,11 +1032,125 @@ Events.UpgradeBase.OnServerEvent:Connect(function(player)
     if not ok then warn("Error UpgradeBase: "..tostring(err)) end
 end)
 
+-- ============================================
+-- SISTEMA DE FUSION DE PERSONAJES
+-- Posicion de la maquina: centro de los 3 TextBlocks
+-- TextBlockA: -142.298, 10.877, 20.737
+-- TextBlockB: -142.354, 10.825, 11.037
+-- TexFusedItem: -142.354, 10.777, 1.027
+-- ============================================
+local FUSION_MACHINE_CENTER = Vector3.new(-142.3, 10.8, 11.0)
+local FUSION_PROXIMITY = 20 -- studs
+
+-- Proximity detection: enviar lista de personajes al cliente cuando esta cerca
+task.spawn(function()
+    while true do
+        task.wait(1)
+        for userId, data in pairs(playerData) do
+            local player = Players:GetPlayerByUserId(userId)
+            if player and player.Character then
+                local root = player.Character:FindFirstChild("HumanoidRootPart")
+                if root then
+                    local dist = (root.Position - FUSION_MACHINE_CENTER).Magnitude
+                    if dist < FUSION_PROXIMITY then
+                        -- Construir lista de personajes para el cliente
+                        local charList = {}
+                        for i, charData in pairs(data.characters) do
+                            if charData and i ~= data.carrying then
+                                table.insert(charList, {
+                                    index = i,
+                                    name = charData.name,
+                                    rarity = charData.rarity,
+                                    level = charData.level or 1,
+                                    fusionLevel = charData.fusionLevel or 0,
+                                    onPedestal = charData.pedestal ~= nil
+                                })
+                            end
+                        end
+                        Events.FusionUIUpdate:FireClient(player, charList)
+                    end
+                end
+            end
+        end
+    end
+end)
+
+-- Manejar fusion de personajes
+Events.FuseCharacters.OnServerEvent:Connect(function(player, idxA, idxB)
+    local ok, err = pcall(function()
+        if not isPlayerValid(player) then return end
+        local data = playerData[player.UserId]
+        if not data then return end
+        if data.carrying then return end -- no debe estar cargando nada
+
+        local charA = data.characters[idxA]
+        local charB = data.characters[idxB]
+        if not charA or not charB then return end
+        if idxA == idxB then return end
+
+        -- Validar: mismo nombre, misma rareza, mismo fusionLevel
+        if charA.name ~= charB.name then return end
+        if charA.rarity ~= charB.rarity then return end
+        if (charA.fusionLevel or 0) ~= (charB.fusionLevel or 0) then return end
+
+        -- Remover de pedestales si aplican
+        if charA.pedestal and isValid(charA.pedestal) then
+            ModelManager.clearPedestal(charA.pedestal)
+            ModelManager.removeMoneyPile(charA.pedestal)
+            ModelManager.removeUpgradeButton(charA.pedestal)
+            charA.pedestal = nil
+        end
+        if charB.pedestal and isValid(charB.pedestal) then
+            ModelManager.clearPedestal(charB.pedestal)
+            ModelManager.removeMoneyPile(charB.pedestal)
+            ModelManager.removeUpgradeButton(charB.pedestal)
+            charB.pedestal = nil
+        end
+
+        -- Crear personaje fusionado
+        local newFusionLevel = (charA.fusionLevel or 0) + 1
+        local fusedName = charA.name
+        if newFusionLevel == 1 then
+            fusedName = charA.name .. " Fusion"
+        else
+            local roman = {"", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"}
+            fusedName = charA.name .. " Fusion " .. (roman[newFusionLevel] or tostring(newFusionLevel))
+        end
+
+        -- Eliminar los 2 originales
+        data.characters[idxA] = nil
+        data.characters[idxB] = nil
+
+        -- Crear el personaje fusionado
+        local newIdx = getNextCharIndex(data.characters)
+        data.characters[newIdx] = {
+            name = fusedName,
+            rarity = charA.rarity,
+            level = charA.level,
+            model = charA.model,
+            folder = charA.folder,
+            pedestal = nil,
+            fusionLevel = newFusionLevel
+        }
+
+        -- Dar al jugador como carrying
+        data.carrying = newIdx
+        createCarryTool(player, charA.model)
+
+        -- Sonido de mejora
+        playSoundForPlayer(SOUND_UPGRADE, player)
+
+        print(player.Name .. " fuciono " .. charA.name .. " + " .. charB.name .. " = " .. fusedName .. " (x" .. math.pow(3, newFusionLevel) .. ")")
+    end)
+    if not ok then warn("Error FuseCharacters: "..tostring(err)) end
+end)
+
 task.delay(3, function()
     CrystalSpawner.spawnAll()
 end)
 
 print("=== GameHandler iniciado ===")
+
 
 
 
