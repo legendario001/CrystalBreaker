@@ -95,6 +95,54 @@ local function playSoundAt(soundId, position)
     Debris:AddItem(temp, 3)
 end
 
+-- ============================================
+-- EFECTO VISUAL: Cristal rompiendose en pedazos
+-- Crea pequeños fragmentos que se expulsan en direcciones aleatorias
+-- Usa Debris para auto-eliminar (sin lag, sin limpieza manual)
+-- ============================================
+local function createCrystalBreakEffect(position, color)
+    local NUM_SHARDS = 12 -- numero de fragmentos (ligero, no causa lag)
+    for i = 1, NUM_SHARDS do
+        local shard = Instance.new("Part")
+        shard.Name = "CrystalShard"
+        -- Tamaño aleatorio pequeño
+        local size = math.random(5, 15) / 10 -- 0.5 a 1.5 studs
+        shard.Size = Vector3.new(size, size, size)
+        shard.Shape = Enum.PartType.Ball
+        shard.Position = position + Vector3.new(
+            math.random(-3, 3),
+            math.random(0, 4),
+            math.random(-3, 3)
+        )
+        shard.Anchored = false
+        shard.CanCollide = false
+        shard.CanQuery = false
+        shard.Massless = true
+        shard.Material = Enum.Material.Ice
+        shard.Transparency = 0.1
+        shard.Color = color
+        shard.Parent = Workspace
+
+        -- Velocidad aleatoria para expulsar los fragmentos
+        local velocity = Vector3.new(
+            math.random(-30, 30),
+            math.random(20, 50),
+            math.random(-30, 30)
+        )
+        shard.AssemblyLinearVelocity = velocity
+
+        -- Velocidad angular para que giren
+        shard.AssemblyAngularVelocity = Vector3.new(
+            math.random(-20, 20),
+            math.random(-20, 20),
+            math.random(-20, 20)
+        )
+
+        -- Auto-eliminar despues de 2 segundos (sin lag)
+        Debris:AddItem(shard, 2)
+    end
+end
+
 local function playSoundForPlayer(soundId, player, duration)
     if not player or not player.Parent then return end
     local char = player.Character
@@ -362,6 +410,8 @@ Events.ThrowBall.OnServerEvent:Connect(function(player, targetPos)
         -- Sonido de cristal rompiendose (1 de 4 sonidos al azar)
         local randomCrystalSound = CRYSTAL_BREAK_SOUNDS[math.random(#CRYSTAL_BREAK_SOUNDS)]
         playSoundAt(randomCrystalSound, pos)
+        -- Efecto visual de cristal rompiendose en pedazos
+        createCrystalBreakEffect(pos, crystalColor)
         nearest:Destroy()
         CrystalSpawner.spawnChest(pos, {color=crystalColor, name=rarity}, player)
     end)
@@ -1299,6 +1349,7 @@ task.delay(3, function()
 end)
 
 print("=== GameHandler iniciado ===")
+
 
 
 
