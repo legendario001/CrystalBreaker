@@ -25,6 +25,8 @@ local MoneyUpdateEvent = ReplicatedStorage:WaitForChild("MoneyUpdate", 15)
 local UpgradeCharacterEvent = ReplicatedStorage:WaitForChild("UpgradeCharacter", 15)
 local UpgradeBaseEvent = ReplicatedStorage:WaitForChild("UpgradeBase", 15)
 local ChestOpenEvent = ReplicatedStorage:WaitForChild("ChestOpen", 15)
+local FusionUIUpdateEvent = ReplicatedStorage:WaitForChild("FusionUIUpdate", 15)
+local FuseCharactersEvent = ReplicatedStorage:WaitForChild("FuseCharacters", 15)
 
 -- Animacion cacheada
 local cachedThrowAnim = Instance.new("Animation")
@@ -660,9 +662,413 @@ ChestOpenEvent.OnClientEvent:Connect(function(rarityName, rarityColor, charName)
     end)
 end)
 
+-- ============================================
+-- SISTEMA DE FUSION - UI
+-- Aparece cuando el jugador esta cerca de la maquina de fusion
+-- ============================================
+local fusionPanel = Instance.new("Frame")
+fusionPanel.Name = "FusionPanel"
+fusionPanel.Size = UDim2.new(0, 500, 0, 400)
+fusionPanel.Position = UDim2.new(0.5, -250, 0.5, -200)
+fusionPanel.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+fusionPanel.BackgroundTransparency = 0.1
+fusionPanel.BorderSizePixel = 0
+fusionPanel.Visible = false
+fusionPanel.ZIndex = 50
+fusionPanel.Parent = screenGui
+Instance.new("UICorner", fusionPanel).CornerRadius = UDim.new(0, 16)
+
+local fusionStroke = Instance.new("UIStroke")
+fusionStroke.Color = Color3.fromRGB(255, 215, 0)
+fusionStroke.Thickness = 3
+fusionStroke.Transparency = 0.2
+fusionStroke.Parent = fusionPanel
+
+-- Titulo
+local fusionTitle = Instance.new("TextLabel")
+fusionTitle.Size = UDim2.new(1, 0, 0, 40)
+fusionTitle.BackgroundTransparency = 1
+fusionTitle.Text = "MAQUINA DE FUSION"
+fusionTitle.TextColor3 = Color3.fromRGB(255, 215, 0)
+fusionTitle.TextScaled = true
+fusionTitle.Font = Enum.Font.GothamBlack
+fusionTitle.ZIndex = 51
+fusionTitle.Parent = fusionPanel
+
+-- Slot A
+local slotABg = Instance.new("Frame")
+slotABg.Size = UDim2.new(0, 140, 0, 160)
+slotABg.Position = UDim2.new(0, 20, 0, 50)
+slotABg.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+slotABg.BorderSizePixel = 0
+slotABg.ZIndex = 51
+slotABg.Parent = fusionPanel
+Instance.new("UICorner", slotABg).CornerRadius = UDim.new(0, 10)
+
+local slotAStroke = Instance.new("UIStroke")
+slotAStroke.Color = Color3.fromRGB(100, 200, 255)
+slotAStroke.Thickness = 2
+slotAStroke.Parent = slotABg
+
+local slotATitle = Instance.new("TextLabel")
+slotATitle.Size = UDim2.new(1, 0, 0, 25)
+slotATitle.BackgroundTransparency = 1
+slotATitle.Text = "BLOCK A"
+slotATitle.TextColor3 = Color3.fromRGB(100, 200, 255)
+slotATitle.TextScaled = true
+slotATitle.Font = Enum.Font.GothamBold
+slotATitle.ZIndex = 52
+slotATitle.Parent = slotABg
+
+local slotAContent = Instance.new("TextLabel")
+slotAContent.Size = UDim2.new(1, 0, 1, -25)
+slotAContent.Position = UDim2.new(0, 0, 0, 25)
+slotAContent.BackgroundTransparency = 1
+slotAContent.Text = "Vacio"
+slotAContent.TextColor3 = Color3.fromRGB(120, 120, 120)
+slotAContent.TextScaled = true
+slotAContent.Font = Enum.Font.GothamBold
+slotAContent.ZIndex = 52
+slotAContent.Parent = slotABg
+
+-- Slot B
+local slotBBg = Instance.new("Frame")
+slotBBg.Size = UDim2.new(0, 140, 0, 160)
+slotBBg.Position = UDim2.new(0, 180, 0, 50)
+slotBBg.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+slotBBg.BorderSizePixel = 0
+slotBBg.ZIndex = 51
+slotBBg.Parent = fusionPanel
+Instance.new("UICorner", slotBBg).CornerRadius = UDim.new(0, 10)
+
+local slotBStroke = Instance.new("UIStroke")
+slotBStroke.Color = Color3.fromRGB(255, 150, 50)
+slotBStroke.Thickness = 2
+slotBStroke.Parent = slotBBg
+
+local slotBTitle = Instance.new("TextLabel")
+slotBTitle.Size = UDim2.new(1, 0, 0, 25)
+slotBTitle.BackgroundTransparency = 1
+slotBTitle.Text = "BLOCK B"
+slotBTitle.TextColor3 = Color3.fromRGB(255, 150, 50)
+slotBTitle.TextScaled = true
+slotBTitle.Font = Enum.Font.GothamBold
+slotBTitle.ZIndex = 52
+slotBTitle.Parent = slotBBg
+
+local slotBContent = Instance.new("TextLabel")
+slotBContent.Size = UDim2.new(1, 0, 1, -25)
+slotBContent.Position = UDim2.new(0, 0, 0, 25)
+slotBContent.BackgroundTransparency = 1
+slotBContent.Text = "Vacio"
+slotBContent.TextColor3 = Color3.fromRGB(120, 120, 120)
+slotBContent.TextScaled = true
+slotBContent.Font = Enum.Font.GothamBold
+slotBContent.ZIndex = 52
+slotBContent.Parent = slotBBg
+
+-- Output slot
+local outputBg = Instance.new("Frame")
+outputBg.Size = UDim2.new(0, 140, 0, 160)
+outputBg.Position = UDim2.new(0, 340, 0, 50)
+outputBg.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+outputBg.BorderSizePixel = 0
+outputBg.ZIndex = 51
+outputBg.Parent = fusionPanel
+Instance.new("UICorner", outputBg).CornerRadius = UDim.new(0, 10)
+
+local outputStroke = Instance.new("UIStroke")
+outputStroke.Color = Color3.fromRGB(255, 215, 0)
+outputStroke.Thickness = 2
+outputStroke.Parent = outputBg
+
+local outputTitle = Instance.new("TextLabel")
+outputTitle.Size = UDim2.new(1, 0, 0, 25)
+outputTitle.BackgroundTransparency = 1
+outputTitle.Text = "RESULTADO"
+outputTitle.TextColor3 = Color3.fromRGB(255, 215, 0)
+outputTitle.TextScaled = true
+outputTitle.Font = Enum.Font.GothamBold
+outputTitle.ZIndex = 52
+outputTitle.Parent = outputBg
+
+local outputContent = Instance.new("TextLabel")
+outputContent.Size = UDim2.new(1, 0, 1, -25)
+outputContent.Position = UDim2.new(0, 0, 0, 25)
+outputContent.BackgroundTransparency = 1
+outputContent.Text = "Esperando..."
+outputContent.TextColor3 = Color3.fromRGB(120, 120, 120)
+outputContent.TextScaled = true
+outputContent.Font = Enum.Font.GothamBold
+outputContent.ZIndex = 52
+outputContent.Parent = outputBg
+
+-- Boton FUSIONAR
+local fuseBtn = Instance.new("TextButton")
+fuseBtn.Size = UDim2.new(0, 200, 0, 50)
+fuseBtn.Position = UDim2.new(0.5, -100, 0, 220)
+fuseBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+fuseBtn.BorderSizePixel = 0
+fuseBtn.Text = "FUSIONAR"
+fuseBtn.TextColor3 = Color3.fromRGB(150, 150, 150)
+fuseBtn.TextScaled = true
+fuseBtn.Font = Enum.Font.GothamBlack
+fuseBtn.ZIndex = 51
+fuseBtn.Active = false
+fuseBtn.Parent = fusionPanel
+Instance.new("UICorner", fuseBtn).CornerRadius = UDim.new(0, 10)
+
+-- Boton cerrar
+local closeBtn = Instance.new("TextButton")
+closeBtn.Size = UDim2.new(0, 30, 0, 30)
+closeBtn.Position = UDim2.new(1, -35, 0, 5)
+closeBtn.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
+closeBtn.BorderSizePixel = 0
+closeBtn.Text = "X"
+closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeBtn.TextScaled = true
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.ZIndex = 51
+closeBtn.Parent = fusionPanel
+Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 8)
+
+-- Lista de personajes (scrollable)
+local charListLabel = Instance.new("TextLabel")
+charListLabel.Size = UDim2.new(1, 0, 0, 20)
+charListLabel.Position = UDim2.new(0, 0, 0, 280)
+charListLabel.BackgroundTransparency = 1
+charListLabel.Text = "TUS PERSONAJES (click para seleccionar):"
+charListLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+charListLabel.TextScaled = true
+charListLabel.Font = Enum.Font.GothamBold
+charListLabel.ZIndex = 51
+charListLabel.Parent = fusionPanel
+
+local charScroll = Instance.new("ScrollingFrame")
+charScroll.Size = UDim2.new(1, -20, 0, 80)
+charScroll.Position = UDim2.new(0, 10, 0, 305)
+charScroll.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+charScroll.BorderSizePixel = 0
+charScroll.ScrollBarThickness = 6
+charScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+charScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+charScroll.ZIndex = 51
+charScroll.Parent = fusionPanel
+Instance.new("UICorner", charScroll).CornerRadius = UDim.new(0, 8)
+
+local charListLayout = Instance.new("UIListLayout")
+charListLayout.FillDirection = Enum.FillDirection.Horizontal
+charListLayout.Wrap = true
+charListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+charListLayout.Padding = UDim.new(0, 5)
+charListLayout.Parent = charScroll
+
+-- Variables de estado de fusion
+local fusionSelectedA = nil  -- index del personaje seleccionado para A
+local fusionSelectedB = nil  -- index del personaje seleccionado para B
+local fusionCharList = {}    -- lista actual de personajes
+
+-- Colores de rareza para el UI
+local rarityColorsClient = {
+    Morado = Color3.fromRGB(170, 85, 255),
+    Rojo = Color3.fromRGB(255, 80, 80),
+    Amarillo = Color3.fromRGB(255, 255, 100),
+    Azul = Color3.fromRGB(85, 170, 255),
+    Blanco = Color3.fromRGB(220, 220, 220)
+}
+
+local rarityDisplayClient = {
+    Morado = "MITICO", Rojo = "EPICO", Amarillo = "RARO",
+    Azul = "INCOMUN", Blanco = "COMUN"
+}
+
+-- Actualizar el UI de fusion
+local function updateFusionUI()
+    -- Actualizar Slot A
+    if fusionSelectedA then
+        local charData = nil
+        for _, c in ipairs(fusionCharList) do
+            if c.index == fusionSelectedA then charData = c break end
+        end
+        if charData then
+            local name = charData.name
+            if charData.fusionLevel > 0 then
+                name = name .. " (Fusion)"
+            end
+            slotAContent.Text = name .. "\nLv." .. charData.level
+            slotAContent.TextColor3 = rarityColorsClient[charData.rarity] or Color3.fromRGB(255, 255, 255)
+        end
+    else
+        slotAContent.Text = "Vacio"
+        slotAContent.TextColor3 = Color3.fromRGB(120, 120, 120)
+    end
+
+    -- Actualizar Slot B
+    if fusionSelectedB then
+        local charData = nil
+        for _, c in ipairs(fusionCharList) do
+            if c.index == fusionSelectedB then charData = c break end
+        end
+        if charData then
+            local name = charData.name
+            if charData.fusionLevel > 0 then
+                name = name .. " (Fusion)"
+            end
+            slotBContent.Text = name .. "\nLv." .. charData.level
+            slotBContent.TextColor3 = rarityColorsClient[charData.rarity] or Color3.fromRGB(255, 255, 255)
+        end
+    else
+        slotBContent.Text = "Vacio"
+        slotBContent.TextColor3 = Color3.fromRGB(120, 120, 120)
+    end
+
+    -- Verificar si se puede fusionar
+    local canFuse = false
+    if fusionSelectedA and fusionSelectedB and fusionSelectedA ~= fusionSelectedB then
+        local charA, charB = nil, nil
+        for _, c in ipairs(fusionCharList) do
+            if c.index == fusionSelectedA then charA = c end
+            if c.index == fusionSelectedB then charB = c end
+        end
+        if charA and charB then
+            -- Deben ser mismo nombre, rareza y fusionLevel
+            if charA.name == charB.name and charA.rarity == charB.rarity and charA.fusionLevel == charB.fusionLevel then
+                canFuse = true
+                -- Mostrar preview del resultado
+                local mult = math.pow(3, charA.fusionLevel + 1)
+                local fusedName = charA.name
+                if charA.fusionLevel == 0 then
+                    fusedName = charA.name .. " Fusion"
+                else
+                    fusedName = charA.name .. " Fusion+"
+                end
+                outputContent.Text = fusedName .. "\nx" .. mult .. " produccion"
+                outputContent.TextColor3 = Color3.fromRGB(255, 215, 0)
+            else
+                outputContent.Text = "No compatible"
+                outputContent.TextColor3 = Color3.fromRGB(255, 100, 100)
+            end
+        end
+    else
+        outputContent.Text = "Esperando..."
+        outputContent.TextColor3 = Color3.fromRGB(120, 120, 120)
+    end
+
+    -- Actualizar boton
+    if canFuse then
+        fuseBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
+        fuseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        fuseBtn.Active = true
+    else
+        fuseBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+        fuseBtn.TextColor3 = Color3.fromRGB(150, 150, 150)
+        fuseBtn.Active = false
+    end
+end
+
+-- Recibir lista de personajes del servidor
+FusionUIUpdateEvent.OnClientEvent:Connect(function(charList)
+    fusionCharList = charList or {}
+    fusionPanel.Visible = true
+
+    -- Limpiar lista anterior
+    for _, child in ipairs(charScroll:GetChildren()) do
+        if child:IsA("TextButton") then child:Destroy() end
+    end
+
+    -- Crear botones de personajes
+    for _, charData in ipairs(fusionCharList) do
+        local card = Instance.new("TextButton")
+        card.Size = UDim2.new(0, 120, 0, 60)
+        card.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+        card.BorderSizePixel = 0
+        card.Text = ""
+        card.ZIndex = 52
+        card.Parent = charScroll
+        Instance.new("UICorner", card).CornerRadius = UDim.new(0, 6)
+
+        -- Color del borde segun rareza
+        local cardStroke = Instance.new("UIStroke")
+        cardStroke.Color = rarityColorsClient[charData.rarity] or Color3.fromRGB(200, 200, 200)
+        cardStroke.Thickness = 2
+        cardStroke.Parent = card
+
+        -- Nombre del personaje
+        local cardName = Instance.new("TextLabel")
+        cardName.Size = UDim2.new(1, -4, 0.6, 0)
+        cardName.Position = UDim2.new(0, 2, 0, 0)
+        cardName.BackgroundTransparency = 1
+        local displayName = charData.name
+        if charData.fusionLevel > 0 then
+            displayName = displayName .. " F"
+        end
+        cardName.Text = displayName
+        cardName.TextColor3 = Color3.fromRGB(255, 255, 255)
+        cardName.TextScaled = true
+        cardName.Font = Enum.Font.GothamBold
+        cardName.ZIndex = 53
+        cardName.Parent = card
+
+        -- Info adicional
+        local cardInfo = Instance.new("TextLabel")
+        cardInfo.Size = UDim2.new(1, -4, 0.4, 0)
+        cardInfo.Position = UDim2.new(0, 2, 0.6, 0)
+        cardInfo.BackgroundTransparency = 1
+        local infoText = "Lv." .. charData.level .. " " .. (rarityDisplayClient[charData.rarity] or charData.rarity)
+        if charData.onPedestal then infoText = infoText .. " [P]" end
+        cardInfo.Text = infoText
+        cardInfo.TextColor3 = Color3.fromRGB(180, 180, 180)
+        cardInfo.TextScaled = true
+        cardInfo.Font = Enum.Font.GothamBold
+        cardInfo.ZIndex = 53
+        cardInfo.Parent = card
+
+        -- Click para seleccionar
+        card.MouseButton1Click:Connect(function()
+            -- Si ya esta seleccionado, deseleccionar
+            if fusionSelectedA == charData.index then
+                fusionSelectedA = nil
+            elseif fusionSelectedB == charData.index then
+                fusionSelectedB = nil
+            elseif not fusionSelectedA then
+                fusionSelectedA = charData.index
+            elseif not fusionSelectedB then
+                fusionSelectedB = charData.index
+            else
+                -- Ambos llenos, reemplazar A
+                fusionSelectedA = charData.index
+                fusionSelectedB = nil
+            end
+            updateFusionUI()
+        end)
+    end
+
+    updateFusionUI()
+end)
+
+-- Boton FUSIONAR
+fuseBtn.MouseButton1Click:Connect(function()
+    if not fuseBtn.Active then return end
+    if fusionSelectedA and fusionSelectedB and FuseCharactersEvent then
+        FuseCharactersEvent:FireServer(fusionSelectedA, fusionSelectedB)
+        -- Resetear seleccion
+        fusionSelectedA = nil
+        fusionSelectedB = nil
+        fusionPanel.Visible = false
+    end
+end)
+
+-- Boton cerrar
+closeBtn.MouseButton1Click:Connect(function()
+    fusionPanel.Visible = false
+    fusionSelectedA = nil
+    fusionSelectedB = nil
+end)
+
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
 
 
