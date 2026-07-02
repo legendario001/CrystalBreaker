@@ -20,6 +20,7 @@ local eventNames = {
         "ChestOpen",
         "FusionUIUpdate",
         "DepositCharacter",
+        "RemoveFromFusionSlot",
         "FuseCharacters"
 }
 
@@ -36,6 +37,7 @@ for _, name in ipairs(eventNames) do
 end
 
 return events
+
 
 
 
