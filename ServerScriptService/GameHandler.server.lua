@@ -59,6 +59,13 @@ local pickupCooldowns = {}
 local SOUND_COLLECT_MONEY = "rbxassetid://79392333090964"
 local SOUND_UPGRADE       = "rbxassetid://203620899"
 local SOUND_CRYSTAL_BREAK = "rbxassetid://124054125419097"
+-- Lista de sonidos al romper cristal (se reproduce 1 al azar cada vez)
+local CRYSTAL_BREAK_SOUNDS = {
+        "rbxassetid://124054125419097",
+        "rbxassetid://138817960173178",
+        "rbxassetid://129395018150183",
+        "rbxassetid://92650188901933"
+}
 local SOUND_CHEST_OPEN    = "rbxassetid://116517233858315" -- 6.56s animacion apertura cofre
 local SOUND_FUSION_NEAR   = "rbxassetid://86261914368076"  -- 5.2s sonido al acercarse a la maquina
 local SOUND_FUSION_ACTIVATE = "rbxassetid://5509750509"   -- sonido al hacer click en fusionar
@@ -352,8 +359,9 @@ Events.ThrowBall.OnServerEvent:Connect(function(player, targetPos)
         local rarity = rt and rt.Value or "Blanco"
         local pos = nearest.Position
         local crystalColor = nearest.Color
-        -- Sonido de cristal rompiendose
-        playSoundAt(SOUND_CRYSTAL_BREAK, pos)
+        -- Sonido de cristal rompiendose (1 de 4 sonidos al azar)
+        local randomCrystalSound = CRYSTAL_BREAK_SOUNDS[math.random(#CRYSTAL_BREAK_SOUNDS)]
+        playSoundAt(randomCrystalSound, pos)
         nearest:Destroy()
         CrystalSpawner.spawnChest(pos, {color=crystalColor, name=rarity}, player)
     end)
@@ -1291,6 +1299,7 @@ task.delay(3, function()
 end)
 
 print("=== GameHandler iniciado ===")
+
 
 
 
