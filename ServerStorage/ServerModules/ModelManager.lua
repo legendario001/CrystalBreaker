@@ -289,8 +289,9 @@ local COLOR_UPGRADE = "#64FF64"     -- Verde para MEJORAR
 -- Crear etiquetas sobre la cabeza: nombre + rareza + nivel + produccion
 -- Solo los numeros de dinero son verdes, lo demas usa otros colores
 -- ============================================
-function ModelManager.createLabels(pedestal, charName, rarity, level)
+function ModelManager.createLabels(pedestal, charName, rarity, level, fusionLevel)
         level = level or 1
+        fusionLevel = fusionLevel or 0
         local highestPart = nil
         local highestY = -math.huge
 
@@ -335,7 +336,7 @@ function ModelManager.createLabels(pedestal, charName, rarity, level)
 
         local rarityColor = rarityColors[rarity] or Color3.new(1, 1, 1)
         local rarityDisplay = rarityDisplayNames[rarity] or string.upper(rarity)
-        local currentRate = ModelManager.getMoneyRate(rarity, level)
+        local currentRate = ModelManager.getMoneyRate(rarity, level, fusionLevel)
 
         local infoGui = Instance.new("BillboardGui")
         infoGui.Name = "CharInfoGui"
@@ -360,11 +361,21 @@ function ModelManager.createLabels(pedestal, charName, rarity, level)
         bgStroke.Transparency = 0.2
         bgStroke.Parent = bg
 
-        -- Fila 1: Nombre (blanco)
+        -- Fila 1: Nombre (blanco + Fusion en dorado si aplica)
         local nameLabel = Instance.new("TextLabel")
         nameLabel.Size = UDim2.new(1, 0, 0.3, 0)
         nameLabel.BackgroundTransparency = 1
-        nameLabel.Text = charName
+        nameLabel.RichText = true
+        if fusionLevel > 0 then
+                local fusionSuffix = " Fusion"
+                if fusionLevel > 1 then
+                        local roman = {"", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"}
+                        fusionSuffix = " Fusion " .. (roman[fusionLevel] or tostring(fusionLevel))
+                end
+                nameLabel.Text = '<font color="#FFFFFF">' .. charName .. '</font><font color="#FFD700">' .. fusionSuffix .. '</font>'
+        else
+                nameLabel.Text = '<font color="#FFFFFF">' .. charName .. '</font>'
+        end
         nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
         nameLabel.TextScaled = true
         nameLabel.Font = Enum.Font.GothamBold
@@ -394,7 +405,12 @@ function ModelManager.createLabels(pedestal, charName, rarity, level)
         levelLabel.Position = UDim2.new(0, 0, 0.5, 0)
         levelLabel.BackgroundTransparency = 1
         levelLabel.RichText = true
-        levelLabel.Text = '<font color="' .. COLOR_LEVEL .. '">Lv.' .. level .. '</font><font color="' .. COLOR_SEPARATOR .. '">  |  </font><font color="' .. COLOR_MONEY .. '">+' .. ModelManager.formatMoney(currentRate) .. '$/2s</font>'
+        local levelText = '<font color="' .. COLOR_LEVEL .. '">Lv.' .. level .. '</font><font color="' .. COLOR_SEPARATOR .. '">  |  </font><font color="' .. COLOR_MONEY .. '">+' .. ModelManager.formatMoney(currentRate) .. '$/2s</font>'
+        if fusionLevel > 0 then
+                local mult = math.pow(3, fusionLevel)
+                levelText = levelText .. '<font color="' .. COLOR_SEPARATOR .. '">  |  </font><font color="#FFD700">x' .. mult .. '</font>'
+        end
+        levelLabel.Text = levelText
         levelLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
         levelLabel.TextScaled = true
         levelLabel.Font = Enum.Font.GothamBold
@@ -443,8 +459,9 @@ end
 -- Rojo: L1=50, L10=5K, L50=125K, L100=500K
 -- Morado: L1=150, L10=15K, L50=375K, L100=1.5M
 -- ============================================
-function ModelManager.getMoneyRate(rarity, level)
+function ModelManager.getMoneyRate(rarity, level, fusionLevel)
         level = level or 1
+        fusionLevel = fusionLevel or 0
         local base = rarityMoneyRate[rarity] or 1
         -- level^2 = crecimiento exponencial, cada nivel multiplica mas
         local rate = math.floor(base * level * level)
@@ -455,6 +472,10 @@ function ModelManager.getMoneyRate(rarity, level)
         -- Bonus maximo: x5 en nivel 100
         if level >= 100 then
                 rate = rate * 5
+        end
+        -- FUSION: x3 por cada nivel de fusion (Fusion=x3, Fusion II=x9, Fusion III=x27)
+        if fusionLevel > 0 then
+                rate = rate * math.pow(3, fusionLevel)
         end
         return rate
 end
@@ -475,7 +496,7 @@ end
 -- Crear PILA DE DINERO (solo dinero, separada del boton mejorar)
 -- Moneda verde en el suelo, genera dinero, se recoge al caminar
 -- ============================================
-function ModelManager.createMoneyPile(pedestal, rarity, level)
+function ModelManager.createMoneyPile(pedestal, rarity, level, fusionLevel)
         local platform = pedestal:FindFirstChild("Platform")
         if not platform then return nil end
 
@@ -513,6 +534,12 @@ function ModelManager.createMoneyPile(pedestal, rarity, level)
         levelTag.Name = "CharLevel"
         levelTag.Value = level or 1
         levelTag.Parent = moneyPile
+
+        -- FusionLevel tag para que el timer calcule la produccion correcta
+        local fusionTag = Instance.new("IntValue")
+        fusionTag.Name = "FusionLevel"
+        fusionTag.Value = fusionLevel or 0
+        fusionTag.Parent = moneyPile
 
         -- Crear CollectEvent ANTES del Touched para que setupMoneyPileEvents lo encuentre
         local collectEvent = Instance.new("BindableEvent")
@@ -592,7 +619,7 @@ end
 -- Click para subir nivel, muestra nivel y costo
 -- Solo los numeros de dinero son verdes, lo demas usa otros colores
 -- ============================================
-function ModelManager.createUpgradeButton(pedestal, rarity, level)
+function ModelManager.createUpgradeButton(pedestal, rarity, level, fusionLevel)
         local platform = pedestal:FindFirstChild("Platform")
         if not platform then return nil end
 
@@ -808,6 +835,7 @@ function ModelManager.clearPedestal(pedestal)
 end
 
 return ModelManager
+
 
 
 
