@@ -32,6 +32,7 @@ local ChestOpenEvent = ReplicatedStorage:WaitForChild("ChestOpen", 15)
 local FusionUIUpdateEvent = ReplicatedStorage:WaitForChild("FusionUIUpdate", 15)
 local FuseCharactersEvent = ReplicatedStorage:WaitForChild("FuseCharacters", 15)
 local DepositCharacterEvent = ReplicatedStorage:WaitForChild("DepositCharacter", 15)
+local RemoveFromFusionSlotEvent = ReplicatedStorage:WaitForChild("RemoveFromFusionSlot", 15)
 
 -- Animacion cacheada
 local cachedThrowAnim = Instance.new("Animation")
@@ -678,8 +679,8 @@ end)
 -- ============================================
 local fusionPanel = Instance.new("Frame")
 fusionPanel.Name = "FusionPanel"
-fusionPanel.Size = UDim2.new(0, 500, 0, 400)
-fusionPanel.Position = UDim2.new(0.5, -250, 0.5, -200)
+fusionPanel.Size = UDim2.new(0, 640, 0, 400)
+fusionPanel.Position = UDim2.new(0.5, -320, 0.5, -200)
 fusionPanel.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
 fusionPanel.BackgroundTransparency = 0.1
 fusionPanel.BorderSizePixel = 0
@@ -705,12 +706,13 @@ fusionTitle.Font = Enum.Font.GothamBlack
 fusionTitle.ZIndex = 51
 fusionTitle.Parent = fusionPanel
 
--- Slot A
-local slotABg = Instance.new("Frame")
+-- Slot A (clickeable para quitar personaje)
+local slotABg = Instance.new("TextButton")
 slotABg.Size = UDim2.new(0, 140, 0, 160)
 slotABg.Position = UDim2.new(0, 20, 0, 50)
 slotABg.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
 slotABg.BorderSizePixel = 0
+slotABg.Text = ""
 slotABg.ZIndex = 51
 slotABg.Parent = fusionPanel
 Instance.new("UICorner", slotABg).CornerRadius = UDim.new(0, 10)
@@ -741,12 +743,13 @@ slotAContent.Font = Enum.Font.GothamBold
 slotAContent.ZIndex = 52
 slotAContent.Parent = slotABg
 
--- Slot B
-local slotBBg = Instance.new("Frame")
+-- Slot B (clickeable para quitar personaje)
+local slotBBg = Instance.new("TextButton")
 slotBBg.Size = UDim2.new(0, 140, 0, 160)
 slotBBg.Position = UDim2.new(0, 180, 0, 50)
 slotBBg.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
 slotBBg.BorderSizePixel = 0
+slotBBg.Text = ""
 slotBBg.ZIndex = 51
 slotBBg.Parent = fusionPanel
 Instance.new("UICorner", slotBBg).CornerRadius = UDim.new(0, 10)
@@ -813,10 +816,10 @@ outputContent.Font = Enum.Font.GothamBold
 outputContent.ZIndex = 52
 outputContent.Parent = outputBg
 
--- Boton FUSIONAR
+-- Boton FUSIONAR (a la derecha de los slots)
 local fuseBtn = Instance.new("TextButton")
-fuseBtn.Size = UDim2.new(0, 200, 0, 50)
-fuseBtn.Position = UDim2.new(0.5, -100, 0, 220)
+fuseBtn.Size = UDim2.new(0, 100, 0, 160)
+fuseBtn.Position = UDim2.new(0, 500, 0, 50)
 fuseBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
 fuseBtn.BorderSizePixel = 0
 fuseBtn.Text = "FUSIONAR"
@@ -856,12 +859,12 @@ local rarityDisplayClient = {
     Azul = "INCOMUN", Blanco = "COMUN"
 }
 
--- Texto de ayuda (instrucciones)
+-- Texto de ayuda (instrucciones) - abajo de los slots
 local helpLabel = Instance.new("TextLabel")
-helpLabel.Size = UDim2.new(1, 0, 0, 60)
-helpLabel.Position = UDim2.new(0, 0, 0, 230)
+helpLabel.Size = UDim2.new(1, 0, 0, 50)
+helpLabel.Position = UDim2.new(0, 0, 0, 225)
 helpLabel.BackgroundTransparency = 1
-helpLabel.Text = "Lleva un personaje en la mano y presiona E\ndejara aqui para depositarlo\nCuando tengas 2 identicos podras FUSIONAR"
+helpLabel.Text = "Lleva un personaje en la mano y presiona E para depositarlo\nClick izquierdo en un slot para quitarlo"
 helpLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 helpLabel.TextScaled = true
 helpLabel.Font = Enum.Font.GothamBold
@@ -871,7 +874,7 @@ helpLabel.Parent = fusionPanel
 -- Estado actual de la mano (lo que lleva el jugador)
 local carryingLabel = Instance.new("TextLabel")
 carryingLabel.Size = UDim2.new(1, 0, 0, 30)
-carryingLabel.Position = UDim2.new(0, 0, 0, 300)
+carryingLabel.Position = UDim2.new(0, 0, 0, 285)
 carryingLabel.BackgroundTransparency = 1
 carryingLabel.Text = "En mano: nada"
 carryingLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
@@ -883,7 +886,7 @@ carryingLabel.Parent = fusionPanel
 -- Boton DEPOSITAR (E)
 local depositHint = Instance.new("TextLabel")
 depositHint.Size = UDim2.new(1, 0, 0, 25)
-depositHint.Position = UDim2.new(0, 0, 0, 335)
+depositHint.Position = UDim2.new(0, 0, 0, 320)
 depositHint.BackgroundTransparency = 1
 depositHint.Text = "Presiona E para depositar"
 depositHint.TextColor3 = Color3.fromRGB(100, 200, 255)
@@ -1010,6 +1013,20 @@ fuseBtn.MouseButton1Click:Connect(function()
     end
 end)
 
+-- Click en Slot A para quitar personaje
+slotABg.MouseButton1Click:Connect(function()
+    if fusionSlotA and RemoveFromFusionSlotEvent then
+        RemoveFromFusionSlotEvent:FireServer("A")
+    end
+end)
+
+-- Click en Slot B para quitar personaje
+slotBBg.MouseButton1Click:Connect(function()
+    if fusionSlotB and RemoveFromFusionSlotEvent then
+        RemoveFromFusionSlotEvent:FireServer("B")
+    end
+end)
+
 -- Boton cerrar (ocultar manualmente)
 closeBtn.MouseButton1Click:Connect(function()
     fusionPanel.Visible = false
@@ -1018,6 +1035,7 @@ end)
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
 
 
