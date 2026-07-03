@@ -146,6 +146,12 @@ local function createCrystalBreakEffect(position, color)
                 desc.Color = color
                 desc.Material = Enum.Material.Ice
                 desc.Transparency = 0.1
+                -- ELIMINAR SurfaceAppearance para que el Color de la parte se vea
+                -- (SurfaceAppearance usa texturas que ignoran la propiedad Color)
+                local surfaceApp = desc:FindFirstChild("SurfaceAppearance")
+                if surfaceApp then
+                    surfaceApp:Destroy()
+                end
             end
         end
 
@@ -159,6 +165,11 @@ local function createCrystalBreakEffect(position, color)
             shard.Color = color
             shard.Material = Enum.Material.Ice
             shard.Transparency = 0.1
+            -- Eliminar SurfaceAppearance si existe
+            local surfaceApp = shard:FindFirstChild("SurfaceAppearance")
+            if surfaceApp then
+                surfaceApp:Destroy()
+            end
         end
 
         shard.Parent = Workspace
@@ -1401,6 +1412,7 @@ task.delay(3, function()
 end)
 
 print("=== GameHandler iniciado ===")
+
 
 
 
