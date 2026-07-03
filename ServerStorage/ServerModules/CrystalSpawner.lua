@@ -83,7 +83,7 @@ local function createCrystal(position, crystalType, parent)
         -- Fondo oscuro con bordes redondeados
         local bg = Instance.new("Frame")
         bg.Name = "Bg"
-        bg.Size = UDim2.new(1, 0, 0.7, 0)
+        bg.Size = UDim2.new(1, 0, 0.5, 0)
         bg.Position = UDim2.new(0, 0, 0, 0)
         bg.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
         bg.BackgroundTransparency = 0.5
@@ -117,12 +117,12 @@ local function createCrystal(position, crystalType, parent)
         textStroke.Parent = lbl
 
         -- ============================================
-        -- BARRA DE VIDA debajo del nombre de rareza
+        -- BARRA DE VIDA debajo del nombre de rareza (3x mas grande)
         -- ============================================
         local healthBarBg = Instance.new("Frame")
         healthBarBg.Name = "HealthBarBg"
-        healthBarBg.Size = UDim2.new(0.9, 0, 0.15, 0)
-        healthBarBg.Position = UDim2.new(0.05, 0, 0.75, 0)
+        healthBarBg.Size = UDim2.new(0.9, 0, 0.45, 0)
+        healthBarBg.Position = UDim2.new(0.05, 0, 0.55, 0)
         healthBarBg.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
         healthBarBg.BorderSizePixel = 0
         healthBarBg.Parent = bb
@@ -390,6 +390,7 @@ function CrystalSpawner.updateCrystalHealthUI(crystal, currentHealth, maxHealth)
 end
 
 return CrystalSpawner
+
 
 
 
