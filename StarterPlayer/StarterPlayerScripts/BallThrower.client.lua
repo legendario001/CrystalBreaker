@@ -359,6 +359,42 @@ local function unequipBall()
     updateButton()
 end
 
+-- Re-equipar la pelota en la mano (sin el check de ballEquipped)
+-- Usado despues de lanzar para volver a poner la pelota
+local function reEquipBall()
+    local char = player.Character
+    if not char then return end
+    if isCarrying then return end
+
+    -- Limpiar pelota anterior si existe
+    local oldBall = char:FindFirstChild("CrystalBall")
+    if oldBall then oldBall:Destroy() end
+
+    -- Buscar la mano derecha del personaje
+    local rightHand = char:FindFirstChild("RightHand") or char:FindFirstChild("Right Arm")
+    if not rightHand then return end
+
+    -- Crear la pelota
+    local ball = Instance.new("Part")
+    ball.Name = "CrystalBall"
+    ball.Size = Vector3.new(1.5, 1.5, 1.5)
+    ball.Shape = Enum.PartType.Ball
+    ball.Color = Color3.fromRGB(100, 200, 255)
+    ball.Material = Enum.Material.SmoothPlastic
+    ball.Anchored = false
+    ball.CanCollide = false
+    ball.Massless = true
+    ball.Position = rightHand.Position + Vector3.new(0, -1, 0)
+    ball.Parent = char
+
+    -- Weld para que la pelota siga la mano
+    local weld = Instance.new("WeldConstraint")
+    weld.Name = "BallWeld"
+    weld.Part0 = rightHand
+    weld.Part1 = ball
+    weld.Parent = ball
+end
+
 local function throwBall()
     if not ballEquipped or isCarrying then return end
     if throwDebounce or activeBalls >= MAX_ACTIVE_BALLS then return end
@@ -415,7 +451,7 @@ local function throwBall()
     -- Despues del lanzamiento, volver a poner la pelota en la mano
     task.delay(0.5, function()
         if ballEquipped and not isCarrying then
-            equipBall()
+            reEquipBall()
         end
     end)
 
@@ -1054,6 +1090,7 @@ end)
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
 
 
