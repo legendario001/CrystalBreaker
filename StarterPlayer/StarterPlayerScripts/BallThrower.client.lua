@@ -343,13 +343,8 @@ local function equipBall()
         handle.Position = root.Position + Vector3.new(0, 2, 0)
     end
     handle.Parent = tool
+    -- Parentar al character equipa el tool automaticamente (sin NeedEvent del servidor)
     tool.Parent = char
-
-    -- Equipar el tool usando el Humanoid para que se vea en la mano
-    local humanoid = char:FindFirstChildOfClass("Humanoid")
-    if humanoid then
-        humanoid:EquipTool(tool)
-    end
 
     ballEquipped = true
     updateButton()
@@ -387,7 +382,7 @@ local function throwBall()
                 cachedTrack = animator:LoadAnimation(cachedThrowAnim)
             end
             if cachedTrack and not cachedTrack.IsPlaying then
-                cachedTrack:Play()
+                cachedTrack:Play(0.1)
             end
         end
     end
