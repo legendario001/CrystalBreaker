@@ -10,12 +10,13 @@ local Workspace = game:GetService("Workspace")
 local CrystalSpawner = {}
 
 -- Colores, rareza y nombres bonitos de cristales
+-- hp = vida del cristal (golpes necesarios para romperlo)
 local CRYSTAL_TYPES = {
-        {color = Color3.fromRGB(170, 85, 255),  name = "Morado",   displayName = "MITICO",  weight = 3},
-        {color = Color3.fromRGB(255, 80, 80),   name = "Rojo",     displayName = "EPICO",   weight = 6},
-        {color = Color3.fromRGB(255, 255, 100), name = "Amarillo", displayName = "RARO",    weight = 12},
-        {color = Color3.fromRGB(85, 170, 255),  name = "Azul",     displayName = "INCOMUN", weight = 25},
-        {color = Color3.fromRGB(220, 220, 220), name = "Blanco",   displayName = "COMUN",   weight = 54}
+        {color = Color3.fromRGB(170, 85, 255),  name = "Morado",   displayName = "MITICO",  weight = 3,  hp = 10},
+        {color = Color3.fromRGB(255, 80, 80),   name = "Rojo",     displayName = "EPICO",   weight = 6,  hp = 8},
+        {color = Color3.fromRGB(255, 255, 100), name = "Amarillo", displayName = "RARO",    weight = 12, hp = 6},
+        {color = Color3.fromRGB(85, 170, 255),  name = "Azul",     displayName = "INCOMUN", weight = 25, hp = 4},
+        {color = Color3.fromRGB(220, 220, 220), name = "Blanco",   displayName = "COMUN",   weight = 54, hp = 2}
 }
 
 local CHEST_TIMEOUT = 15 -- segundos antes de que el cofre desaparezca y regenere cristal
@@ -56,23 +57,24 @@ local function createCrystal(position, crystalType, parent)
         rarityTag.Value = crystalType.name
         rarityTag.Parent = crystal
 
-        -- HP = 1 (se rompe de un golpe)
+        -- HP segun la rareza del cristal
+        local crystalHP = crystalType.hp or 1
         local hp = Instance.new("IntValue")
         hp.Name = "Health"
-        hp.Value = 1
+        hp.Value = crystalHP
         hp.Parent = crystal
 
         local mhp = Instance.new("IntValue")
         mhp.Name = "MaxHealth"
-        mhp.Value = 1
+        mhp.Value = crystalHP
         mhp.Parent = crystal
 
         -- ============================================
-        -- ETIQUETA BONITA DE RAREZA sobre el cristal
+        -- ETIQUETA BONITA DE RAREZA + BARRA DE VIDA sobre el cristal
         -- ============================================
         local bb = Instance.new("BillboardGui")
         bb.Name = "RarityLabel"
-        bb.Size = UDim2.new(4, 0, 1.5, 0)
+        bb.Size = UDim2.new(4, 0, 2.2, 0)
         bb.StudsOffset = Vector3.new(0, 7, 0)
         bb.AlwaysOnTop = false
         bb.MaxDistance = 60
@@ -81,7 +83,8 @@ local function createCrystal(position, crystalType, parent)
         -- Fondo oscuro con bordes redondeados
         local bg = Instance.new("Frame")
         bg.Name = "Bg"
-        bg.Size = UDim2.new(1, 0, 1, 0)
+        bg.Size = UDim2.new(1, 0, 0.7, 0)
+        bg.Position = UDim2.new(0, 0, 0, 0)
         bg.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
         bg.BackgroundTransparency = 0.5
         bg.BorderSizePixel = 0
@@ -112,6 +115,38 @@ local function createCrystal(position, crystalType, parent)
         textStroke.Thickness = 1
         textStroke.Transparency = 0.7
         textStroke.Parent = lbl
+
+        -- ============================================
+        -- BARRA DE VIDA debajo del nombre de rareza
+        -- ============================================
+        local healthBarBg = Instance.new("Frame")
+        healthBarBg.Name = "HealthBarBg"
+        healthBarBg.Size = UDim2.new(0.9, 0, 0.15, 0)
+        healthBarBg.Position = UDim2.new(0.05, 0, 0.75, 0)
+        healthBarBg.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+        healthBarBg.BorderSizePixel = 0
+        healthBarBg.Parent = bb
+        Instance.new("UICorner", healthBarBg).CornerRadius = UDim.new(0, 4)
+
+        -- Relleno de la barra (cambia de tamano segun la vida)
+        local healthBarFill = Instance.new("Frame")
+        healthBarFill.Name = "HealthBarFill"
+        healthBarFill.Size = UDim2.new(1, 0, 1, 0) -- empieza lleno (100%)
+        healthBarFill.BackgroundColor3 = Color3.fromRGB(80, 220, 80) -- verde
+        healthBarFill.BorderSizePixel = 0
+        healthBarFill.Parent = healthBarBg
+        Instance.new("UICorner", healthBarFill).CornerRadius = UDim.new(0, 4)
+
+        -- Texto con la vida (ej: "10/10")
+        local healthText = Instance.new("TextLabel")
+        healthText.Name = "HealthText"
+        healthText.Size = UDim2.new(1, 0, 1, 0)
+        healthText.BackgroundTransparency = 1
+        healthText.Text = crystalHP .. "/" .. crystalHP
+        healthText.TextColor3 = Color3.fromRGB(255, 255, 255)
+        healthText.TextScaled = true
+        healthText.Font = Enum.Font.GothamBold
+        healthText.Parent = healthBarFill
 
         return crystal
 end
@@ -321,7 +356,41 @@ function CrystalSpawner.respawn(oldPos)
         end)
 end
 
+-- Actualizar la barra de vida de un cristal
+-- Llamar cuando el cristal recibe daño
+function CrystalSpawner.updateCrystalHealthUI(crystal, currentHealth, maxHealth)
+        if not crystal or not crystal.Parent then return end
+        local bb = crystal:FindFirstChild("RarityLabel")
+        if not bb then return end
+
+        local healthBarBg = bb:FindFirstChild("HealthBarBg")
+        if not healthBarBg then return end
+
+        local healthBarFill = healthBarBg:FindFirstChild("HealthBarFill")
+        if not healthBarFill then return end
+
+        -- Actualizar tamano del relleno (proporcion de vida)
+        local ratio = math.clamp(currentHealth / maxHealth, 0, 1)
+        healthBarFill.Size = UDim2.new(ratio, 0, 1, 0)
+
+        -- Cambiar color segun la vida: verde > amarillo > rojo
+        if ratio > 0.6 then
+                healthBarFill.BackgroundColor3 = Color3.fromRGB(80, 220, 80) -- verde
+        elseif ratio > 0.3 then
+                healthBarFill.BackgroundColor3 = Color3.fromRGB(255, 200, 80) -- amarillo
+        else
+                healthBarFill.BackgroundColor3 = Color3.fromRGB(255, 80, 80) -- rojo
+        end
+
+        -- Actualizar texto
+        local healthText = healthBarFill:FindFirstChild("HealthText")
+        if healthText then
+                healthText.Text = currentHealth .. "/" .. maxHealth
+        end
+end
+
 return CrystalSpawner
+
 
 
 
