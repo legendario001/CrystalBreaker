@@ -333,15 +333,19 @@ local function equipBall()
     ball.Anchored = false
     ball.CanCollide = false
     ball.Massless = true
-    -- Posicionar la pelota en la mano
-    ball.Position = rightHand.Position + Vector3.new(0, -1, 0)
+    -- Posicionar la pelota encima de la palma (la mano la sostiene desde abajo)
+    ball.Position = rightHand.Position + Vector3.new(0, 0.8, 0)
     ball.Parent = char
 
-    -- Weld para que la pelota siga la mano
-    local weld = Instance.new("WeldConstraint")
+    -- Weld (no WeldConstraint) para poder ajustar el offset C0
+    -- C0 = posicion relativa de la pelota respecto a la mano
+    -- Y positivo = arriba de la palma (mano sostiene desde abajo)
+    -- Z negativo = ligero al frente para que se vea natural
+    local weld = Instance.new("Weld")
     weld.Name = "BallWeld"
     weld.Part0 = rightHand
     weld.Part1 = ball
+    weld.C0 = CFrame.new(0, 0.8, -0.3)
     weld.Parent = ball
 
     ballEquipped = true
@@ -384,14 +388,16 @@ local function reEquipBall()
     ball.Anchored = false
     ball.CanCollide = false
     ball.Massless = true
-    ball.Position = rightHand.Position + Vector3.new(0, -1, 0)
+    -- Posicionar la pelota encima de la palma (la mano la sostiene desde abajo)
+    ball.Position = rightHand.Position + Vector3.new(0, 0.8, 0)
     ball.Parent = char
 
-    -- Weld para que la pelota siga la mano
-    local weld = Instance.new("WeldConstraint")
+    -- Weld (no WeldConstraint) para poder ajustar el offset C0
+    local weld = Instance.new("Weld")
     weld.Name = "BallWeld"
     weld.Part0 = rightHand
     weld.Part1 = ball
+    weld.C0 = CFrame.new(0, 0.8, -0.3)
     weld.Parent = ball
 end
 
@@ -1090,6 +1096,7 @@ end)
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
 
 
