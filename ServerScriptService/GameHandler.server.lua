@@ -117,10 +117,10 @@ local function createCrystalBreakEffect(position, color)
         shard.Name = "CrystalShardEffect"
 
         -- EL CRISTAL MIDE 10 DE ALTO: position es el centro (5 studs arriba del suelo)
-        -- El cofre aparece en position - 1 (cerca del suelo)
-        -- Spawnear los fragmentos a 3X la altura anterior (mas alto para efecto de explosion)
+        -- Spawnear los fragmentos a la altura del cristal (de centro hacia arriba)
+        -- y dejar que la gravedad los haga caer hacia el cofre
         local offsetX = math.random(-8, 8) / 10 -- -0.8 a 0.8 studs
-        local offsetY = math.random(-15, 0) / 10 -- -1.5 a 0 studs (3x mas alto que antes)
+        local offsetY = math.random(0, 50) / 10 -- 0 a 5 studs (de centro a cima del cristal)
         local offsetZ = math.random(-8, 8) / 10 -- -0.8 a 0.8 studs
         local spawnPos = position + Vector3.new(offsetX, offsetY, offsetZ)
 
@@ -174,11 +174,11 @@ local function createCrystalBreakEffect(position, color)
 
         if mainPart then
             -- Velocidad: outward (horizontal) con pequeno salto hacia arriba
-            -- NO volar alto para que no parezca que caen del cielo
+            -- Baja para que caigan desde la altura del cristal hacia el cofre
             local velocity = Vector3.new(
-                math.random(-15, 15),
-                math.random(5, 12), -- salto bajo, no vuelan alto
-                math.random(-15, 15)
+                math.random(-12, 12),
+                math.random(2, 8), -- salto muy bajo, casi solo caen
+                math.random(-12, 12)
             )
             mainPart.AssemblyLinearVelocity = velocity
 
@@ -1401,6 +1401,7 @@ task.delay(3, function()
 end)
 
 print("=== GameHandler iniciado ===")
+
 
 
 
