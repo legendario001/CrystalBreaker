@@ -470,13 +470,41 @@ Events.ThrowBall.OnServerEvent:Connect(function(player, targetPos)
         local rarity = rt and rt.Value or "Blanco"
         local pos = nearest.Position
         local crystalColor = nearest.Color
-        -- Sonido de cristal rompiendose (1 de 4 sonidos al azar)
-        local randomCrystalSound = CRYSTAL_BREAK_SOUNDS[math.random(#CRYSTAL_BREAK_SOUNDS)]
-        playSoundAt(randomCrystalSound, pos)
-        -- Efecto visual de cristal rompiendose en pedazos
-        createCrystalBreakEffect(pos, crystalColor)
-        nearest:Destroy()
-        CrystalSpawner.spawnChest(pos, {color=crystalColor, name=rarity}, player)
+
+        -- SISTEMA DE VIDA: la pelota quita 1 de vida por golpe
+        local hpObj = nearest:FindFirstChild("Health")
+        local mhpObj = nearest:FindFirstChild("MaxHealth")
+        if not hpObj or not mhpObj then
+            -- Si no tiene HP (cristal viejo), destruir de inmediato
+            local randomCrystalSound = CRYSTAL_BREAK_SOUNDS[math.random(#CRYSTAL_BREAK_SOUNDS)]
+            playSoundAt(randomCrystalSound, pos)
+            createCrystalBreakEffect(pos, crystalColor)
+            nearest:Destroy()
+            CrystalSpawner.spawnChest(pos, {color=crystalColor, name=rarity}, player)
+            return
+        end
+
+        -- Quitar 1 de vida
+        local DAMAGE = 1
+        hpObj.Value = hpObj.Value - DAMAGE
+
+        -- Actualizar barra de vida
+        CrystalSpawner.updateCrystalHealthUI(nearest, hpObj.Value, mhpObj.Value)
+
+        -- Sonido de golpe (no de romper todavia)
+        local hitSound = CRYSTAL_BREAK_SOUNDS[math.random(#CRYSTAL_BREAK_SOUNDS)]
+        playSoundAt(hitSound, pos)
+
+        -- Si la vida llego a 0, romper el cristal
+        if hpObj.Value <= 0 then
+            -- Sonido de cristal rompiendose
+            local randomCrystalSound = CRYSTAL_BREAK_SOUNDS[math.random(#CRYSTAL_BREAK_SOUNDS)]
+            playSoundAt(randomCrystalSound, pos)
+            -- Efecto visual de cristal rompiendose en pedazos
+            createCrystalBreakEffect(pos, crystalColor)
+            nearest:Destroy()
+            CrystalSpawner.spawnChest(pos, {color=crystalColor, name=rarity}, player)
+        end
     end)
     if not ok then warn("Error ThrowBall: "..tostring(err)) end
 end)
@@ -1412,6 +1440,7 @@ task.delay(3, function()
 end)
 
 print("=== GameHandler iniciado ===")
+
 
 
 
