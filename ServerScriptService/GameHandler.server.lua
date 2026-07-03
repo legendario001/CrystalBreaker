@@ -118,9 +118,9 @@ local function createCrystalBreakEffect(position, color)
 
         -- EL CRISTAL MIDE 10 DE ALTO: position es el centro (5 studs arriba del suelo)
         -- El cofre aparece en position - 1 (cerca del suelo)
-        -- Spawnear los fragmentos cerca del SUELO donde esta el cofre, no en el centro del cristal
+        -- Spawnear los fragmentos a 3X la altura anterior (mas alto para efecto de explosion)
         local offsetX = math.random(-8, 8) / 10 -- -0.8 a 0.8 studs
-        local offsetY = math.random(-50, -35) / 10 -- -5 a -3.5 studs (bajar al nivel del suelo/cofre)
+        local offsetY = math.random(-15, 0) / 10 -- -1.5 a 0 studs (3x mas alto que antes)
         local offsetZ = math.random(-8, 8) / 10 -- -0.8 a 0.8 studs
         local spawnPos = position + Vector3.new(offsetX, offsetY, offsetZ)
 
@@ -1401,6 +1401,7 @@ task.delay(3, function()
 end)
 
 print("=== GameHandler iniciado ===")
+
 
 
 
