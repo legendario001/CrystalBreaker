@@ -116,23 +116,33 @@ local function createCrystalBreakEffect(position, color)
         local shard = shardTemplate:Clone()
         shard.Name = "CrystalShardEffect"
 
-        -- Posicion aleatoria cerca del cristal roto
-        local offsetX = math.random(-3, 3)
-        local offsetY = math.random(0, 4)
-        local offsetZ = math.random(-3, 3)
+        -- Pequeno offset aleatorio para que no salgan todos del mismo punto exacto
+        -- Reducido para que salgan del cristal, no del cielo
+        local offsetX = math.random(-10, 10) / 10 -- -1 a 1 studs
+        local offsetY = math.random(-5, 15) / 10  -- -0.5 a 1.5 studs
+        local offsetZ = math.random(-10, 10) / 10 -- -1 a 1 studs
+        local spawnPos = position + Vector3.new(offsetX, offsetY, offsetZ)
+
+        -- Mover todo el modelo clonado a la posicion del cristal
+        -- Usar PivotTo para mover el modelo completo manteniendo su forma
+        local templatePivot = shardTemplate:GetPivot()
+        shard:PivotTo(CFrame.new(spawnPos) * (templatePivot - templatePivot.Position))
+
+        -- Rotacion aleatoria para que cada fragmento se vea diferente
+        shard:PivotTo(shard:GetPivot() * CFrame.Angles(
+            math.rad(math.random(0, 360)),
+            math.rad(math.random(0, 360)),
+            math.rad(math.random(0, 360))
+        ))
 
         -- Configurar todas las partes del modelo clonado
         for _, desc in ipairs(shard:GetDescendants()) do
             if desc:IsA("BasePart") then
-                -- Posicion relativa al offset
-                desc.Position = desc.Position + Vector3.new(offsetX, offsetY, offsetZ) + position - shardTemplate:GetPivot().Position
                 desc.Anchored = false
                 desc.CanCollide = false
                 desc.CanQuery = false
                 desc.Massless = true
-                -- Cambiar color al del cristal roto
                 desc.Color = color
-                -- Material cristalino
                 desc.Material = Enum.Material.Ice
                 desc.Transparency = 0.1
             end
@@ -140,7 +150,7 @@ local function createCrystalBreakEffect(position, color)
 
         -- Si el propio template es una Part (no un Model)
         if shard:IsA("BasePart") then
-            shard.Position = position + Vector3.new(offsetX, offsetY, offsetZ)
+            shard.Position = spawnPos
             shard.Anchored = false
             shard.CanCollide = false
             shard.CanQuery = false
@@ -150,17 +160,10 @@ local function createCrystalBreakEffect(position, color)
             shard.Transparency = 0.1
         end
 
-        -- Rotacion aleatoria para que cada fragmento se vea diferente
-        shard:PivotTo(shard:GetPivot() * CFrame.Angles(
-            math.rad(math.random(0, 360)),
-            math.rad(math.random(0, 360)),
-            math.rad(math.random(0, 360))
-        ))
-
         shard.Parent = Workspace
 
         -- Velocidad aleatoria para expulsar los fragmentos
-        -- Aplicar a la parte principal o al PrimaryPart
+        -- Reducida para que salgan del cristal, no vuelen muy lejos
         local mainPart = nil
         if shard:IsA("BasePart") then
             mainPart = shard
@@ -170,17 +173,17 @@ local function createCrystalBreakEffect(position, color)
 
         if mainPart then
             local velocity = Vector3.new(
-                math.random(-30, 30),
-                math.random(20, 50),
-                math.random(-30, 30)
+                math.random(-20, 20),
+                math.random(10, 30),
+                math.random(-20, 20)
             )
             mainPart.AssemblyLinearVelocity = velocity
 
             -- Velocidad angular para que giren
             mainPart.AssemblyAngularVelocity = Vector3.new(
-                math.random(-20, 20),
-                math.random(-20, 20),
-                math.random(-20, 20)
+                math.random(-15, 15),
+                math.random(-15, 15),
+                math.random(-15, 15)
             )
         end
 
@@ -1395,6 +1398,7 @@ task.delay(3, function()
 end)
 
 print("=== GameHandler iniciado ===")
+
 
 
 
