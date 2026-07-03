@@ -116,11 +116,12 @@ local function createCrystalBreakEffect(position, color)
         local shard = shardTemplate:Clone()
         shard.Name = "CrystalShardEffect"
 
-        -- Pequeno offset aleatorio para que no salgan todos del mismo punto exacto
-        -- Reducido para que salgan del cristal, no del cielo
-        local offsetX = math.random(-10, 10) / 10 -- -1 a 1 studs
-        local offsetY = math.random(-5, 15) / 10  -- -0.5 a 1.5 studs
-        local offsetZ = math.random(-10, 10) / 10 -- -1 a 1 studs
+        -- EL CRISTAL MIDE 10 DE ALTO: position es el centro (5 studs arriba del suelo)
+        -- El cofre aparece en position - 1 (cerca del suelo)
+        -- Spawnear los fragmentos cerca del SUELO donde esta el cofre, no en el centro del cristal
+        local offsetX = math.random(-8, 8) / 10 -- -0.8 a 0.8 studs
+        local offsetY = math.random(-50, -35) / 10 -- -5 a -3.5 studs (bajar al nivel del suelo/cofre)
+        local offsetZ = math.random(-8, 8) / 10 -- -0.8 a 0.8 studs
         local spawnPos = position + Vector3.new(offsetX, offsetY, offsetZ)
 
         -- Mover todo el modelo clonado a la posicion del cristal
@@ -172,18 +173,20 @@ local function createCrystalBreakEffect(position, color)
         end
 
         if mainPart then
+            -- Velocidad: outward (horizontal) con pequeno salto hacia arriba
+            -- NO volar alto para que no parezca que caen del cielo
             local velocity = Vector3.new(
-                math.random(-20, 20),
-                math.random(10, 30),
-                math.random(-20, 20)
+                math.random(-15, 15),
+                math.random(5, 12), -- salto bajo, no vuelan alto
+                math.random(-15, 15)
             )
             mainPart.AssemblyLinearVelocity = velocity
 
             -- Velocidad angular para que giren
             mainPart.AssemblyAngularVelocity = Vector3.new(
-                math.random(-15, 15),
-                math.random(-15, 15),
-                math.random(-15, 15)
+                math.random(-10, 10),
+                math.random(-10, 10),
+                math.random(-10, 10)
             )
         end
 
@@ -1398,6 +1401,7 @@ task.delay(3, function()
 end)
 
 print("=== GameHandler iniciado ===")
+
 
 
 
