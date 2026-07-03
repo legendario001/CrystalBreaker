@@ -325,16 +325,32 @@ local function equipBall()
     tool.Name = "CrystalBall"
     tool.RequiresHandle = true
     tool.CanBeDropped = false
+    -- Configurar Grip para que la pelota se vea en la mano (frente y abajo)
+    tool.Grip = CFrame.new(0, -1, -1.5) * CFrame.Angles(math.rad(90), 0, 0)
 
     local handle = Instance.new("Part")
     handle.Name = "Handle"
-    handle.Size = Vector3.new(1.5,1.5,1.5)
+    handle.Size = Vector3.new(1.5, 1.5, 1.5)
     handle.Shape = Enum.PartType.Ball
-    handle.Color = Color3.fromRGB(100,200,255)
+    handle.Color = Color3.fromRGB(100, 200, 255)
     handle.Material = Enum.Material.SmoothPlastic
-    handle.Anchored = false handle.CanCollide = false handle.Massless = true
+    handle.Anchored = false
+    handle.CanCollide = false
+    handle.Massless = true
+    -- Posicionar el handle cerca del personaje para que no aparezca lejos
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if root then
+        handle.Position = root.Position + Vector3.new(0, 2, 0)
+    end
     handle.Parent = tool
     tool.Parent = char
+
+    -- Equipar el tool usando el Humanoid para que se vea en la mano
+    local humanoid = char:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        humanoid:EquipTool(tool)
+    end
+
     ballEquipped = true
     updateButton()
 end
@@ -1035,6 +1051,7 @@ end)
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
 
 
