@@ -173,12 +173,12 @@ local function createCrystalBreakEffect(position, color)
         end
 
         if mainPart then
-            -- Velocidad: outward (horizontal) con pequeno salto hacia arriba
-            -- Baja para que caigan desde la altura del cristal hacia el cofre
+            -- Velocidad: outward (horizontal) mas amplia para que se expandan
+            -- Salto bajo para que caigan desde la altura del cristal hacia el cofre
             local velocity = Vector3.new(
-                math.random(-12, 12),
+                math.random(-25, 25), -- mas expansion horizontal
                 math.random(2, 8), -- salto muy bajo, casi solo caen
-                math.random(-12, 12)
+                math.random(-25, 25) -- mas expansion horizontal
             )
             mainPart.AssemblyLinearVelocity = velocity
 
@@ -1401,6 +1401,7 @@ task.delay(3, function()
 end)
 
 print("=== GameHandler iniciado ===")
+
 
 
 
