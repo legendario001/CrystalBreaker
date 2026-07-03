@@ -308,43 +308,41 @@ RunService.Heartbeat:Connect(function(dt)
 end)
 
 -- BALL SYSTEM
+-- En vez de usar Tool (que fuerza la pose del brazo), usamos un Weld
+-- directo a la mano derecha. Asi el brazo se ve natural y la pelota se ve sostenida.
 local function equipBall()
     if ballEquipped or isCarrying then return end
     local char = player.Character
     if not char then return end
 
-    local function removeOld(parent)
-        if not parent then return end
-        local old = parent:FindFirstChild("CrystalBall")
-        if old then old:Destroy() end
-    end
-    removeOld(char)
-    removeOld(player:FindFirstChild("Backpack"))
+    -- Limpiar pelota anterior
+    local oldBall = char:FindFirstChild("CrystalBall")
+    if oldBall then oldBall:Destroy() end
 
-    local tool = Instance.new("Tool")
-    tool.Name = "CrystalBall"
-    tool.RequiresHandle = true
-    tool.CanBeDropped = false
-    -- Configurar Grip para que la pelota se vea en la mano (frente y abajo)
-    tool.Grip = CFrame.new(0, -1, -1.5) * CFrame.Angles(math.rad(90), 0, 0)
+    -- Buscar la mano derecha del personaje
+    local rightHand = char:FindFirstChild("RightHand") or char:FindFirstChild("Right Arm")
+    if not rightHand then return end
 
-    local handle = Instance.new("Part")
-    handle.Name = "Handle"
-    handle.Size = Vector3.new(1.5, 1.5, 1.5)
-    handle.Shape = Enum.PartType.Ball
-    handle.Color = Color3.fromRGB(100, 200, 255)
-    handle.Material = Enum.Material.SmoothPlastic
-    handle.Anchored = false
-    handle.CanCollide = false
-    handle.Massless = true
-    -- Posicionar el handle cerca del personaje para que no aparezca lejos
-    local root = char:FindFirstChild("HumanoidRootPart")
-    if root then
-        handle.Position = root.Position + Vector3.new(0, 2, 0)
-    end
-    handle.Parent = tool
-    -- Parentar al character equipa el tool automaticamente (sin NeedEvent del servidor)
-    tool.Parent = char
+    -- Crear la pelota
+    local ball = Instance.new("Part")
+    ball.Name = "CrystalBall"
+    ball.Size = Vector3.new(1.5, 1.5, 1.5)
+    ball.Shape = Enum.PartType.Ball
+    ball.Color = Color3.fromRGB(100, 200, 255)
+    ball.Material = Enum.Material.SmoothPlastic
+    ball.Anchored = false
+    ball.CanCollide = false
+    ball.Massless = true
+    -- Posicionar la pelota en la mano
+    ball.Position = rightHand.Position + Vector3.new(0, -1, 0)
+    ball.Parent = char
+
+    -- Weld para que la pelota siga la mano
+    local weld = Instance.new("WeldConstraint")
+    weld.Name = "BallWeld"
+    weld.Part0 = rightHand
+    weld.Part1 = ball
+    weld.Parent = ball
 
     ballEquipped = true
     updateButton()
@@ -352,13 +350,11 @@ end
 
 local function unequipBall()
     if not ballEquipped then return end
-    local function removeOld(parent)
-        if not parent then return end
-        local old = parent:FindFirstChild("CrystalBall")
-        if old then old:Destroy() end
+    local char = player.Character
+    if char then
+        local oldBall = char:FindFirstChild("CrystalBall")
+        if oldBall then oldBall:Destroy() end
     end
-    removeOld(player.Character)
-    removeOld(player:FindFirstChild("Backpack"))
     ballEquipped = false
     updateButton()
 end
@@ -373,6 +369,10 @@ local function throwBall()
     local root = char:FindFirstChild("HumanoidRootPart")
     local humanoid = char:FindFirstChild("Humanoid")
     if not root then throwDebounce=false return end
+
+    -- Quitar la pelota de la mano durante el lanzamiento
+    local handBall = char:FindFirstChild("CrystalBall")
+    if handBall then handBall:Destroy() end
 
     -- OPTIMIZADO: reusar track cacheado
     if humanoid then
@@ -411,6 +411,14 @@ local function throwBall()
     activeBalls = activeBalls + 1
     Debris:AddItem(ball, 4)
     task.delay(4.5, function() activeBalls = math.max(0, activeBalls-1) end)
+
+    -- Despues del lanzamiento, volver a poner la pelota en la mano
+    task.delay(0.5, function()
+        if ballEquipped and not isCarrying then
+            equipBall()
+        end
+    end)
+
     task.wait(0.5)
     throwDebounce = false
 end
@@ -1046,6 +1054,7 @@ end)
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
 
 
