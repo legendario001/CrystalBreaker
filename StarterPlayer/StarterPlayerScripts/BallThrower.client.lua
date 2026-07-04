@@ -1345,6 +1345,10 @@ local function updateBackpackUI()
                 if ballEquipped then
                     reEquipBall()
                 end
+                -- Reproducir sonido de equipar al cambiar de pelota en la mochila
+                if ballConfig.soundEquip then
+                    playClientSound(ballConfig.soundEquip, 0.6)
+                end
                 updateBackpackUI()
             end)
         else
@@ -1362,6 +1366,10 @@ local function updateBackpackUI()
                 selectedBallType = ballKey
                 if ballEquipped then
                     reEquipBall()
+                end
+                -- Reproducir sonido de equipar al comprar/seleccionar
+                if ballConfig.soundEquip then
+                    playClientSound(ballConfig.soundEquip, 0.6)
                 end
                 updateBackpackUI()
                 print("Pelota de " .. ballConfig.name .. " desbloqueada y seleccionada")
@@ -1381,6 +1389,7 @@ end)
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
 
 
