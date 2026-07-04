@@ -64,7 +64,9 @@ local BALL_TYPES = {
         transparency = 0,
         unlocked = false,
         cost = 10000,
-        description = "Mas rapida y dano x2"
+        description = "Mas rapida y dano x2",
+        soundEquip = "rbxassetid://129504465599355", -- sonido al equipar
+        soundThrow = "rbxassetid://130422645188028"  -- sonido al lanzar
     },
     -- Futuras: earth, air, water
 }
@@ -76,6 +78,17 @@ local selectedBallType = "basic"
 local cachedThrowAnim = Instance.new("Animation")
 cachedThrowAnim.AnimationId = "rbxassetid://90927250635352"
 local cachedTrack = nil
+
+-- Funcion helper para reproducir sonidos en el cliente
+local function playClientSound(soundId, volume)
+    local sound = Instance.new("Sound")
+    sound.SoundId = soundId
+    sound.Volume = volume or 0.5
+    sound.Parent = player:WaitForChild("PlayerGui")
+    sound:Play()
+    -- Auto-destruir despues de 5 segundos
+    Debris:AddItem(sound, 5)
+end
 
 -- GUI
 local screenGui = Instance.new("ScreenGui")
@@ -389,6 +402,10 @@ local function equipBall()
 
     ballEquipped = true
     updateButton()
+    -- Sonido al equipar (si la pelota tiene sonido)
+    if ballConfig.soundEquip then
+        playClientSound(ballConfig.soundEquip, 0.6)
+    end
 end
 
 local function unequipBall()
@@ -442,6 +459,10 @@ local function reEquipBall()
     weld.Part1 = ball
     weld.C0 = CFrame.new(0, 0, -1.0)
     weld.Parent = ball
+    -- Sonido al re-equipar despues de lanzar
+    if ballConfig.soundEquip then
+        playClientSound(ballConfig.soundEquip, 0.4)
+    end
 end
 
 local function throwBall()
@@ -474,6 +495,11 @@ local function throwBall()
 
     -- Obtener configuracion de la pelota seleccionada
     local ballConfig = BALL_TYPES[selectedBallType] or BALL_TYPES.basic
+
+    -- Sonido al lanzar (si la pelota tiene sonido)
+    if ballConfig.soundThrow then
+        playClientSound(ballConfig.soundThrow, 0.6)
+    end
 
     local ball = Instance.new("Part")
     ball.Name = "ThrownBall"
@@ -1171,7 +1197,7 @@ end)
 local backpackBtn = Instance.new("TextButton")
 backpackBtn.Name = "BackpackBtn"
 backpackBtn.Size = UDim2.new(0, 60, 0, 60)
-backpackBtn.Position = UDim2.new(0, 20, 1, -80)
+backpackBtn.Position = UDim2.new(0, 20, 1, -150)
 backpackBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
 backpackBtn.BorderSizePixel = 0
 backpackBtn.Text = "🎒"
@@ -1189,7 +1215,7 @@ backpackStroke.Parent = backpackBtn
 local backpackPanel = Instance.new("Frame")
 backpackPanel.Name = "BackpackPanel"
 backpackPanel.Size = UDim2.new(0, 400, 0, 350)
-backpackPanel.Position = UDim2.new(0, 90, 1, -360)
+backpackPanel.Position = UDim2.new(0, 90, 1, -430)
 backpackPanel.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
 backpackPanel.BackgroundTransparency = 0.05
 backpackPanel.BorderSizePixel = 0
@@ -1357,6 +1383,7 @@ end)
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
 
 
