@@ -34,6 +34,44 @@ local FuseCharactersEvent = ReplicatedStorage:WaitForChild("FuseCharacters", 15)
 local DepositCharacterEvent = ReplicatedStorage:WaitForChild("DepositCharacter", 15)
 local RemoveFromFusionSlotEvent = ReplicatedStorage:WaitForChild("RemoveFromFusionSlot", 15)
 
+-- ============================================
+-- CONFIGURACION DE PELOTAS
+-- ============================================
+local BALL_TYPES = {
+    basic = {
+        name = "Basica",
+        icon = "⚽",
+        color = Color3.fromRGB(100, 200, 255),
+        material = Enum.Material.SmoothPlastic,
+        damage = 1,
+        speed = 100,
+        gravity = 1.0, -- gravedad normal
+        bounce = true,
+        transparency = 0,
+        unlocked = true,
+        cost = 0,
+        description = "Pelota balanceada"
+    },
+    fire = {
+        name = "Fuego",
+        icon = "🔥",
+        color = Color3.fromRGB(255, 100, 30),
+        material = Enum.Material.Neon,
+        damage = 2,
+        speed = 120,
+        gravity = 0.3, -- gravedad baja (vuela mas recto)
+        bounce = false, -- no rebota, se extingue
+        transparency = 0,
+        unlocked = false,
+        cost = 10000,
+        description = "Mas rapida y dano x2"
+    },
+    -- Futuras: earth, air, water
+}
+
+-- Pelota seleccionada actualmente
+local selectedBallType = "basic"
+
 -- Animacion cacheada
 local cachedThrowAnim = Instance.new("Animation")
 cachedThrowAnim.AnimationId = "rbxassetid://90927250635352"
@@ -323,24 +361,25 @@ local function equipBall()
     local rightHand = char:FindFirstChild("RightHand") or char:FindFirstChild("Right Arm")
     if not rightHand then return end
 
+    -- Obtener configuracion de la pelota seleccionada
+    local ballConfig = BALL_TYPES[selectedBallType] or BALL_TYPES.basic
+
     -- Crear la pelota
     local ball = Instance.new("Part")
     ball.Name = "CrystalBall"
     ball.Size = Vector3.new(1.5, 1.5, 1.5)
     ball.Shape = Enum.PartType.Ball
-    ball.Color = Color3.fromRGB(100, 200, 255)
-    ball.Material = Enum.Material.SmoothPlastic
+    ball.Color = ballConfig.color
+    ball.Material = ballConfig.material
     ball.Anchored = false
     ball.CanCollide = false
     ball.Massless = true
-    -- Posicionar la pelota encima de la palma (la mano la sostiene desde abajo)
+    ball.Transparency = ballConfig.transparency
+    -- Posicionar la pelota en la punta de los dedos
     ball.Position = rightHand.Position + Vector3.new(0, 0, -1.0)
     ball.Parent = char
 
     -- Weld (no WeldConstraint) para poder ajustar el offset C0
-    -- C0 = posicion relativa de la pelota respecto a la mano
-    -- Y positivo = arriba de la palma (mano sostiene desde abajo)
-    -- Z negativo = ligero al frente para que se vea natural
     local weld = Instance.new("Weld")
     weld.Name = "BallWeld"
     weld.Part0 = rightHand
@@ -378,17 +417,21 @@ local function reEquipBall()
     local rightHand = char:FindFirstChild("RightHand") or char:FindFirstChild("Right Arm")
     if not rightHand then return end
 
+    -- Obtener configuracion de la pelota seleccionada
+    local ballConfig = BALL_TYPES[selectedBallType] or BALL_TYPES.basic
+
     -- Crear la pelota
     local ball = Instance.new("Part")
     ball.Name = "CrystalBall"
     ball.Size = Vector3.new(1.5, 1.5, 1.5)
     ball.Shape = Enum.PartType.Ball
-    ball.Color = Color3.fromRGB(100, 200, 255)
-    ball.Material = Enum.Material.SmoothPlastic
+    ball.Color = ballConfig.color
+    ball.Material = ballConfig.material
     ball.Anchored = false
     ball.CanCollide = false
     ball.Massless = true
-    -- Posicionar la pelota encima de la palma (la mano la sostiene desde abajo)
+    ball.Transparency = ballConfig.transparency
+    -- Posicionar la pelota en la punta de los dedos
     ball.Position = rightHand.Position + Vector3.new(0, 0, -1.0)
     ball.Parent = char
 
@@ -429,25 +472,53 @@ local function throwBall()
         end
     end
 
+    -- Obtener configuracion de la pelota seleccionada
+    local ballConfig = BALL_TYPES[selectedBallType] or BALL_TYPES.basic
+
     local ball = Instance.new("Part")
     ball.Name = "ThrownBall"
-    ball.Size = Vector3.new(1.5,1.5,1.5)
+    ball.Size = Vector3.new(1.5, 1.5, 1.5)
     ball.Shape = Enum.PartType.Ball
-    ball.Color = Color3.fromRGB(100,200,255)
-    ball.Material = Enum.Material.SmoothPlastic
-    ball.Anchored = false ball.CanCollide = true ball.Massless = false
-    ball.Position = root.Position + root.CFrame.LookVector*3 + Vector3.new(0,3,0)
-    ball.CustomPhysicalProperties = PhysicalProperties.new(0.5,0.3,1.0,0.3,1.0)
+    ball.Color = ballConfig.color
+    ball.Material = ballConfig.material
+    ball.Anchored = false
+    ball.CanCollide = true
+    ball.Massless = false
+    ball.Transparency = ballConfig.transparency
+    ball.Position = root.Position + root.CFrame.LookVector*3 + Vector3.new(0, 3, 0)
+    -- Fisicas personalizadas segun la pelota (gravedad, friccion, rebote)
+    -- gravity afecta el peso, bounce afecta el rebote
+    local gravity = ballConfig.gravity or 1.0
+    local bounce = ballConfig.bounce and 0.8 or 0.0 -- 0 = no rebota
+    ball.CustomPhysicalProperties = PhysicalProperties.new(0.5, 0.3, gravity, bounce, 1.0)
     ball.Parent = workspace
 
     local mouseHit = mouse.Hit
     if mouseHit then
         local direction = (mouseHit.Position - ball.Position).Unit
-        ball.AssemblyLinearVelocity = direction*100 + Vector3.new(0,20,0)
+        -- Velocidad segun la pelota + impulso vertical segun gravedad
+        -- Menos gravedad = menos impulso vertical (vuela mas recto)
+        local upImpulse = 20 * (ballConfig.gravity or 1.0)
+        ball.AssemblyLinearVelocity = direction * ballConfig.speed + Vector3.new(0, upImpulse, 0)
     end
 
+    -- Si la pelota no rebota (ej: fuego), destruirla al tocar el suelo
+    if not ballConfig.bounce then
+        local touchedConn
+        touchedConn = ball.Touched:Connect(function(hit)
+            -- Destruir al tocar cualquier cosa (suelo, pared, etc)
+            if ball and ball.Parent then
+                ball:Destroy()
+            end
+            if touchedConn then
+                touchedConn:Disconnect()
+            end
+        end)
+    end
+
+    -- Enviar tipo de pelota al servidor para calcular dano
     if ThrowBallEvent then
-        ThrowBallEvent:FireServer(mouseHit and mouseHit.Position or root.Position + root.CFrame.LookVector*20)
+        ThrowBallEvent:FireServer(mouseHit and mouseHit.Position or root.Position + root.CFrame.LookVector*20, selectedBallType)
     end
 
     activeBalls = activeBalls + 1
@@ -1093,9 +1164,200 @@ closeBtn.MouseButton1Click:Connect(function()
     fusionPanel.Visible = false
 end)
 
+-- ============================================
+-- MOCHILA / INVENTARIO DE PELOTAS
+-- ============================================
+-- Boton de mochila (izquierda, abajo)
+local backpackBtn = Instance.new("TextButton")
+backpackBtn.Name = "BackpackBtn"
+backpackBtn.Size = UDim2.new(0, 60, 0, 60)
+backpackBtn.Position = UDim2.new(0, 20, 1, -80)
+backpackBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+backpackBtn.BorderSizePixel = 0
+backpackBtn.Text = "🎒"
+backpackBtn.TextScaled = true
+backpackBtn.Parent = screenGui
+Instance.new("UICorner", backpackBtn).CornerRadius = UDim.new(0, 12)
+
+local backpackStroke = Instance.new("UIStroke")
+backpackStroke.Color = Color3.fromRGB(255, 215, 0)
+backpackStroke.Thickness = 2
+backpackStroke.Transparency = 0.3
+backpackStroke.Parent = backpackBtn
+
+-- Panel de mochila (se abre/cierra)
+local backpackPanel = Instance.new("Frame")
+backpackPanel.Name = "BackpackPanel"
+backpackPanel.Size = UDim2.new(0, 400, 0, 350)
+backpackPanel.Position = UDim2.new(0, 90, 1, -360)
+backpackPanel.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+backpackPanel.BackgroundTransparency = 0.05
+backpackPanel.BorderSizePixel = 0
+backpackPanel.Visible = false
+backpackPanel.ZIndex = 50
+backpackPanel.Parent = screenGui
+Instance.new("UICorner", backpackPanel).CornerRadius = UDim.new(0, 16)
+
+local bpStroke = Instance.new("UIStroke")
+bpStroke.Color = Color3.fromRGB(255, 215, 0)
+bpStroke.Thickness = 2
+bpStroke.Transparency = 0.2
+bpStroke.Parent = backpackPanel
+
+-- Titulo
+local bpTitle = Instance.new("TextLabel")
+bpTitle.Size = UDim2.new(1, 0, 0, 35)
+bpTitle.BackgroundTransparency = 1
+bpTitle.Text = "PELOTAS"
+bpTitle.TextColor3 = Color3.fromRGB(255, 215, 0)
+bpTitle.TextScaled = true
+bpTitle.Font = Enum.Font.GothamBlack
+bpTitle.ZIndex = 51
+bpTitle.Parent = backpackPanel
+
+-- Contenedor de pelotas (scrollable)
+local bpScroll = Instance.new("ScrollingFrame")
+bpScroll.Size = UDim2.new(1, -20, 1, -45)
+bpScroll.Position = UDim2.new(0, 10, 0, 40)
+bpScroll.BackgroundTransparency = 1
+bpScroll.ScrollBarThickness = 6
+bpScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+bpScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+bpScroll.ZIndex = 51
+bpScroll.Parent = backpackPanel
+
+local bpListLayout = Instance.new("UIListLayout")
+bpListLayout.Padding = UDim.new(0, 8)
+bpListLayout.Parent = bpScroll
+
+-- Funcion para actualizar la mochila
+local function updateBackpackUI()
+    -- Limpiar lista anterior
+    for _, child in ipairs(bpScroll:GetChildren()) do
+        if child:IsA("Frame") then child:Destroy() end
+    end
+
+    -- Crear card por cada pelota
+    for ballKey, ballConfig in pairs(BALL_TYPES) do
+        local card = Instance.new("Frame")
+        card.Name = "Card_" .. ballKey
+        card.Size = UDim2.new(1, -10, 0, 70)
+        card.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+        card.BorderSizePixel = 0
+        card.ZIndex = 52
+        card.Parent = bpScroll
+        Instance.new("UICorner", card).CornerRadius = UDim.new(0, 10)
+
+        -- Color del borde segun si esta seleccionada o no
+        local cardStroke = Instance.new("UIStroke")
+        if selectedBallType == ballKey then
+            cardStroke.Color = Color3.fromRGB(80, 220, 80) -- verde = seleccionada
+            cardStroke.Thickness = 3
+        else
+            cardStroke.Color = ballConfig.color
+            cardStroke.Thickness = 2
+        end
+        cardStroke.Transparency = 0.2
+        cardStroke.Parent = card
+
+        -- Icono de la pelota
+        local iconLabel = Instance.new("TextLabel")
+        iconLabel.Size = UDim2.new(0, 50, 1, -10)
+        iconLabel.Position = UDim2.new(0, 5, 0, 5)
+        iconLabel.BackgroundTransparency = 1
+        iconLabel.Text = ballConfig.icon
+        iconLabel.TextScaled = true
+        iconLabel.ZIndex = 53
+        iconLabel.Parent = card
+
+        -- Info de la pelota
+        local infoLabel = Instance.new("TextLabel")
+        infoLabel.Size = UDim2.new(1, -120, 1, -10)
+        infoLabel.Position = UDim2.new(0, 60, 0, 5)
+        infoLabel.BackgroundTransparency = 1
+        infoLabel.Text = ""
+        infoLabel.RichText = true
+        infoLabel.TextXAlignment = Enum.TextXAlignment.Left
+        infoLabel.TextYAlignment = Enum.TextYAlignment.Center
+        infoLabel.ZIndex = 53
+        infoLabel.Parent = card
+
+        -- Estado: desbloqueada o bloqueada
+        if ballConfig.unlocked then
+            infoLabel.Text = '<font color="#FFFFFF">' .. ballConfig.name .. '</font>\n<font color="#81C784">Dano: ' .. ballConfig.damage .. '</font>  <font color="#B0BEC5">' .. ballConfig.description .. '</font>'
+        else
+            infoLabel.Text = '<font color="#999999">' .. ballConfig.name .. '</font> 🔒\n<font color="#FFD700">$' .. ballConfig.cost .. '</font>  <font color="#666666">' .. ballConfig.description .. '</font>'
+        end
+        infoLabel.TextScaled = true
+        infoLabel.Font = Enum.Font.GothamBold
+
+        -- Boton para seleccionar / comprar
+        local actionBtn = Instance.new("TextButton")
+        actionBtn.Size = UDim2.new(0, 60, 0, 30)
+        actionBtn.Position = UDim2.new(1, -65, 0.5, -15)
+        actionBtn.BorderSizePixel = 0
+        actionBtn.Text = ""
+        actionBtn.ZIndex = 53
+        actionBtn.Parent = card
+        Instance.new("UICorner", actionBtn).CornerRadius = UDim.new(0, 6)
+
+        if ballConfig.unlocked then
+            -- Ya desbloqueada: boton para seleccionar
+            if selectedBallType == ballKey then
+                actionBtn.BackgroundColor3 = Color3.fromRGB(80, 220, 80)
+                actionBtn.Text = "✓"
+                actionBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+            else
+                actionBtn.BackgroundColor3 = Color3.fromRGB(60, 100, 200)
+                actionBtn.Text = "Usar"
+                actionBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+            end
+            actionBtn.Font = Enum.Font.GothamBold
+            actionBtn.TextScaled = true
+
+            actionBtn.MouseButton1Click:Connect(function()
+                selectedBallType = ballKey
+                -- Si la pelota esta equipada, re-equipar con el nuevo tipo
+                if ballEquipped then
+                    reEquipBall()
+                end
+                updateBackpackUI()
+            end)
+        else
+            -- Bloqueada: boton para comprar
+            actionBtn.BackgroundColor3 = Color3.fromRGB(255, 180, 50)
+            actionBtn.Text = "Comprar"
+            actionBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
+            actionBtn.Font = Enum.Font.GothamBold
+            actionBtn.TextScaled = true
+
+            actionBtn.MouseButton1Click:Connect(function()
+                -- Por ahora, desbloquear gratis para testear
+                -- En el futuro se validara el dinero del servidor
+                BALL_TYPES[ballKey].unlocked = true
+                selectedBallType = ballKey
+                if ballEquipped then
+                    reEquipBall()
+                end
+                updateBackpackUI()
+                print("Pelota de " .. ballConfig.name .. " desbloqueada y seleccionada")
+            end)
+        end
+    end
+end
+
+-- Toggle mochila
+backpackBtn.MouseButton1Click:Connect(function()
+    backpackPanel.Visible = not backpackPanel.Visible
+    if backpackPanel.Visible then
+        updateBackpackUI()
+    end
+end)
+
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
 
 
