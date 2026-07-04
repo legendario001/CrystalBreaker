@@ -459,10 +459,8 @@ local function reEquipBall()
     weld.Part1 = ball
     weld.C0 = CFrame.new(0, 0, -1.0)
     weld.Parent = ball
-    -- Sonido al re-equipar despues de lanzar
-    if ballConfig.soundEquip then
-        playClientSound(ballConfig.soundEquip, 0.4)
-    end
+    -- NO reproducir sonido aqui (reEquipBall es automatico despues de lanzar)
+    -- El sonido de equipar solo suena cuando el jugador lo elige (mochila o tecla 1)
 end
 
 local function throwBall()
@@ -1383,6 +1381,7 @@ end)
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
 
 
