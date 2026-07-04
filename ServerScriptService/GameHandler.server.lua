@@ -444,7 +444,7 @@ local function setupUpgradeButtonEvents(pedestal, upgradeBtn, charIdx)
 end
 
 -- THROW BALL
-Events.ThrowBall.OnServerEvent:Connect(function(player, targetPos)
+Events.ThrowBall.OnServerEvent:Connect(function(player, targetPos, ballType)
     if throwCooldowns[player.UserId] then return end
     throwCooldowns[player.UserId] = true
     task.delay(0.4, function() throwCooldowns[player.UserId] = nil end)
@@ -484,8 +484,13 @@ Events.ThrowBall.OnServerEvent:Connect(function(player, targetPos)
             return
         end
 
-        -- Quitar 1 de vida
-        local DAMAGE = 1
+        -- Calcular dano segun el tipo de pelota
+        local BALL_DAMAGE = {
+            basic = 1,
+            fire = 2,
+            -- Futuras: earth = 3, air = 1, water = 2
+        }
+        local DAMAGE = BALL_DAMAGE[ballType] or 1
         hpObj.Value = hpObj.Value - DAMAGE
 
         -- Actualizar barra de vida
@@ -1440,6 +1445,7 @@ task.delay(3, function()
 end)
 
 print("=== GameHandler iniciado ===")
+
 
 
 
