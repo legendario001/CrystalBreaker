@@ -409,6 +409,7 @@ local function equipBall()
 
     ballEquipped = true
     updateButton()
+    updateUI()
     -- Sonido al equipar (si la pelota tiene sonido)
     if ballConfig.soundEquip then
         playClientSound(ballConfig.soundEquip, 0.6)
@@ -424,6 +425,7 @@ local function unequipBall()
     end
     ballEquipped = false
     updateButton()
+    updateUI()
 end
 
 -- Re-equipar la pelota en la mano (sin el check de ballEquipped)
@@ -484,6 +486,8 @@ local function throwBall()
     -- Quitar la pelota de la mano durante el lanzamiento
     local handBall = char:FindFirstChild("CrystalBall")
     if handBall then handBall:Destroy() end
+    -- Ocultar boton de lanzar mientras la pelota esta en el aire
+    if throwBtn then throwBtn.Visible = false end
 
     -- OPTIMIZADO: reusar track cacheado
     if humanoid then
@@ -560,6 +564,8 @@ local function throwBall()
     task.delay(0.5, function()
         if ballEquipped and not isCarrying then
             reEquipBall()
+            -- Volver a mostrar el boton de lanzar
+            if throwBtn then throwBtn.Visible = true end
         end
     end)
 
