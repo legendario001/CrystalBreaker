@@ -457,13 +457,38 @@ Events.ThrowBall.OnServerEvent:Connect(function(player, targetPos, ballType)
         local zone = map:FindFirstChild("CrystalZone")
         if not zone then return end
 
-        local nearest, nearDist = nil, 15
+        -- Buscar cristal cercano a donde apunto el jugador (radio amplio)
+        local nearest, nearDist = nil, 25
         for _, c in ipairs(zone:GetChildren()) do
             if c.Name == "Crystal" then
                 local d = (c.Position - targetPos).Magnitude
                 if d < nearDist then nearDist=d nearest=c end
             end
         end
+
+        -- Si no encontro cristal cerca de targetPos, buscar el mas cercano al jugador
+        -- (en movil a veces la punteria no es precisa)
+        if not nearest then
+            local playerChar = player.Character
+            if playerChar then
+                local playerRoot = playerChar:FindFirstChild("HumanoidRootPart")
+                if playerRoot then
+                    local playerPos = playerRoot.Position
+                    local nearestToPlayer, nearestDistP = nil, 60
+                    for _, c in ipairs(zone:GetChildren()) do
+                        if c.Name == "Crystal" then
+                            local d = (c.Position - playerPos).Magnitude
+                            if d < nearestDistP then nearestDistP=d nearestToPlayer=c end
+                        end
+                    end
+                    -- Si hay un cristal cerca del jugador, usarlo (simular que lo golpeo)
+                    if nearestToPlayer then
+                        nearest = nearestToPlayer
+                    end
+                end
+            end
+        end
+
         if not nearest then return end
 
         local rt = nearest:FindFirstChild("Rarity")
@@ -1445,6 +1470,7 @@ task.delay(3, function()
 end)
 
 print("=== GameHandler iniciado ===")
+
 
 
 
