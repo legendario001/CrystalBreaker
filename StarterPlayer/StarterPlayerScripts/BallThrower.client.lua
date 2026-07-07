@@ -657,20 +657,22 @@ local function getTouchWorldPosition(touchPosition)
 end
 
 -- Detectar toques en la pantalla (movil)
--- NO usar 'processed' ni GetGuiObjectsAtPosition porque los frames transparentes
--- de la UI absorben el toque y marcan processed=true, bloqueando el 80% de la pantalla
-UserInputService.TouchTap:Connect(function(touchPositions, processed)
+-- Usar TouchStart en vez de TouchTap para que NO pause el movimiento del jugador
+-- TouchTap se dispara al levantar el dedo (pausa el personaje), TouchStart es instantaneo
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    -- Solo procesar toques en pantalla (movil)
+    if input.UserInputType ~= Enum.UserInputType.Touch then return end
     if not ballEquipped or isCarrying then return end
     if touchDebounce or throwDebounce then return end
-    if not touchPositions or #touchPositions == 0 then return end
 
     touchDebounce = true
     -- Obtener la posicion 3D donde se toco
-    local touchPos = touchPositions[1]
+    local touchPos = input.Position
     local targetPos = getTouchWorldPosition(touchPos)
     throwBall(targetPos)
-    task.wait(0.5)
-    touchDebounce = false
+    task.delay(0.5, function()
+        touchDebounce = false
+    end)
 end)
 
 -- Para PC: el click del mouse ya funciona con el handler de InputBegan existente
@@ -1434,6 +1436,7 @@ end)
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
 
 
