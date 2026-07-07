@@ -66,7 +66,8 @@ local BALL_TYPES = {
         cost = 10000,
         description = "Mas rapida y dano x2",
         soundEquip = "rbxassetid://129504465599355", -- sonido al equipar
-        soundThrow = "rbxassetid://130422645188028"  -- sonido al lanzar
+        soundThrow = "rbxassetid://130422645188028", -- sonido al lanzar
+        modelName = "FireBallModel" -- modelo 3D personalizado en ReplicatedStorage
     },
     -- Futuras: earth, air, water
 }
@@ -358,6 +359,63 @@ RunService.Heartbeat:Connect(function(dt)
     end
 end)
 
+-- ============================================
+-- HELPER: Crear pelota desde modelo 3D o Part simple
+-- Si la pelota tiene modelName, busca el modelo en ReplicatedStorage
+-- Retorna: (objeto, mainPart) donde objeto puede ser Model o Part
+-- ============================================
+local function createBallObject(ballConfig)
+    local template = nil
+    if ballConfig.modelName then
+        template = ReplicatedStorage:FindFirstChild(ballConfig.modelName)
+    end
+
+    if template then
+        -- Clonar el modelo 3D personalizado
+        local obj = template:Clone()
+        obj.Name = "CrystalBall"
+
+        -- Encontrar la parte principal (PrimaryPart, Handle, o primera BasePart)
+        local mainPart = obj.PrimaryPart or obj:FindFirstChild("Handle") or obj:FindFirstChildWhichIsA("BasePart")
+        if not mainPart then
+            obj:Destroy()
+            template = nil -- fallback a Part simple
+        else
+            -- Configurar todas las partes del modelo
+            for _, desc in ipairs(obj:GetDescendants()) do
+                if desc:IsA("BasePart") then
+                    desc.Anchored = false
+                    desc.CanCollide = false
+                    desc.CanQuery = false
+                    desc.Massless = true
+                end
+            end
+            -- Si el propio objeto es una Part (no un Model)
+            if obj:IsA("BasePart") then
+                obj.Anchored = false
+                obj.CanCollide = false
+                obj.CanQuery = false
+                obj.Massless = true
+                mainPart = obj
+            end
+            return obj, mainPart
+        end
+    end
+
+    -- Fallback: crear Part simple
+    local ball = Instance.new("Part")
+    ball.Name = "CrystalBall"
+    ball.Size = Vector3.new(1.5, 1.5, 1.5)
+    ball.Shape = Enum.PartType.Ball
+    ball.Color = ballConfig.color
+    ball.Material = ballConfig.material
+    ball.Anchored = false
+    ball.CanCollide = false
+    ball.Massless = true
+    ball.Transparency = ballConfig.transparency
+    return ball, ball
+end
+
 -- BALL SYSTEM
 -- En vez de usar Tool (que fuerza la pose del brazo), usamos un Weld
 -- directo a la mano derecha. Asi el brazo se ve natural y la pelota se ve sostenida.
@@ -377,26 +435,17 @@ local function equipBall()
     -- Obtener configuracion de la pelota seleccionada
     local ballConfig = BALL_TYPES[selectedBallType] or BALL_TYPES.basic
 
-    -- Crear la pelota
-    local ball = Instance.new("Part")
-    ball.Name = "CrystalBall"
-    ball.Size = Vector3.new(1.5, 1.5, 1.5)
-    ball.Shape = Enum.PartType.Ball
-    ball.Color = ballConfig.color
-    ball.Material = ballConfig.material
-    ball.Anchored = false
-    ball.CanCollide = false
-    ball.Massless = true
-    ball.Transparency = ballConfig.transparency
+    -- Crear la pelota (modelo 3D o Part simple)
+    local ball, mainPart = createBallObject(ballConfig)
     -- Posicionar la pelota en la punta de los dedos
-    ball.Position = rightHand.Position + Vector3.new(0, 0, -1.0)
+    mainPart.Position = rightHand.Position + Vector3.new(0, 0, -1.0)
     ball.Parent = char
 
     -- Weld (no WeldConstraint) para poder ajustar el offset C0
     local weld = Instance.new("Weld")
     weld.Name = "BallWeld"
     weld.Part0 = rightHand
-    weld.Part1 = ball
+    weld.Part1 = mainPart
     weld.C0 = CFrame.new(0, 0, -1.0)
     weld.Parent = ball
 
@@ -439,26 +488,17 @@ local function reEquipBall()
     -- Obtener configuracion de la pelota seleccionada
     local ballConfig = BALL_TYPES[selectedBallType] or BALL_TYPES.basic
 
-    -- Crear la pelota
-    local ball = Instance.new("Part")
-    ball.Name = "CrystalBall"
-    ball.Size = Vector3.new(1.5, 1.5, 1.5)
-    ball.Shape = Enum.PartType.Ball
-    ball.Color = ballConfig.color
-    ball.Material = ballConfig.material
-    ball.Anchored = false
-    ball.CanCollide = false
-    ball.Massless = true
-    ball.Transparency = ballConfig.transparency
+    -- Crear la pelota (modelo 3D o Part simple)
+    local ball, mainPart = createBallObject(ballConfig)
     -- Posicionar la pelota en la punta de los dedos
-    ball.Position = rightHand.Position + Vector3.new(0, 0, -1.0)
+    mainPart.Position = rightHand.Position + Vector3.new(0, 0, -1.0)
     ball.Parent = char
 
     -- Weld (no WeldConstraint) para poder ajustar el offset C0
     local weld = Instance.new("Weld")
     weld.Name = "BallWeld"
     weld.Part0 = rightHand
-    weld.Part1 = ball
+    weld.Part1 = mainPart
     weld.C0 = CFrame.new(0, 0, -1.0)
     weld.Parent = ball
     -- NO reproducir sonido aqui (reEquipBall es automatico despues de lanzar)
@@ -501,22 +541,42 @@ local function throwBall(targetPosition)
         playClientSound(ballConfig.soundThrow, 0.6)
     end
 
-    local ball = Instance.new("Part")
+    -- Crear la pelota lanzada (modelo 3D o Part simple)
+    local ball, mainPart = createBallObject(ballConfig)
     ball.Name = "ThrownBall"
-    ball.Size = Vector3.new(1.5, 1.5, 1.5)
-    ball.Shape = Enum.PartType.Ball
-    ball.Color = ballConfig.color
-    ball.Material = ballConfig.material
-    ball.Anchored = false
-    ball.CanCollide = true
-    ball.Massless = false
-    ball.Transparency = ballConfig.transparency
-    ball.Position = root.Position + root.CFrame.LookVector*3 + Vector3.new(0, 3, 0)
+    -- Configurar para fisica de lanzamiento (puede colisionar)
+    if mainPart:IsA("BasePart") then
+        mainPart.Anchored = false
+        mainPart.CanCollide = true
+        mainPart.CanQuery = true
+        mainPart.Massless = false
+        -- Configurar todas las partes del modelo si es un Model
+        for _, desc in ipairs(ball:GetDescendants()) do
+            if desc:IsA("BasePart") and desc ~= mainPart then
+                desc.Anchored = false
+                desc.CanCollide = false
+                desc.CanQuery = false
+                desc.Massless = true
+                -- Weld partes secundarias al mainPart para que se muevan juntas
+                local w = Instance.new("WeldConstraint")
+                w.Part0 = mainPart
+                w.Part1 = desc
+                w.Parent = desc
+            end
+        end
+    end
+    -- Si es una Part simple (no Model), configurar directamente
+    if ball:IsA("BasePart") then
+        ball.Anchored = false
+        ball.CanCollide = true
+        ball.CanQuery = true
+        ball.Massless = false
+    end
+    mainPart.Position = root.Position + root.CFrame.LookVector*3 + Vector3.new(0, 3, 0)
     -- Fisicas personalizadas segun la pelota (gravedad, friccion, rebote)
-    -- gravity afecta el peso, bounce afecta el rebote
     local gravity = ballConfig.gravity or 1.0
-    local bounce = ballConfig.bounce and 0.8 or 0.0 -- 0 = no rebota
-    ball.CustomPhysicalProperties = PhysicalProperties.new(0.5, 0.3, gravity, bounce, 1.0)
+    local bounce = ballConfig.bounce and 0.8 or 0.0
+    mainPart.CustomPhysicalProperties = PhysicalProperties.new(0.5, 0.3, gravity, bounce, 1.0)
     ball.Parent = workspace
 
     -- Calcular direccion: usar targetPosition (toque movil) o mouse.Hit (PC)
@@ -527,11 +587,9 @@ local function throwBall(targetPosition)
     end
 
     if aimPos then
-        local direction = (aimPos - ball.Position).Unit
-        -- Velocidad segun la pelota + impulso vertical segun gravedad
-        -- Menos gravedad = menos impulso vertical (vuela mas recto)
+        local direction = (aimPos - mainPart.Position).Unit
         local upImpulse = 20 * (ballConfig.gravity or 1.0)
-        ball.AssemblyLinearVelocity = direction * ballConfig.speed + Vector3.new(0, upImpulse, 0)
+        mainPart.AssemblyLinearVelocity = direction * ballConfig.speed + Vector3.new(0, upImpulse, 0)
     end
 
     -- NO enviar ThrowBallEvent aqui - solo se envia cuando la pelota
@@ -542,7 +600,7 @@ local function throwBall(targetPosition)
     -- Esto funciona tanto en PC como en movil, de cerca y de lejos
     local ballHitSent = false
     local ballTouchedConn
-    ballTouchedConn = ball.Touched:Connect(function(hit)
+    ballTouchedConn = mainPart.Touched:Connect(function(hit)
         if ballHitSent then return end
         -- Verificar si toco un cristal
         if hit.Name == "Crystal" then
@@ -562,7 +620,7 @@ local function throwBall(targetPosition)
     -- Si la pelota no rebota (ej: fuego), destruirla al tocar el suelo
     if not ballConfig.bounce then
         local touchedConn
-        touchedConn = ball.Touched:Connect(function(hit)
+        touchedConn = mainPart.Touched:Connect(function(hit)
             -- Destruir al tocar cualquier cosa (suelo, pared, etc)
             if ball and ball.Parent then
                 ball:Destroy()
@@ -1780,6 +1838,7 @@ end)
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
 
 
