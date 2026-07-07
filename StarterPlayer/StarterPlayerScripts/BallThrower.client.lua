@@ -723,6 +723,7 @@ local function createMobileButton(name, icon)
     btn.TextScaled = true
     btn.Font = Enum.Font.GothamBlack
     btn.Visible = false
+    btn.ZIndex = 100 -- ZIndex alto para que aparezca encima del panel de fusion (ZIndex 50)
     btn.Parent = screenGui
     Instance.new("UICorner", btn).CornerRadius = UDim.new(1, 0)
 
@@ -733,8 +734,7 @@ local function createMobileButton(name, icon)
     stroke.Transparency = 0.1
     stroke.Parent = btn
 
-    -- TextStroke blanco para que el icono se vea sobre cualquier fondo
-    -- (texto negro con outline blanco = se ve en cualquier color)
+    -- Outline blanco para que el icono se vea sobre cualquier fondo
     local textStroke = Instance.new("UIStroke")
     textStroke.Name = "TextOutline"
     textStroke.Color = Color3.fromRGB(255, 255, 255)
@@ -750,14 +750,18 @@ end
 local interactBtn = nil
 -- Boton de mejora de personaje (F)
 local upgradeMobBtn = nil
+-- Boton de mejora de base (H)
+local baseUpgradeMobBtn = nil
 
 if isMobile then
     interactBtn = createMobileButton("MobInteractBtn", "👆")
     upgradeMobBtn = createMobileButton("MobUpgradeBtn", "⬆️")
+    baseUpgradeMobBtn = createMobileButton("MobBaseUpgradeBtn", "🏰")
 end
 
 local interactDebounce = false
 local upgradeMobDebounce = false
+local baseUpgradeMobDebounce = false
 
 -- Accion del boton de interaccion (mismo que presionar E)
 if interactBtn then
@@ -801,6 +805,19 @@ if upgradeMobBtn then
     end)
 end
 
+-- Accion del boton de mejorar base (mismo que presionar H)
+if baseUpgradeMobBtn then
+    baseUpgradeMobBtn.MouseButton1Click:Connect(function()
+        if baseUpgradeMobDebounce then return end
+        baseUpgradeMobDebounce = true
+        if UpgradeBaseEvent then
+            UpgradeBaseEvent:FireServer()
+        end
+        task.wait(0.5)
+        baseUpgradeMobDebounce = false
+    end)
+end
+
 -- ============================================
 -- DETECCION DE PROXIMIDAD para mostrar los botones en movil
 -- Posiciona los botones cerca del objeto 3D usando WorldToViewportPoint
@@ -813,12 +830,14 @@ if isMobile then
             if not char then
                 if interactBtn then interactBtn.Visible = false end
                 if upgradeMobBtn then upgradeMobBtn.Visible = false end
+                if baseUpgradeMobBtn then baseUpgradeMobBtn.Visible = false end
                 continue
             end
             local root = char:FindFirstChild("HumanoidRootPart")
             if not root then
                 if interactBtn then interactBtn.Visible = false end
                 if upgradeMobBtn then upgradeMobBtn.Visible = false end
+                if baseUpgradeMobBtn then baseUpgradeMobBtn.Visible = false end
                 continue
             end
 
@@ -826,8 +845,10 @@ if isMobile then
             local camera = workspace.CurrentCamera
             local showInteract = false
             local showUpgrade = false
+            local showBaseUpgrade = false
             local interactScreenPos = nil
             local upgradeScreenPos = nil
+            local baseUpgradeScreenPos = nil
 
             -- 1. Verificar cofres cerca (solo si no esta cargando)
             if not isCarrying then
@@ -935,13 +956,38 @@ if isMobile then
                 end
             end
 
-            -- 4. Verificar maquina de fusion (solo si esta cargando)
-            if not showInteract and isCarrying then
+            -- 4. Verificar maquina de fusion (siempre que este cerca, cargando o no)
+            if not showInteract then
                 local FUSION_MACHINE_CENTER = Vector3.new(-142.3, 10.8, 11.0)
                 local dist = (playerPos - FUSION_MACHINE_CENTER).Magnitude
                 if dist < 20 then
-                    showInteract = true
-                    interactScreenPos = camera:WorldToViewportPoint(FUSION_MACHINE_CENTER)
+                    -- Solo mostrar el boton de interaccion si esta cargando (para depositar)
+                    -- Si no esta cargando, el panel de fusion ya muestra la info
+                    if isCarrying then
+                        showInteract = true
+                        interactScreenPos = camera:WorldToViewportPoint(FUSION_MACHINE_CENTER)
+                    end
+                end
+            end
+
+            -- 5. Verificar boton de mejora de base (BaseUpgradeButton)
+            if not showBaseUpgrade then
+                local map = workspace:FindFirstChild("Map")
+                if map then
+                    local bases = map:FindFirstChild("Bases")
+                    if bases then
+                        for _, base in ipairs(bases:GetChildren()) do
+                            if showBaseUpgrade then break end
+                            local baseUpgradeBtn3D = base:FindFirstChild("BaseUpgradeButton")
+                            if baseUpgradeBtn3D then
+                                local d = (baseUpgradeBtn3D.Position - playerPos).Magnitude
+                                if d < 12 then
+                                    showBaseUpgrade = true
+                                    baseUpgradeScreenPos = camera:WorldToViewportPoint(baseUpgradeBtn3D.Position)
+                                end
+                            end
+                        end
+                    end
                 end
             end
 
@@ -949,7 +995,6 @@ if isMobile then
             if interactBtn then
                 if showInteract and interactScreenPos and interactScreenPos.Z > 0 then
                     interactBtn.Visible = true
-                    -- Posicionar el boton en la pantalla donde esta el objeto 3D
                     interactBtn.Position = UDim2.new(0, interactScreenPos.X - 30, 0, interactScreenPos.Y - 30)
                 else
                     interactBtn.Visible = false
@@ -962,6 +1007,15 @@ if isMobile then
                     upgradeMobBtn.Position = UDim2.new(0, upgradeScreenPos.X - 30, 0, upgradeScreenPos.Y - 30)
                 else
                     upgradeMobBtn.Visible = false
+                end
+            end
+
+            if baseUpgradeMobBtn then
+                if showBaseUpgrade and baseUpgradeScreenPos and baseUpgradeScreenPos.Z > 0 then
+                    baseUpgradeMobBtn.Visible = true
+                    baseUpgradeMobBtn.Position = UDim2.new(0, baseUpgradeScreenPos.X - 30, 0, baseUpgradeScreenPos.Y - 30)
+                else
+                    baseUpgradeMobBtn.Visible = false
                 end
             end
         end
@@ -1726,6 +1780,7 @@ end)
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
 
 
