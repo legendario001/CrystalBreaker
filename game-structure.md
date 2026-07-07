@@ -11,8 +11,8 @@
 | Campo | Valor |
 |-------|-------|
 | **Nombre del proyecto** | CrystalBreaker |
-| **Versión actual** | 1.5.0 |
-| **Última actualización** | 2026-06-29 |
+| **Versión actual** | 1.7.0 |
+| **Última actualización** | 2026-07-08 |
 | **Repositorio GitHub** | `legendario001/CrystalBreaker` |
 | **Plataforma** | Roblox (Luau) |
 | **Tipo de juego** | Tycoon / Colección de personajes |
@@ -32,6 +32,8 @@ CrystalBreaker/
 │   └── GameHandler.server.lua              (Script - lógica principal del servidor)
 │
 ├── ServerStorage/
+│   ├── CofreModel/                         (Part+Mesh - modelo 3D de cofre)
+│   ├── CrystalShardModel/                  (Part+Mesh - modelo 3D de fragmento de cristal)
 │   ├── ServerModules/
 │   │   ├── BaseManager.lua                 (ModuleScript - asignación de bases)
 │   │   ├── BaseUpgradeManager.lua          (ModuleScript - mejora de bases/pisos)
@@ -59,7 +61,12 @@ CrystalBreaker/
 │   └── BuildMap.lua                        (Script de Command Bar - crea el mapa completo)
 │
 └── Workspace/
-    └── Map/                                (Folder - generado por BuildMap.lua)
+    ├── Map/                                (Folder - generado por BuildMap.lua)
+    └── Maquina/                            (Folder - modelo de fusión del usuario)
+        └── FusionMachine/                  (Model - máquina de fusión visual)
+            ├── TextBlockA/                 (Part - etiqueta "Block A Fusion Chamber")
+            ├── TextBlockB/                 (Part - etiqueta "Block B Fusion Chamber")
+            └── TexFusedItem/               (Part - etiqueta "Fused Item Collection")
         ├── Floor                           (suelo principal)
         ├── WallNorth/South/East/West       (paredes del mapa)
         ├── CrystalZone                     (zona de cristales)
@@ -224,6 +231,11 @@ CrystalBreaker/
 | **MoneyUpdate** | RemoteEvent | `ReplicatedStorage` | GameHandler → BallThrower | Servidor envía dinero actualizado al cliente |
 | **UpgradeCharacter** | RemoteEvent | `ReplicatedStorage` | BallThrower → GameHandler | Mejorar personaje (tecla F o click) |
 | **UpgradeBase** | RemoteEvent | `ReplicatedStorage` | BallThrower → GameHandler | Mejorar base (tecla H o click) |
+| **ChestOpen** | RemoteEvent | `ReplicatedStorage` | GameHandler → BallThrower | Servidor avisa al cliente para animación de apertura de cofre |
+| **FusionUIUpdate** | RemoteEvent | `ReplicatedStorage` | GameHandler → BallThrower | Servidor envía estado de slots de fusión al cliente |
+| **DepositCharacter** | RemoteEvent | `ReplicatedStorage` | BallThrower → GameHandler | Depositar personaje en slot de fusión (tecla E) |
+| **RemoveFromFusionSlot** | RemoteEvent | `ReplicatedStorage` | BallThrower → GameHandler | Quitar personaje de slot de fusión (click en slot) |
+| **FuseCharacters** | RemoteEvent | `ReplicatedStorage` | BallThrower → GameHandler | Fusionar 2 personajes idénticos |
 
 ---
 
@@ -330,7 +342,12 @@ BuildMap (Command Bar, una sola vez)
 |--------|----|----|
 | Recoger dinero | `rbxassetid://79392333090964` | Al caminar sobre MoneyPile |
 | Mejorar personaje | `rbxassetid://203620899` | Al subir nivel de personaje |
-| Romper cristal | `rbxassetid://124054125419097` | Al romper un cristal con pelota |
+| Romper cristal (4 aleatorios) | `rbxassetid://124054125419097`, `138817960173178`, `129395018150183`, `92650188901933` | Al golpear cristal con pelota |
+| Abrir cofre | `rbxassetid://116517233858315` | Animación de apertura de cofre (6.56s) |
+| Cerca de máquina de fusión | `rbxassetid://86261914368076` | Al acercarse a la máquina de fusión |
+| Activar fusión | `rbxassetid://5509750509` | Al hacer click en botón FUSIONAR |
+| Equipar pelota de fuego | `rbxassetid://129504465599355` | Al equipar/cambiar a pelota de fuego |
+| Lanzar pelota de fuego | `rbxassetid://130422645188028` | Al lanzar pelota de fuego |
 
 ### Animaciones
 | Animación | ID | Uso |
@@ -369,10 +386,11 @@ BuildMap (Command Bar, una sola vez)
 - [ ] Sistema de codes/redención
 - [ ] Sistema de anti-cheat robusto
 - [ ] Música de fondo
-- [ ] Efectos visuales al mejorar/romper
 - [ ] Sistema de recompensas diarias
 - [ ] Tienda para comprar con dinero del juego
-- [ ] Sistema de fusión de personajes
+- [ ] Pelotas de Tierra, Aire y Agua (solo Básica y Fuego implementadas)
+- [ ] Modelos 3D personalizados para cada pelota
+- [ ] Costos reales de pelotas (actualmente gratis para testear)
 
 ### En desarrollo:
 - [ ] Ajustar costos reales de mejora de base (actualmente TEST: $10, $25, $50, $100)
@@ -412,6 +430,34 @@ BuildMap (Command Bar, una sola vez)
 - ✅ Fix: cristales dejan de funcionar (nearest.Color después de Destroy)
 - ✅ Fix: base ownership check en todas las interacciones
 - ✅ Fix: carry tool solo se destruye después de confirmar pedestal
+
+### Versión 1.7.0 (2026-07-08)
+- ✅ Soporte móvil completo: toque en pantalla para lanzar pelota
+- ✅ Detección física de cristales (la pelota toca el cristal para dañarlo)
+- ✅ Mochila de pelotas con UI (básica + fuego)
+- ✅ Pelota de fuego (daño x2, velocidad 120, no rebota, Neon, gravedad baja)
+- ✅ Sonidos de equipar y lanzar para pelota de fuego
+- ✅ Soporte móvil: lanzar sin pausar movimiento (InputBegan + Touch)
+
+### Versión 1.6.0 (2026-07-05)
+- ✅ Sistema de vida de cristales (Blanco=2, Azul=4, Amarillo=6, Rojo=8, Morado=10)
+- ✅ Barra de vida visual con colores dinámicos (verde→amarillo→rojo)
+- ✅ 4 sonidos aleatorios al romper cristales
+- ✅ Efecto visual de cristal rompiéndose (CrystalShardModel 3D)
+- ✅ Fragmentos con color del cristal roto (SurfaceAppearance eliminado)
+- ✅ Cofres 3D personalizados (CofreModel) que aparecen en el suelo
+- ✅ Animación de apertura de cofre (spin + signo de interrogación + sonido 6.56s)
+- ✅ Cofre desaparece instantáneamente al recoger
+
+### Versión 1.5.1 (2026-07-02)
+- ✅ Sistema de fusión completo (máquina con slots A/B, carry+deposit)
+- ✅ Efecto visual dorado en personajes fusionados (UIStroke + borde dorado)
+- ✅ Multiplicador x3 por nivel de fusión (Fusion=x3, Fusion II=x9, etc.)
+- ✅ Sonidos de fusión (proximidad + activación)
+- ✅ Pelota visible en la mano (Weld en punta de los dedos, brazo natural)
+- ✅ Re-equipar automático después de lanzar
+- ✅ Block de personajes fusionados (no se pueden volver a fusionar)
+- ✅ Click en slot para quitar personaje de la máquina de fusión
 
 ### Versión 1.0.0 (2026-06-26)
 - ✅ Sistema de cristales y cofres
@@ -494,3 +540,4 @@ BuildMap (Command Bar, una sola vez)
 > - Si detectas arquitectura inconsistente, **reorganizar antes de continuar**.
 > 
 > La prioridad no es solo generar código, sino mantener una **arquitectura limpia, consistente, escalable y bien documentada**.
+
