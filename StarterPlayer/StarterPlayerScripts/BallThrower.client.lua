@@ -534,15 +534,12 @@ local function throwBall(targetPosition)
         ball.AssemblyLinearVelocity = direction * ballConfig.speed + Vector3.new(0, upImpulse, 0)
     end
 
-    -- Enviar tipo de pelota al servidor para calcular dano
-    -- Se envia la posicion objetivo (para PC con mouse) 
-    -- En movil, el Touched de abajo enviara la posicion exacta del cristal
-    if ThrowBallEvent then
-        ThrowBallEvent:FireServer(aimPos or root.Position + root.CFrame.LookVector*20, selectedBallType)
-    end
+    -- NO enviar ThrowBallEvent aqui - solo se envia cuando la pelota
+    -- TOCA FISICAMENTE un cristal (evento Touched de abajo)
+    -- Esto arregla el bug de golpes de cerca (el cooldown bloqueaba el 2do evento)
 
     -- DETECCION FISICA: cuando la pelota toca un cristal, enviar posicion exacta
-    -- Esto arregla el problema en movil donde la punteria es imprecisa
+    -- Esto funciona tanto en PC como en movil, de cerca y de lejos
     local ballHitSent = false
     local ballTouchedConn
     ballTouchedConn = ball.Touched:Connect(function(hit)
@@ -1459,6 +1456,7 @@ end)
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
 
 
