@@ -457,9 +457,9 @@ Events.ThrowBall.OnServerEvent:Connect(function(player, targetPos, ballType)
         local zone = map:FindFirstChild("CrystalZone")
         if not zone then return end
 
-        -- Buscar cristal cercano a donde apunto el jugador (radio razonable)
+        -- Buscar cristal cercano a donde apunto el jugador (radio preciso)
         -- NO usar fallback automatico - la pelota debe impactar el cristal
-        local nearest, nearDist = nil, 18
+        local nearest, nearDist = nil, 15
         for _, c in ipairs(zone:GetChildren()) do
             if c.Name == "Crystal" then
                 local d = (c.Position - targetPos).Magnitude
@@ -1448,6 +1448,7 @@ task.delay(3, function()
 end)
 
 print("=== GameHandler iniciado ===")
+
 
 
 
