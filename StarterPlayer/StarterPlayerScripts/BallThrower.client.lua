@@ -259,9 +259,16 @@ hintText.TextXAlignment = Enum.TextXAlignment.Left
 hintText.Parent = upgradeHint
 
 -- FUNCIONES
+-- Declarar throwBtn antes de updateUI (se crea mas abajo)
+local throwBtn
+
 local function updateUI()
     bottomBar.Visible = not isCarrying
     carryPanel.Visible = isCarrying
+    -- Actualizar visibilidad del boton de lanzar (movil)
+    if throwBtn then
+        throwBtn.Visible = ballEquipped and not isCarrying
+    end
 end
 
 local function updateButton()
@@ -629,6 +636,41 @@ ballButton.MouseButton1Click:Connect(function()
     if ballEquipped then unequipBall() else equipBall() end
     task.wait(0.3)
     inputDebounce = false
+end)
+
+-- ============================================
+-- BOTON DE LANZAR (para movil / celular)
+-- Aparece cuando la pelota esta equipada
+-- ============================================
+throwBtn = Instance.new("TextButton")
+throwBtn.Name = "ThrowBtn"
+throwBtn.Size = UDim2.new(0, 100, 0, 70)
+throwBtn.Position = UDim2.new(1, -120, 1, -90)
+throwBtn.BackgroundColor3 = Color3.fromRGB(180, 60, 60)
+throwBtn.BorderSizePixel = 0
+throwBtn.Text = "LANZAR"
+throwBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+throwBtn.TextScaled = true
+throwBtn.Font = Enum.Font.GothamBlack
+throwBtn.Visible = false
+throwBtn.Parent = screenGui
+Instance.new("UICorner", throwBtn).CornerRadius = UDim.new(0, 16)
+
+local throwStroke = Instance.new("UIStroke")
+throwStroke.Color = Color3.fromRGB(255, 100, 100)
+throwStroke.Thickness = 2
+throwStroke.Transparency = 0.3
+throwStroke.Parent = throwBtn
+
+-- Variable para trackear el toque en movil
+local touchDebounce = false
+
+throwBtn.MouseButton1Click:Connect(function()
+    if touchDebounce then return end
+    touchDebounce = true
+    throwBall()
+    task.wait(0.5)
+    touchDebounce = false
 end)
 
 placeBtn.MouseButton1Click:Connect(function()
@@ -1389,6 +1431,7 @@ end)
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
 
 
