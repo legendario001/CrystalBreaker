@@ -657,26 +657,24 @@ local function getTouchWorldPosition(touchPosition)
 end
 
 -- Detectar toques en la pantalla (movil)
+-- NO usar 'processed' ni GetGuiObjectsAtPosition porque los frames transparentes
+-- de la UI absorben el toque y marcan processed=true, bloqueando el 80% de la pantalla
 UserInputService.TouchTap:Connect(function(touchPositions, processed)
-    if processed then return end
     if not ballEquipped or isCarrying then return end
     if touchDebounce or throwDebounce then return end
     if not touchPositions or #touchPositions == 0 then return end
 
-    -- Ignorar si el toque fue en un elemento de UI (botones, paneles)
-    local touchPos = touchPositions[1]
-    local guiObjects = player.PlayerGui:GetGuiObjectsAtPosition(touchPos.X, touchPos.Y)
-    if #guiObjects > 0 then return end
-
     touchDebounce = true
     -- Obtener la posicion 3D donde se toco
+    local touchPos = touchPositions[1]
     local targetPos = getTouchWorldPosition(touchPos)
     throwBall(targetPos)
     task.wait(0.5)
     touchDebounce = false
 end)
 
--- El click del mouse (PC) sigue funcionando con el handler existente
+-- Para PC: el click del mouse ya funciona con el handler de InputBegan existente
+-- Para movil: TouchTap cubre todos los toques en pantalla
 
 placeBtn.MouseButton1Click:Connect(function()
     if isCarrying and PlaceCharacterEvent then PlaceCharacterEvent:FireServer() end
@@ -1436,6 +1434,7 @@ end)
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
 
 
