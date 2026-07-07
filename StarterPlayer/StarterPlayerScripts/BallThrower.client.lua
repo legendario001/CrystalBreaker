@@ -698,6 +698,181 @@ end)
 -- Para PC: el click del mouse ya funciona con el handler de InputBegan existente
 -- Para movil: TouchTap cubre todos los toques en pantalla
 
+-- ============================================
+-- BOTON DE INTERACCION PARA MOVIL (dedo señalando)
+-- Aparece semitransparente cuando hay algo con que interactuar
+-- ============================================
+local interactionBtn = Instance.new("TextButton")
+interactionBtn.Name = "InteractionBtn"
+interactionBtn.Size = UDim2.new(0, 80, 0, 80)
+interactionBtn.Position = UDim2.new(0.5, -40, 0.65, 0)
+interactionBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+interactionBtn.BackgroundTransparency = 0.6
+interactionBtn.BorderSizePixel = 0
+interactionBtn.Text = "👆"
+interactionBtn.TextScaled = true
+interactionBtn.Font = Enum.Font.GothamBlack
+interactionBtn.Visible = false
+interactionBtn.Parent = screenGui
+Instance.new("UICorner", interactionBtn).CornerRadius = UDim.new(1, 0)
+
+local interactionStroke = Instance.new("UIStroke")
+interactionStroke.Color = Color3.fromRGB(255, 255, 255)
+interactionStroke.Thickness = 2
+interactionStroke.Transparency = 0.5
+interactionStroke.Parent = interactionBtn
+
+local interactionDebounce = false
+
+-- Accion del boton de interaccion (mismo que presionar E)
+interactionBtn.MouseButton1Click:Connect(function()
+    if interactionDebounce then return end
+    interactionDebounce = true
+    if isCarrying then
+        -- Colocar personaje en pedestal
+        if PlaceCharacterEvent then PlaceCharacterEvent:FireServer() end
+    else
+        -- Recoger (cofre, pedestal, o suelo)
+        if PickupChestEvent then PickupChestEvent:FireServer() end
+        task.wait(0.15)
+        if not isCarrying then
+            if RemoveFromPedestalEvent then RemoveFromPedestalEvent:FireServer() end
+        end
+        task.wait(0.15)
+        if not isCarrying then
+            if PickupDroppedEvent then PickupDroppedEvent:FireServer() end
+        end
+    end
+    task.wait(0.5)
+    interactionDebounce = false
+end)
+
+-- ============================================
+-- DETECCION DE PROXIMIDAD para mostrar el boton de interaccion
+-- Verifica si hay cofres, pedestales con personajes, o personajes soltados cerca
+-- ============================================
+task.spawn(function()
+    while true do
+        task.wait(0.3)
+        local char = player.Character
+        if not char then
+            interactionBtn.Visible = false
+            continue
+        end
+        local root = char:FindFirstChild("HumanoidRootPart")
+        if not root then
+            interactionBtn.Visible = false
+            continue
+        end
+
+        local playerPos = root.Position
+        local shouldShow = false
+
+        -- 1. Verificar cofres cerca (solo si no esta cargando)
+        if not isCarrying then
+            for _, obj in ipairs(workspace:GetChildren()) do
+                if obj.Name == "Chest" then
+                    local owner = obj:FindFirstChild("Owner")
+                    if owner and owner.Value == player then
+                        local d = (obj.Position - playerPos).Magnitude
+                        if d < 15 then
+                            shouldShow = true
+                            break
+                        end
+                    end
+                end
+            end
+        end
+
+        -- 2. Verificar personajes soltados cerca (DropTimer)
+        if not shouldShow and not isCarrying then
+            for _, obj in ipairs(workspace:GetChildren()) do
+                if obj.Name == "DropTimer" then
+                    local owner = obj:FindFirstChild("Owner")
+                    if owner and owner.Value == player then
+                        local d = (obj.Position - playerPos).Magnitude
+                        if d < 15 then
+                            shouldShow = true
+                            break
+                        end
+                    end
+                end
+            end
+        end
+
+        -- 3. Verificar pedestales del jugador (colocar o recoger)
+        if not shouldShow then
+            local map = workspace:FindFirstChild("Map")
+            if map then
+                local bases = map:FindFirstChild("Bases")
+                if bases then
+                    -- Buscar la base del jugador (la mas cercana)
+                    for _, base in ipairs(bases:GetChildren()) do
+                        if shouldShow then break end
+                        -- Buscar en todos los pisos
+                        local allPeds = {}
+                        local p1 = base:FindFirstChild("Pedestals")
+                        if p1 then table.insert(allPeds, p1) end
+                        for floorNum = 2, 5 do
+                            local floor = base:FindFirstChild("Floor" .. floorNum)
+                            if floor then
+                                local peds = floor:FindFirstChild("Pedestals" .. floorNum)
+                                if peds then table.insert(allPeds, peds) end
+                            end
+                        end
+
+                        for _, pedFolder in ipairs(allPeds) do
+                            if shouldShow then break end
+                            for _, ped in ipairs(pedFolder:GetChildren()) do
+                                local platform = ped:FindFirstChild("Platform")
+                                if platform then
+                                    local d = (platform.Position - playerPos).Magnitude
+                                    if d < 14 then
+                                        -- Si esta cargando, puede colocar (pedestal vacio)
+                                        -- Si no esta cargando, puede recoger (pedestal con personaje)
+                                        if isCarrying then
+                                            -- Verificar que el pedestal este vacio
+                                            local hasModel = false
+                                            for _, child in ipairs(ped:GetChildren()) do
+                                                if child:IsA("Model") then hasModel = true break end
+                                            end
+                                            if not hasModel then
+                                                shouldShow = true
+                                                break
+                                            end
+                                        else
+                                            -- Verificar que el pedestal tenga un personaje
+                                            local hasModel = false
+                                            for _, child in ipairs(ped:GetChildren()) do
+                                                if child:IsA("Model") then hasModel = true break end
+                                            end
+                                            if hasModel then
+                                                shouldShow = true
+                                                break
+                                            end
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+
+        -- Tambien verificar cerca de la maquina de fusion
+        if not shouldShow and isCarrying then
+            local FUSION_MACHINE_CENTER = Vector3.new(-142.3, 10.8, 11.0)
+            local dist = (playerPos - FUSION_MACHINE_CENTER).Magnitude
+            if dist < 20 then
+                shouldShow = true
+            end
+        end
+
+        interactionBtn.Visible = shouldShow
+    end
+end)
+
 placeBtn.MouseButton1Click:Connect(function()
     if isCarrying and PlaceCharacterEvent then PlaceCharacterEvent:FireServer() end
 end)
@@ -1456,6 +1631,7 @@ end)
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
 
 
