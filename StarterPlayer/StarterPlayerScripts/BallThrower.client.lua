@@ -535,9 +535,32 @@ local function throwBall(targetPosition)
     end
 
     -- Enviar tipo de pelota al servidor para calcular dano
+    -- Se envia la posicion objetivo (para PC con mouse) 
+    -- En movil, el Touched de abajo enviara la posicion exacta del cristal
     if ThrowBallEvent then
         ThrowBallEvent:FireServer(aimPos or root.Position + root.CFrame.LookVector*20, selectedBallType)
     end
+
+    -- DETECCION FISICA: cuando la pelota toca un cristal, enviar posicion exacta
+    -- Esto arregla el problema en movil donde la punteria es imprecisa
+    local ballHitSent = false
+    local ballTouchedConn
+    ballTouchedConn = ball.Touched:Connect(function(hit)
+        if ballHitSent then return end
+        -- Verificar si toco un cristal
+        if hit.Name == "Crystal" then
+            ballHitSent = true
+            -- Enviar posicion EXACTA del cristal al servidor
+            if ThrowBallEvent then
+                ThrowBallEvent:FireServer(hit.Position, selectedBallType)
+            end
+            -- Desconectar el evento
+            if ballTouchedConn then
+                ballTouchedConn:Disconnect()
+                ballTouchedConn = nil
+            end
+        end
+    end)
 
     -- Si la pelota no rebota (ej: fuego), destruirla al tocar el suelo
     if not ballConfig.bounce then
@@ -1436,6 +1459,7 @@ end)
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
 
 
