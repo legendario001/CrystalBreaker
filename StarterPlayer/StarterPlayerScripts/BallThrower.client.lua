@@ -720,7 +720,6 @@ local function createMobileButton(name, icon)
     btn.Text = icon
     btn.TextColor3 = Color3.fromRGB(0, 0, 0)
     btn.TextTransparency = 0 -- texto negro visible
-    btn.TextStrokeMode = Enum.TextStrokeMode.Outline
     btn.TextScaled = true
     btn.Font = Enum.Font.GothamBlack
     btn.Visible = false
@@ -1727,6 +1726,7 @@ end)
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
 
 
