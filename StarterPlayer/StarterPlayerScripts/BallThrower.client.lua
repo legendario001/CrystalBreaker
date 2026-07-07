@@ -699,156 +699,233 @@ end)
 -- Para movil: TouchTap cubre todos los toques en pantalla
 
 -- ============================================
--- BOTON DE INTERACCION PARA MOVIL (dedo señalando)
--- Aparece semitransparente cuando hay algo con que interactuar
+-- BOTONES DE INTERACCION PARA MOVIL (solo movil)
+-- Aparecen semitransparentes con borde negro cuando hay algo con que interactuar
+-- Boton 1: 👆 colocar/recoger (cerca del pedestal)
+-- Boton 2: ⬆️ mejorar personaje (cerca del boton de mejora)
 -- ============================================
-local interactionBtn = Instance.new("TextButton")
-interactionBtn.Name = "InteractionBtn"
-interactionBtn.Size = UDim2.new(0, 80, 0, 80)
-interactionBtn.Position = UDim2.new(0.5, -40, 0.65, 0)
-interactionBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-interactionBtn.BackgroundTransparency = 0.6
-interactionBtn.BorderSizePixel = 0
-interactionBtn.Text = "👆"
-interactionBtn.TextScaled = true
-interactionBtn.Font = Enum.Font.GothamBlack
-interactionBtn.Visible = false
-interactionBtn.Parent = screenGui
-Instance.new("UICorner", interactionBtn).CornerRadius = UDim.new(1, 0)
 
-local interactionStroke = Instance.new("UIStroke")
-interactionStroke.Color = Color3.fromRGB(255, 255, 255)
-interactionStroke.Thickness = 2
-interactionStroke.Transparency = 0.5
-interactionStroke.Parent = interactionBtn
+-- Solo crear botones si es dispositivo movil (tacto)
+local isMobile = UserInputService.TouchEnabled and not UserInputService.MouseEnabled
 
-local interactionDebounce = false
+-- Funcion helper para crear un boton de interaccion con estilo: solo borde negro, sin relleno
+local function createMobileButton(name, icon)
+    local btn = Instance.new("TextButton")
+    btn.Name = name
+    btn.Size = UDim2.new(0, 60, 0, 60)
+    btn.Position = UDim2.new(0.5, -30, 0.7, 0)
+    btn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    btn.BackgroundTransparency = 0.85 -- casi transparente
+    btn.BorderSizePixel = 0
+    btn.Text = icon
+    btn.TextColor3 = Color3.fromRGB(0, 0, 0)
+    btn.TextTransparency = 0 -- texto negro visible
+    btn.TextStrokeMode = Enum.TextStrokeMode.Outline
+    btn.TextScaled = true
+    btn.Font = Enum.Font.GothamBlack
+    btn.Visible = false
+    btn.Parent = screenGui
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(1, 0)
+
+    -- Borde negro bien marcado
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(0, 0, 0)
+    stroke.Thickness = 3
+    stroke.Transparency = 0.1
+    stroke.Parent = btn
+
+    -- TextStroke blanco para que el icono se vea sobre cualquier fondo
+    -- (texto negro con outline blanco = se ve en cualquier color)
+    local textStroke = Instance.new("UIStroke")
+    textStroke.Name = "TextOutline"
+    textStroke.Color = Color3.fromRGB(255, 255, 255)
+    textStroke.Thickness = 2
+    textStroke.Transparency = 0.3
+    textStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    textStroke.Parent = btn
+
+    return btn
+end
+
+-- Boton de interaccion principal (colocar/recoger/cofre/fusion)
+local interactBtn = nil
+-- Boton de mejora de personaje (F)
+local upgradeMobBtn = nil
+
+if isMobile then
+    interactBtn = createMobileButton("MobInteractBtn", "👆")
+    upgradeMobBtn = createMobileButton("MobUpgradeBtn", "⬆️")
+end
+
+local interactDebounce = false
+local upgradeMobDebounce = false
 
 -- Accion del boton de interaccion (mismo que presionar E)
-interactionBtn.MouseButton1Click:Connect(function()
-    if interactionDebounce then return end
-    interactionDebounce = true
-    if isCarrying then
-        -- Colocar personaje en pedestal
-        if PlaceCharacterEvent then PlaceCharacterEvent:FireServer() end
-    else
-        -- Recoger (cofre, pedestal, o suelo)
-        if PickupChestEvent then PickupChestEvent:FireServer() end
-        task.wait(0.15)
-        if not isCarrying then
-            if RemoveFromPedestalEvent then RemoveFromPedestalEvent:FireServer() end
-        end
-        task.wait(0.15)
-        if not isCarrying then
-            if PickupDroppedEvent then PickupDroppedEvent:FireServer() end
-        end
-    end
-    task.wait(0.5)
-    interactionDebounce = false
-end)
-
--- ============================================
--- DETECCION DE PROXIMIDAD para mostrar el boton de interaccion
--- Verifica si hay cofres, pedestales con personajes, o personajes soltados cerca
--- ============================================
-task.spawn(function()
-    while true do
-        task.wait(0.3)
-        local char = player.Character
-        if not char then
-            interactionBtn.Visible = false
-            continue
-        end
-        local root = char:FindFirstChild("HumanoidRootPart")
-        if not root then
-            interactionBtn.Visible = false
-            continue
-        end
-
-        local playerPos = root.Position
-        local shouldShow = false
-
-        -- 1. Verificar cofres cerca (solo si no esta cargando)
-        if not isCarrying then
-            for _, obj in ipairs(workspace:GetChildren()) do
-                if obj.Name == "Chest" then
-                    local owner = obj:FindFirstChild("Owner")
-                    if owner and owner.Value == player then
-                        local d = (obj.Position - playerPos).Magnitude
-                        if d < 15 then
-                            shouldShow = true
-                            break
-                        end
-                    end
-                end
+if interactBtn then
+    interactBtn.MouseButton1Click:Connect(function()
+        if interactDebounce then return end
+        interactDebounce = true
+        if isCarrying then
+            -- Colocar personaje en pedestal o depositar en fusion
+            if nearFusionMachine and DepositCharacterEvent then
+                DepositCharacterEvent:FireServer()
+            elseif PlaceCharacterEvent then
+                PlaceCharacterEvent:FireServer()
+            end
+        else
+            -- Recoger (cofre, pedestal, o suelo)
+            if PickupChestEvent then PickupChestEvent:FireServer() end
+            task.wait(0.15)
+            if not isCarrying then
+                if RemoveFromPedestalEvent then RemoveFromPedestalEvent:FireServer() end
+            end
+            task.wait(0.15)
+            if not isCarrying then
+                if PickupDroppedEvent then PickupDroppedEvent:FireServer() end
             end
         end
+        task.wait(0.5)
+        interactDebounce = false
+    end)
+end
 
-        -- 2. Verificar personajes soltados cerca (DropTimer)
-        if not shouldShow and not isCarrying then
-            for _, obj in ipairs(workspace:GetChildren()) do
-                if obj.Name == "DropTimer" then
-                    local owner = obj:FindFirstChild("Owner")
-                    if owner and owner.Value == player then
-                        local d = (obj.Position - playerPos).Magnitude
-                        if d < 15 then
-                            shouldShow = true
-                            break
-                        end
-                    end
-                end
-            end
+-- Accion del boton de mejorar personaje (mismo que presionar F)
+if upgradeMobBtn then
+    upgradeMobBtn.MouseButton1Click:Connect(function()
+        if upgradeMobDebounce then return end
+        upgradeMobDebounce = true
+        if UpgradeCharacterEvent then
+            UpgradeCharacterEvent:FireServer()
         end
+        task.wait(0.5)
+        upgradeMobDebounce = false
+    end)
+end
 
-        -- 3. Verificar pedestales del jugador (colocar o recoger)
-        if not shouldShow then
-            local map = workspace:FindFirstChild("Map")
-            if map then
-                local bases = map:FindFirstChild("Bases")
-                if bases then
-                    -- Buscar la base del jugador (la mas cercana)
-                    for _, base in ipairs(bases:GetChildren()) do
-                        if shouldShow then break end
-                        -- Buscar en todos los pisos
-                        local allPeds = {}
-                        local p1 = base:FindFirstChild("Pedestals")
-                        if p1 then table.insert(allPeds, p1) end
-                        for floorNum = 2, 5 do
-                            local floor = base:FindFirstChild("Floor" .. floorNum)
-                            if floor then
-                                local peds = floor:FindFirstChild("Pedestals" .. floorNum)
-                                if peds then table.insert(allPeds, peds) end
+-- ============================================
+-- DETECCION DE PROXIMIDAD para mostrar los botones en movil
+-- Posiciona los botones cerca del objeto 3D usando WorldToViewportPoint
+-- ============================================
+if isMobile then
+    task.spawn(function()
+        while true do
+            task.wait(0.2)
+            local char = player.Character
+            if not char then
+                if interactBtn then interactBtn.Visible = false end
+                if upgradeMobBtn then upgradeMobBtn.Visible = false end
+                continue
+            end
+            local root = char:FindFirstChild("HumanoidRootPart")
+            if not root then
+                if interactBtn then interactBtn.Visible = false end
+                if upgradeMobBtn then upgradeMobBtn.Visible = false end
+                continue
+            end
+
+            local playerPos = root.Position
+            local camera = workspace.CurrentCamera
+            local showInteract = false
+            local showUpgrade = false
+            local interactScreenPos = nil
+            local upgradeScreenPos = nil
+
+            -- 1. Verificar cofres cerca (solo si no esta cargando)
+            if not isCarrying then
+                for _, obj in ipairs(workspace:GetChildren()) do
+                    if obj.Name == "Chest" then
+                        local owner = obj:FindFirstChild("Owner")
+                        if owner and owner.Value == player then
+                            local d = (obj.Position - playerPos).Magnitude
+                            if d < 15 then
+                                showInteract = true
+                                interactScreenPos = camera:WorldToViewportPoint(obj.Position)
+                                break
                             end
                         end
+                    end
+                end
+            end
 
-                        for _, pedFolder in ipairs(allPeds) do
-                            if shouldShow then break end
-                            for _, ped in ipairs(pedFolder:GetChildren()) do
-                                local platform = ped:FindFirstChild("Platform")
-                                if platform then
-                                    local d = (platform.Position - playerPos).Magnitude
-                                    if d < 14 then
-                                        -- Si esta cargando, puede colocar (pedestal vacio)
-                                        -- Si no esta cargando, puede recoger (pedestal con personaje)
-                                        if isCarrying then
-                                            -- Verificar que el pedestal este vacio
-                                            local hasModel = false
-                                            for _, child in ipairs(ped:GetChildren()) do
-                                                if child:IsA("Model") then hasModel = true break end
+            -- 2. Verificar personajes soltados cerca (DropTimer)
+            if not showInteract and not isCarrying then
+                for _, obj in ipairs(workspace:GetChildren()) do
+                    if obj.Name == "DropTimer" then
+                        local owner = obj:FindFirstChild("Owner")
+                        if owner and owner.Value == player then
+                            local d = (obj.Position - playerPos).Magnitude
+                            if d < 15 then
+                                showInteract = true
+                                interactScreenPos = camera:WorldToViewportPoint(obj.Position)
+                                break
+                            end
+                        end
+                    end
+                end
+            end
+
+            -- 3. Verificar pedestales (colocar/recoger + mejorar)
+            if not showInteract or not showUpgrade then
+                local map = workspace:FindFirstChild("Map")
+                if map then
+                    local bases = map:FindFirstChild("Bases")
+                    if bases then
+                        for _, base in ipairs(bases:GetChildren()) do
+                            if showInteract and showUpgrade then break end
+                            -- Buscar en todos los pisos
+                            local allPeds = {}
+                            local p1 = base:FindFirstChild("Pedestals")
+                            if p1 then table.insert(allPeds, p1) end
+                            for floorNum = 2, 5 do
+                                local floor = base:FindFirstChild("Floor" .. floorNum)
+                                if floor then
+                                    local peds = floor:FindFirstChild("Pedestals" .. floorNum)
+                                    if peds then table.insert(allPeds, peds) end
+                                end
+                            end
+
+                            for _, pedFolder in ipairs(allPeds) do
+                                if showInteract and showUpgrade then break end
+                                for _, ped in ipairs(pedFolder:GetChildren()) do
+                                    local platform = ped:FindFirstChild("Platform")
+                                    if platform then
+                                        local d = (platform.Position - playerPos).Magnitude
+                                        if d < 14 then
+                                            -- Boton de interaccion (colocar/recoger)
+                                            if not showInteract then
+                                                if isCarrying then
+                                                    -- Verificar pedestal vacio
+                                                    local hasModel = false
+                                                    for _, child in ipairs(ped:GetChildren()) do
+                                                        if child:IsA("Model") then hasModel = true break end
+                                                    end
+                                                    if not hasModel then
+                                                        showInteract = true
+                                                        interactScreenPos = camera:WorldToViewportPoint(platform.Position)
+                                                    end
+                                                else
+                                                    -- Verificar pedestal con personaje
+                                                    local hasModel = false
+                                                    for _, child in ipairs(ped:GetChildren()) do
+                                                        if child:IsA("Model") then hasModel = true break end
+                                                    end
+                                                    if hasModel then
+                                                        showInteract = true
+                                                        interactScreenPos = camera:WorldToViewportPoint(platform.Position)
+                                                    end
+                                                end
                                             end
-                                            if not hasModel then
-                                                shouldShow = true
-                                                break
-                                            end
-                                        else
-                                            -- Verificar que el pedestal tenga un personaje
-                                            local hasModel = false
-                                            for _, child in ipairs(ped:GetChildren()) do
-                                                if child:IsA("Model") then hasModel = true break end
-                                            end
-                                            if hasModel then
-                                                shouldShow = true
-                                                break
+
+                                            -- Boton de mejora (cerca del UpgradeButton)
+                                            if not showUpgrade and not isCarrying then
+                                                local upgradeBtn3D = ped:FindFirstChild("UpgradeButton")
+                                                if upgradeBtn3D then
+                                                    local ud = (upgradeBtn3D.Position - playerPos).Magnitude
+                                                    if ud < 10 then
+                                                        showUpgrade = true
+                                                        upgradeScreenPos = camera:WorldToViewportPoint(upgradeBtn3D.Position)
+                                                    end
+                                                end
                                             end
                                         end
                                     end
@@ -858,20 +935,39 @@ task.spawn(function()
                     end
                 end
             end
-        end
 
-        -- Tambien verificar cerca de la maquina de fusion
-        if not shouldShow and isCarrying then
-            local FUSION_MACHINE_CENTER = Vector3.new(-142.3, 10.8, 11.0)
-            local dist = (playerPos - FUSION_MACHINE_CENTER).Magnitude
-            if dist < 20 then
-                shouldShow = true
+            -- 4. Verificar maquina de fusion (solo si esta cargando)
+            if not showInteract and isCarrying then
+                local FUSION_MACHINE_CENTER = Vector3.new(-142.3, 10.8, 11.0)
+                local dist = (playerPos - FUSION_MACHINE_CENTER).Magnitude
+                if dist < 20 then
+                    showInteract = true
+                    interactScreenPos = camera:WorldToViewportPoint(FUSION_MACHINE_CENTER)
+                end
+            end
+
+            -- Actualizar visibilidad y posicion de los botones
+            if interactBtn then
+                if showInteract and interactScreenPos and interactScreenPos.Z > 0 then
+                    interactBtn.Visible = true
+                    -- Posicionar el boton en la pantalla donde esta el objeto 3D
+                    interactBtn.Position = UDim2.new(0, interactScreenPos.X - 30, 0, interactScreenPos.Y - 30)
+                else
+                    interactBtn.Visible = false
+                end
+            end
+
+            if upgradeMobBtn then
+                if showUpgrade and upgradeScreenPos and upgradeScreenPos.Z > 0 then
+                    upgradeMobBtn.Visible = true
+                    upgradeMobBtn.Position = UDim2.new(0, upgradeScreenPos.X - 30, 0, upgradeScreenPos.Y - 30)
+                else
+                    upgradeMobBtn.Visible = false
+                end
             end
         end
-
-        interactionBtn.Visible = shouldShow
-    end
-end)
+    end)
+end
 
 placeBtn.MouseButton1Click:Connect(function()
     if isCarrying and PlaceCharacterEvent then PlaceCharacterEvent:FireServer() end
@@ -1631,6 +1727,7 @@ end)
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
 
 
