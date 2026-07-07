@@ -259,16 +259,9 @@ hintText.TextXAlignment = Enum.TextXAlignment.Left
 hintText.Parent = upgradeHint
 
 -- FUNCIONES
--- Declarar throwBtn antes de updateUI (se crea mas abajo)
-local throwBtn
-
 local function updateUI()
     bottomBar.Visible = not isCarrying
     carryPanel.Visible = isCarrying
-    -- Actualizar visibilidad del boton de lanzar (movil)
-    if throwBtn then
-        throwBtn.Visible = ballEquipped and not isCarrying
-    end
 end
 
 local function updateButton()
@@ -472,7 +465,7 @@ local function reEquipBall()
     -- El sonido de equipar solo suena cuando el jugador lo elige (mochila o tecla 1)
 end
 
-local function throwBall()
+local function throwBall(targetPosition)
     if not ballEquipped or isCarrying then return end
     if throwDebounce or activeBalls >= MAX_ACTIVE_BALLS then return end
     throwDebounce = true
@@ -486,8 +479,6 @@ local function throwBall()
     -- Quitar la pelota de la mano durante el lanzamiento
     local handBall = char:FindFirstChild("CrystalBall")
     if handBall then handBall:Destroy() end
-    -- Ocultar boton de lanzar mientras la pelota esta en el aire
-    if throwBtn then throwBtn.Visible = false end
 
     -- OPTIMIZADO: reusar track cacheado
     if humanoid then
@@ -528,13 +519,24 @@ local function throwBall()
     ball.CustomPhysicalProperties = PhysicalProperties.new(0.5, 0.3, gravity, bounce, 1.0)
     ball.Parent = workspace
 
-    local mouseHit = mouse.Hit
-    if mouseHit then
-        local direction = (mouseHit.Position - ball.Position).Unit
+    -- Calcular direccion: usar targetPosition (toque movil) o mouse.Hit (PC)
+    local aimPos = targetPosition
+    if not aimPos then
+        local mouseHit = mouse.Hit
+        if mouseHit then aimPos = mouseHit.Position end
+    end
+
+    if aimPos then
+        local direction = (aimPos - ball.Position).Unit
         -- Velocidad segun la pelota + impulso vertical segun gravedad
         -- Menos gravedad = menos impulso vertical (vuela mas recto)
         local upImpulse = 20 * (ballConfig.gravity or 1.0)
         ball.AssemblyLinearVelocity = direction * ballConfig.speed + Vector3.new(0, upImpulse, 0)
+    end
+
+    -- Enviar tipo de pelota al servidor para calcular dano
+    if ThrowBallEvent then
+        ThrowBallEvent:FireServer(aimPos or root.Position + root.CFrame.LookVector*20, selectedBallType)
     end
 
     -- Si la pelota no rebota (ej: fuego), destruirla al tocar el suelo
@@ -551,11 +553,6 @@ local function throwBall()
         end)
     end
 
-    -- Enviar tipo de pelota al servidor para calcular dano
-    if ThrowBallEvent then
-        ThrowBallEvent:FireServer(mouseHit and mouseHit.Position or root.Position + root.CFrame.LookVector*20, selectedBallType)
-    end
-
     activeBalls = activeBalls + 1
     Debris:AddItem(ball, 4)
     task.delay(4.5, function() activeBalls = math.max(0, activeBalls-1) end)
@@ -564,8 +561,6 @@ local function throwBall()
     task.delay(0.5, function()
         if ballEquipped and not isCarrying then
             reEquipBall()
-            -- Volver a mostrar el boton de lanzar
-            if throwBtn then throwBtn.Visible = true end
         end
     end)
 
@@ -645,39 +640,43 @@ ballButton.MouseButton1Click:Connect(function()
 end)
 
 -- ============================================
--- BOTON DE LANZAR (para movil / celular)
--- Aparece cuando la pelota esta equipada
+-- SISTEMA DE LANZAR PARA MOVIL (toque en pantalla)
+-- Detecta toques en cualquier parte de la pantalla
+-- y lanza la pelota en esa direccion
 -- ============================================
-throwBtn = Instance.new("TextButton")
-throwBtn.Name = "ThrowBtn"
-throwBtn.Size = UDim2.new(0, 100, 0, 70)
-throwBtn.Position = UDim2.new(1, -120, 1, -90)
-throwBtn.BackgroundColor3 = Color3.fromRGB(180, 60, 60)
-throwBtn.BorderSizePixel = 0
-throwBtn.Text = "LANZAR"
-throwBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-throwBtn.TextScaled = true
-throwBtn.Font = Enum.Font.GothamBlack
-throwBtn.Visible = false
-throwBtn.Parent = screenGui
-Instance.new("UICorner", throwBtn).CornerRadius = UDim.new(0, 16)
-
-local throwStroke = Instance.new("UIStroke")
-throwStroke.Color = Color3.fromRGB(255, 100, 100)
-throwStroke.Thickness = 2
-throwStroke.Transparency = 0.3
-throwStroke.Parent = throwBtn
-
--- Variable para trackear el toque en movil
 local touchDebounce = false
 
-throwBtn.MouseButton1Click:Connect(function()
-    if touchDebounce then return end
+-- Funcion para obtener la posicion 3D del toque en pantalla
+local function getTouchWorldPosition(touchPosition)
+    local camera = workspace.CurrentCamera
+    if not camera then return nil end
+    -- Crear un rayo desde la camara hacia la posicion del toque
+    local unitRay = camera:ScreenPointToRay(touchPosition.X, touchPosition.Y)
+    -- Calcular un punto a 100 studs de distancia (donde "apunta" el toque)
+    return camera.CFrame.Position + unitRay.Direction * 100
+end
+
+-- Detectar toques en la pantalla (movil)
+UserInputService.TouchTap:Connect(function(touchPositions, processed)
+    if processed then return end
+    if not ballEquipped or isCarrying then return end
+    if touchDebounce or throwDebounce then return end
+    if not touchPositions or #touchPositions == 0 then return end
+
+    -- Ignorar si el toque fue en un elemento de UI (botones, paneles)
+    local touchPos = touchPositions[1]
+    local guiObjects = player.PlayerGui:GetGuiObjectsAtPosition(touchPos.X, touchPos.Y)
+    if #guiObjects > 0 then return end
+
     touchDebounce = true
-    throwBall()
+    -- Obtener la posicion 3D donde se toco
+    local targetPos = getTouchWorldPosition(touchPos)
+    throwBall(targetPos)
     task.wait(0.5)
     touchDebounce = false
 end)
+
+-- El click del mouse (PC) sigue funcionando con el handler existente
 
 placeBtn.MouseButton1Click:Connect(function()
     if isCarrying and PlaceCharacterEvent then PlaceCharacterEvent:FireServer() end
@@ -1437,6 +1436,7 @@ end)
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
 
 
