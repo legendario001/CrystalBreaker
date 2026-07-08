@@ -648,43 +648,19 @@ local isMobile = UserInputService.TouchEnabled and not UserInputService.MouseEna
 -- ============================================
 -- CONFIGURACION DE CAMARA PARA MOVIL
 -- Desactivar el zoom tactil (pinch) que bloquea el giro de camara
--- y configurar la camara para que el giro con 2 dedos funcione correctamente
 -- ============================================
 if isMobile then
     local camera = workspace.CurrentCamera
     if camera then
-        -- Esperar a que el Humanoid este disponible
-        task.spawn(function()
-            -- Esperar al personaje
-            local char = player.Character or player.CharacterAdded:Wait()
-            local humanoid = char:WaitForChild("Humanoid", 10)
-            if humanoid then
-                -- Desactivar el modo de zoom automatico del Humanoid
-                humanoid.CameraOffset = Vector3.new(0, 0, 0)
-            end
-        end)
-
-        -- Configurar ModalityTouch para que el toque no active zoom
-        -- Esto se hace configurando el TouchInputType para que no procese pinch
-        UserInputService.TouchEnabled = true
-
-        -- Desactivar el zoom con rueda del mouse (que en movil se activa con pinch)
-        -- Forzar el modo de camara a que no haga zoom con tactil
+        -- Forzar el modo de camara Classic
         if player.CameraMode then
             player.CameraMode = Enum.CameraMode.Classic
         end
 
         -- Prevenir que el pinch-to-zoom bloquee la camara
-        -- Detectar cuando se hace pinch (2 dedos) y cancelar el zoom
         UserInputService.TouchPinch:Connect(function(touchPositions, scale, velocity, state)
-            -- Cancelar el pinch bloqueando el procesamiento
-            -- Esto evita que el zoom tactil se quede activado
             if state == Enum.UserInputState.Begin then
-                -- Forzar el zoom de la camara a mantenerse
-                if camera then
-                    -- Resetear el field of view si se intento cambiar
-                    camera.FieldOfView = 70
-                end
+                camera.FieldOfView = 70
             end
         end)
     end
@@ -1762,6 +1738,7 @@ end)
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
 
 
