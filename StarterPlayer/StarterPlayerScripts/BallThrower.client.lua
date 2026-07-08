@@ -105,7 +105,7 @@ local MONEY_GREEN_BRIGHT = Color3.fromRGB(129,199,132)
 -- Bottom bar
 local bottomBar = Instance.new("Frame")
 bottomBar.Size = UDim2.new(0,80,0,70)
-bottomBar.Position = UDim2.new(0.5,-40,1,-80)
+bottomBar.Position = UDim2.new(0.7,-40,1,-80)
 bottomBar.BackgroundColor3 = Color3.fromRGB(20,20,30)
 bottomBar.BackgroundTransparency = 0.2
 bottomBar.BorderSizePixel = 0
@@ -1858,6 +1858,7 @@ end)
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
 
 
