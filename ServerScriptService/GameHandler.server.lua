@@ -781,7 +781,7 @@ Events.PlaceCharacter.OnServerEvent:Connect(function(player)
         charData.pedestal = nearestFree
         ModelManager.createLabels(nearestFree, charData.name, charData.rarity, charData.level, charData.fusionLevel or 0)
 
-        local moneyPile = ModelManager.createMoneyPile(nearestFree, charData.rarity, charData.level, charData.fusionLevel or 0)
+        local moneyPile = ModelManager.createMoneyPile(nearestFree, charData.rarity, charData.level, charData.fusionLevel or 0, player)
         setupMoneyPileEvents(nearestFree, moneyPile)
         local upgradeBtn = ModelManager.createUpgradeButton(nearestFree, charData.rarity, charData.level, charData.fusionLevel or 0)
         setupUpgradeButtonEvents(nearestFree, upgradeBtn, charIdx)
@@ -1609,6 +1609,7 @@ task.delay(3, function()
 end)
 
 print("=== GameHandler iniciado ===")
+
 
 
 
