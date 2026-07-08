@@ -512,19 +512,30 @@ Events.ThrowBall.OnServerEvent:Connect(function(player, targetPos, ballType)
         mainPart.CanQuery = true
         mainPart.Massless = false
 
-        -- Posicionar y lanzar
-        mainPart.Position = root.Position + root.CFrame.LookVector * 3 + Vector3.new(0, 3, 0)
+        -- Calcular posicion inicial y velocidad ANTES de parentear al Workspace
+        -- Esto evita la "pausa" de la fisica al spawnear
+        local startPos = root.Position + root.CFrame.LookVector * 3 + Vector3.new(0, 3, 0)
+        local launchVelocity = Vector3.new(0, 0, 0)
+        if targetPos then
+            local direction = (targetPos - startPos).Unit
+            local upImpulse = 20 * (ballCfg.gravity or 1.0)
+            launchVelocity = direction * ballCfg.speed + Vector3.new(0, upImpulse, 0)
+        end
+
+        -- Configurar fisicas ANTES de parentear
         local gravity = ballCfg.gravity or 1.0
         local bounceVal = ballCfg.bounce and 0.8 or 0.0
         mainPart.CustomPhysicalProperties = PhysicalProperties.new(0.5, 0.3, gravity, bounceVal, 1.0)
+
+        -- Posicionar y dar velocidad ANTES de parentear
+        mainPart.Position = startPos
+        mainPart.AssemblyLinearVelocity = launchVelocity
+
+        -- Ahora si parentear al Workspace (la pelota sale volando inmediatamente)
         ball.Parent = Workspace
 
-        -- Calcular direccion y aplicar velocidad
-        if targetPos then
-            local direction = (targetPos - mainPart.Position).Unit
-            local upImpulse = 20 * (ballCfg.gravity or 1.0)
-            mainPart.AssemblyLinearVelocity = direction * ballCfg.speed + Vector3.new(0, upImpulse, 0)
-        end
+        -- Confirmar velocidad despues de parentear (por si la fisica la resetea)
+        mainPart.AssemblyLinearVelocity = launchVelocity
 
         -- NO reproducir sonido al lanzar (solo suena al golpear cristal)
 
@@ -1624,6 +1635,7 @@ task.delay(3, function()
 end)
 
 print("=== GameHandler iniciado ===")
+
 
 
 
