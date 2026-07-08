@@ -1667,10 +1667,19 @@ backpackBtn.Size = UDim2.new(0, 60, 0, 60)
 backpackBtn.Position = UDim2.new(0, 20, 1, -200)
 backpackBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
 backpackBtn.BorderSizePixel = 0
-backpackBtn.Text = "🎒"
-backpackBtn.TextScaled = true
+backpackBtn.Text = ""
 backpackBtn.Parent = screenGui
 Instance.new("UICorner", backpackBtn).CornerRadius = UDim.new(0, 12)
+
+-- Icono de mochila personalizado
+local backpackIcon = Instance.new("ImageLabel")
+backpackIcon.Name = "BackpackIcon"
+backpackIcon.Size = UDim2.new(0.7, 0, 0.7, 0)
+backpackIcon.Position = UDim2.new(0.15, 0, 0.15, 0)
+backpackIcon.BackgroundTransparency = 1
+backpackIcon.Image = "rbxassetid://113160993563399"
+backpackIcon.ScaleType = Enum.ScaleType.Fit
+backpackIcon.Parent = backpackBtn
 
 local backpackStroke = Instance.new("UIStroke")
 backpackStroke.Color = Color3.fromRGB(255, 215, 0)
@@ -1858,6 +1867,7 @@ end)
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
 
 
