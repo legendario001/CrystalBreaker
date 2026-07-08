@@ -511,7 +511,7 @@ Events.ThrowBall.OnServerEvent:Connect(function(player, startPos, launchVel, bal
         mainPart.Massless = false
         local gravity = ballCfg.gravity or 1.0
         local bounceVal = ballCfg.bounce and 0.8 or 0.0
-        mainPart.CustomPhysicalProperties = PhysicalProperties.new(0.5, 0.3, gravity, bounceVal, 1.0)
+        mainPart.CustomPhysicalProperties = PhysicalProperties.new(ballCfg.gravity or 0.5, 0.3, bounceVal, 1.0, 1.0)
 
         -- Posicionar y dar velocidad (antes de parentear)
         mainPart.Position = startPos
@@ -1563,6 +1563,12 @@ local SERVER_BALL_TYPES = {
         material = Enum.Material.Neon,
         transparency = 0,
         modelName = "FireBallModel"
+    },
+    earth = {
+        color = Color3.fromRGB(140, 90, 50),
+        material = Enum.Material.Slate,
+        transparency = 0,
+        modelName = "EarthBallModel"
     }
 }
 
@@ -1647,6 +1653,7 @@ task.delay(3, function()
 end)
 
 print("=== GameHandler iniciado ===")
+
 
 
 
