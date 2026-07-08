@@ -504,12 +504,80 @@ local function throwBall(targetPosition)
         if mouseHit then aimPos = mouseHit.Position end
     end
 
-    -- Enviar ThrowBallEvent al servidor INMEDIATAMENTE
-    -- El servidor crea la pelota visible para TODOS los jugadores
-    -- y maneja la deteccion de cristales (Touched)
-    if ThrowBallEvent then
-        ThrowBallEvent:FireServer(aimPos or root.Position + root.CFrame.LookVector*20, selectedBallType)
+    -- ============================================
+    -- LANZAMIENTO HIBRIDO: pelota local + servidor
+    -- ============================================
+    -- 1. Crear pelota LOCAL inmediatamente (cero lag, 100% fluido)
+    --    Esta pelota es solo visual, no daña cristales
+    local localBall, localMainPart = createBallObject(ballConfig)
+    localBall.Name = "ThrownBallLocal"
+    local startPos = root.Position + root.CFrame.LookVector * 3 + Vector3.new(0, 3, 0)
+    localMainPart.Position = startPos
+    localMainPart.Anchored = false
+    localMainPart.CanCollide = false
+    localMainPart.CanQuery = false
+    localMainPart.Massless = true
+    local gravity = ballConfig.gravity or 1.0
+    local bounceVal = ballConfig.bounce and 0.8 or 0.0
+    localMainPart.CustomPhysicalProperties = PhysicalProperties.new(0.5, 0.3, gravity, bounceVal, 1.0)
+    -- Weld partes secundarias
+    for _, desc in ipairs(localBall:GetDescendants()) do
+        if desc:IsA("BasePart") and desc ~= localMainPart then
+            desc.Anchored = false
+            desc.CanCollide = false
+            desc.CanQuery = false
+            desc.Massless = true
+            local w = Instance.new("WeldConstraint")
+            w.Part0 = localMainPart
+            w.Part1 = desc
+            w.Parent = desc
+        end
     end
+    localBall.Parent = workspace
+
+    -- Aplicar velocidad INMEDIATAMENTE (antes de parentear ya esta lista)
+    if aimPos then
+        local direction = (aimPos - startPos).Unit
+        local upImpulse = 20 * (ballConfig.gravity or 1.0)
+        localMainPart.AssemblyLinearVelocity = direction * ballConfig.speed + Vector3.new(0, upImpulse, 0)
+    end
+
+    -- Auto-eliminar la pelota local despues de 4s
+    Debris:AddItem(localBall, 4)
+
+    -- Si la pelota local toca un cristal, enviar evento al servidor
+    local localHitSent = false
+    local localTouchedConn
+    localTouchedConn = localMainPart.Touched:Connect(function(hit)
+        if localHitSent then return end
+        if hit.Name == "Crystal" then
+            localHitSent = true
+            if ThrowBallEvent then
+                ThrowBallEvent:FireServer(hit.Position, selectedBallType)
+            end
+            if localTouchedConn then
+                localTouchedConn:Disconnect()
+                localTouchedConn = nil
+            end
+        end
+    end)
+
+    -- Si la pelota no rebota (ej: fuego), destruirla al tocar el suelo
+    if not ballConfig.bounce then
+        local destroyConn
+        destroyConn = localMainPart.Touched:Connect(function(hit)
+            if localBall and localBall.Parent then
+                localBall:Destroy()
+            end
+            if destroyConn then
+                destroyConn:Disconnect()
+            end
+        end)
+    end
+
+    -- 2. NO crear pelota en el servidor (evita duplicado)
+    -- El servidor solo recibe el ThrowBallEvent cuando la pelota local toca un cristal
+    -- (ver localTouchedConn arriba)
 
     activeBalls = activeBalls + 1
     task.delay(4.5, function() activeBalls = math.max(0, activeBalls-1) end)
@@ -1769,6 +1837,7 @@ end)
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
 
 
