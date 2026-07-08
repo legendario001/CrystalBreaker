@@ -458,7 +458,8 @@ Events.ThrowBall.OnServerEvent:Connect(function(player, startPos, launchVel, bal
         -- Configuracion de pelotas
         local SERVER_BALL_CONFIG = {
             basic = { color = Color3.fromRGB(100, 200, 255), material = Enum.Material.SmoothPlastic, gravity = 1.0, bounce = true, damage = 1, modelName = nil },
-            fire = { color = Color3.fromRGB(255, 100, 30), material = Enum.Material.Neon, gravity = 0.3, bounce = false, damage = 2, modelName = "FireBallModel" }
+            fire = { color = Color3.fromRGB(255, 100, 30), material = Enum.Material.Neon, gravity = 0.3, bounce = false, damage = 2, modelName = "FireBallModel" },
+            earth = { color = Color3.fromRGB(140, 90, 50), material = Enum.Material.Slate, gravity = 2.0, bounce = false, damage = 3, modelName = "EarthBallModel" }
         }
         local ballCfg = SERVER_BALL_CONFIG[ballType] or SERVER_BALL_CONFIG.basic
 
@@ -545,6 +546,30 @@ Events.ThrowBall.OnServerEvent:Connect(function(player, startPos, launchVel, bal
                     CrystalSpawner.updateCrystalHealthUI(hit, hpObj.Value, mhpObj.Value)
                     local hitSound = CRYSTAL_BREAK_SOUNDS[math.random(#CRYSTAL_BREAK_SOUNDS)]
                     playSoundAt(hitSound, pos)
+
+                    -- SCREEN SHAKE si es pelota de tierra (sacudida de camara)
+                    if ballType == "earth" then
+                        local char = player.Character
+                        if char then
+                            local humanoid = char:FindFirstChildOfClass("Humanoid")
+                            local root = char:FindFirstChild("HumanoidRootPart")
+                            if humanoid and root then
+                                -- Crear partida de sacudida via CameraOffset del Humanoid
+                                task.spawn(function()
+                                    for i = 1, 5 do
+                                        local offset = Vector3.new(
+                                            math.random(-100, 100) / 100,
+                                            math.random(-100, 100) / 100,
+                                            0
+                                        )
+                                        humanoid.CameraOffset = offset
+                                        task.wait(0.03)
+                                    end
+                                    humanoid.CameraOffset = Vector3.new(0, 0, 0)
+                                end)
+                            end
+                        end
+                    end
 
                     if hpObj.Value <= 0 then
                         local breakSound = CRYSTAL_BREAK_SOUNDS[math.random(#CRYSTAL_BREAK_SOUNDS)]
@@ -1622,6 +1647,7 @@ task.delay(3, function()
 end)
 
 print("=== GameHandler iniciado ===")
+
 
 
 
