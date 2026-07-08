@@ -3,6 +3,7 @@ local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local Debris = game:GetService("Debris")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local CrystalSpawner = require(ServerStorage.ServerModules.CrystalSpawner)
 -- BaseManager con proteccion - si falla, el juego avisa pero no crashea
@@ -462,7 +463,7 @@ Events.ThrowBall.OnServerEvent:Connect(function(player, targetPos, ballType)
         -- Configuracion de pelotas en el servidor
         local SERVER_BALL_CONFIG = {
             basic = { color = Color3.fromRGB(100, 200, 255), material = Enum.Material.SmoothPlastic, speed = 100, gravity = 1.0, bounce = true, damage = 1, modelName = nil },
-            fire = { color = Color3.fromRGB(255, 100, 30), material = Enum.Material.Neon, speed = 120, gravity = 0.3, bounce = false, damage = 2, modelName = "FireBallModel" }
+            fire = { color = Color3.fromRGB(255, 100, 30), material = Enum.Material.Neon, speed = 100, gravity = 0.3, bounce = false, damage = 2, modelName = "FireBallModel" }
         }
         local ballCfg = SERVER_BALL_CONFIG[ballType] or SERVER_BALL_CONFIG.basic
 
@@ -507,13 +508,13 @@ Events.ThrowBall.OnServerEvent:Connect(function(player, targetPos, ballType)
             end
         end
 
-        mainPart.Anchored = false
-        mainPart.CanCollide = true
+        -- Crear como ANCHORED primero para que aparezca inmediatamente sin pausa
+        mainPart.Anchored = true
+        mainPart.CanCollide = false
         mainPart.CanQuery = true
         mainPart.Massless = false
 
-        -- Calcular posicion inicial y velocidad ANTES de parentear al Workspace
-        -- Esto evita la "pausa" de la fisica al spawnear
+        -- Calcular posicion inicial y velocidad
         local startPos = root.Position + root.CFrame.LookVector * 3 + Vector3.new(0, 3, 0)
         local launchVelocity = Vector3.new(0, 0, 0)
         if targetPos then
@@ -522,19 +523,21 @@ Events.ThrowBall.OnServerEvent:Connect(function(player, targetPos, ballType)
             launchVelocity = direction * ballCfg.speed + Vector3.new(0, upImpulse, 0)
         end
 
-        -- Configurar fisicas ANTES de parentear
+        -- Configurar fisicas
         local gravity = ballCfg.gravity or 1.0
         local bounceVal = ballCfg.bounce and 0.8 or 0.0
         mainPart.CustomPhysicalProperties = PhysicalProperties.new(0.5, 0.3, gravity, bounceVal, 1.0)
 
-        -- Posicionar y dar velocidad ANTES de parentear
+        -- Posicionar y parentear (anchored = aparece sin pausa)
         mainPart.Position = startPos
-        mainPart.AssemblyLinearVelocity = launchVelocity
-
-        -- Ahora si parentear al Workspace (la pelota sale volando inmediatamente)
         ball.Parent = Workspace
 
-        -- Confirmar velocidad despues de parentear (por si la fisica la resetea)
+        -- En el siguiente frame de fisica, soltar la pelota con velocidad
+        -- Esto elimina la micro-pausa porque la pelota ya esta visible (anchored)
+        -- y en el siguiente frame empieza a moverse sin pausa
+        RunService.Heartbeat:Wait()
+        mainPart.Anchored = false
+        mainPart.CanCollide = true
         mainPart.AssemblyLinearVelocity = launchVelocity
 
         -- NO reproducir sonido al lanzar (solo suena al golpear cristal)
@@ -602,7 +605,7 @@ Events.ThrowBall.OnServerEvent:Connect(function(player, targetPos, ballType)
         end
 
         -- Auto-eliminar despues de 4 segundos
-        Debris:AddItem(ball, 4)
+        Debris:AddItem(ball, 6)
     end)
     if not ok then warn("Error ThrowBall: "..tostring(err)) end
 end)
@@ -1635,6 +1638,7 @@ task.delay(3, function()
 end)
 
 print("=== GameHandler iniciado ===")
+
 
 
 
