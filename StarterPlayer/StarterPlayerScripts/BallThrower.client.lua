@@ -647,49 +647,54 @@ local isMobile = UserInputService.TouchEnabled and not UserInputService.MouseEna
 
 -- ============================================
 -- CONFIGURACION DE CAMARA PARA MOVIL
--- Desactivar el zoom tactil (pinch) que bloquea el giro de camara
+-- Bloquear el pinch-to-zoom que se queda activado y bloquea el giro de camara
 -- ============================================
 if isMobile then
     local camera = workspace.CurrentCamera
-    if camera then
-        -- Forzar el modo de camara Classic
-        if player.CameraMode then
-            player.CameraMode = Enum.CameraMode.Classic
-        end
 
-        -- Prevenir que el pinch-to-zoom bloquee la camara
-        -- Resetear FOV continuamente mientras se hace pinch
-        UserInputService.TouchPinch:Connect(function(touchPositions, scale, velocity, state)
-            if state == Enum.UserInputState.Begin or state == Enum.UserInputState.Change then
+    -- Forzar el modo de camara Classic
+    player.CameraMode = Enum.CameraMode.Classic
+
+    -- Restaurar distancias normales de camara (no forzar 0.5)
+    player.CameraMinZoomDistance = 0.5
+    player.CameraMaxZoomDistance = 128
+
+    -- INTERCEPTAR el pinch: cuando se detecta 2 dedos (pinch), 
+    -- simular que NO hay pinch reseteando el FOV inmediatamente
+    -- y forzando la distancia de camara a su valor actual
+    local lastZoom = 12.5 -- distancia normal de camara
+
+    UserInputService.TouchPinch:Connect(function(touchPositions, scale, velocity, state)
+        if state == Enum.UserInputState.Begin then
+            -- Guardar la distancia actual de la camara
+            local playerZoom = (player.CameraMaxZoomDistance + player.CameraMinZoomDistance) / 2
+            lastZoom = playerZoom
+        end
+        if state == Enum.UserInputState.Begin or state == Enum.UserInputState.Change then
+            -- Resetear FOV inmediatamente
+            if camera then
                 camera.FieldOfView = 70
             end
-        end)
-
-        -- Tambien monitorear el FOV continuamente y resetearlo si cambia
-        task.spawn(function()
-            while true do
-                task.wait(0.1)
-                if camera and camera.FieldOfView ~= 70 then
-                    camera.FieldOfView = 70
-                end
+        end
+        if state == Enum.UserInputState.End then
+            -- Al terminar el pinch, restaurar la distancia de camara
+            player.CameraMinZoomDistance = 0.5
+            player.CameraMaxZoomDistance = 128
+            if camera then
+                camera.FieldOfView = 70
             end
-        end)
+        end
+    end)
 
-        -- Bloquear el zoom del Player (distancia minima y maxima de camara)
-        -- Estas propiedades van en Player, no en Humanoid
-        task.spawn(function()
-            while true do
-                task.wait(0.5)
-                -- Forzar que la distancia de la camara no cambie
-                if player.CameraMinZoomDistance ~= 0.5 then
-                    player.CameraMinZoomDistance = 0.5
-                end
-                if player.CameraMaxZoomDistance ~= 0.5 then
-                    player.CameraMaxZoomDistance = 0.5
-                end
+    -- Monitoreo continuo: si el FOV cambia por pinch, resetearlo
+    task.spawn(function()
+        while true do
+            task.wait(0.05)
+            if camera and camera.FieldOfView ~= 70 then
+                camera.FieldOfView = 70
             end
-        end)
-    end
+        end
+    end)
 end
 
 -- Funcion helper para crear un boton de interaccion con estilo: solo borde negro, sin relleno
@@ -1764,6 +1769,7 @@ end)
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
 
 
