@@ -2,6 +2,7 @@ local ServerStorage = game:GetService("ServerStorage")
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local Debris = game:GetService("Debris")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local CrystalSpawner = require(ServerStorage.ServerModules.CrystalSpawner)
 -- BaseManager con proteccion - si falla, el juego avisa pero no crashea
@@ -525,8 +526,7 @@ Events.ThrowBall.OnServerEvent:Connect(function(player, targetPos, ballType)
             mainPart.AssemblyLinearVelocity = direction * ballCfg.speed + Vector3.new(0, upImpulse, 0)
         end
 
-        -- Sonido de lanzar (posicional, todos lo escuchan)
-        playSoundAt(SOUND_CRYSTAL_BREAK, mainPart.Position)
+        -- NO reproducir sonido al lanzar (solo suena al golpear cristal)
 
         -- DETECCION DE CRISTAL: cuando la pelota toca un cristal, dañarlo
         local ballHitSent = false
@@ -1526,7 +1526,7 @@ end)
 -- SISTEMA DE PELOTAS (servidor)
 -- Crea/elimina la pelota en el personaje del jugador para que TODOS la vean
 -- ============================================
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+-- ReplicatedStorage ya declarado al inicio del script
 
 -- Configuracion de pelotas en el servidor
 local SERVER_BALL_TYPES = {
@@ -1624,6 +1624,7 @@ task.delay(3, function()
 end)
 
 print("=== GameHandler iniciado ===")
+
 
 
 
