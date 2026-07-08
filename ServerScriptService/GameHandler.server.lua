@@ -452,67 +452,146 @@ Events.ThrowBall.OnServerEvent:Connect(function(player, targetPos, ballType)
     local ok, err = pcall(function()
         local data = playerData[player.UserId]
         if data and data.carrying then return end
-        local map = Workspace:FindFirstChild("Map")
-        if not map then return end
-        local zone = map:FindFirstChild("CrystalZone")
-        if not zone then return end
 
-        -- Buscar cristal cercano a donde apunto el jugador (radio preciso)
-        -- NO usar fallback automatico - la pelota debe impactar el cristal
-        local nearest, nearDist = nil, 15
-        for _, c in ipairs(zone:GetChildren()) do
-            if c.Name == "Crystal" then
-                local d = (c.Position - targetPos).Magnitude
-                if d < nearDist then nearDist=d nearest=c end
+        local char = player.Character
+        if not char then return end
+        local root = char:FindFirstChild("HumanoidRootPart")
+        if not root then return end
+
+        -- Configuracion de pelotas en el servidor
+        local SERVER_BALL_CONFIG = {
+            basic = { color = Color3.fromRGB(100, 200, 255), material = Enum.Material.SmoothPlastic, speed = 100, gravity = 1.0, bounce = true, damage = 1, modelName = nil },
+            fire = { color = Color3.fromRGB(255, 100, 30), material = Enum.Material.Neon, speed = 120, gravity = 0.3, bounce = false, damage = 2, modelName = "FireBallModel" }
+        }
+        local ballCfg = SERVER_BALL_CONFIG[ballType] or SERVER_BALL_CONFIG.basic
+
+        -- CREAR la pelota lanzada en el SERVIDOR (visible para todos)
+        local ball, mainPart
+        local template = nil
+        if ballCfg.modelName then
+            template = ReplicatedStorage:FindFirstChild(ballCfg.modelName)
+        end
+
+        if template then
+            ball = template:Clone()
+            ball.Name = "ThrownBall"
+            mainPart = ball.PrimaryPart or ball:FindFirstChild("Handle") or ball:FindFirstChildWhichIsA("BasePart")
+            if not mainPart then
+                ball:Destroy()
+                template = nil
             end
         end
 
-        if not nearest then return end
-
-        local rt = nearest:FindFirstChild("Rarity")
-        local rarity = rt and rt.Value or "Blanco"
-        local pos = nearest.Position
-        local crystalColor = nearest.Color
-
-        -- SISTEMA DE VIDA: la pelota quita 1 de vida por golpe
-        local hpObj = nearest:FindFirstChild("Health")
-        local mhpObj = nearest:FindFirstChild("MaxHealth")
-        if not hpObj or not mhpObj then
-            -- Si no tiene HP (cristal viejo), destruir de inmediato
-            local randomCrystalSound = CRYSTAL_BREAK_SOUNDS[math.random(#CRYSTAL_BREAK_SOUNDS)]
-            playSoundAt(randomCrystalSound, pos)
-            createCrystalBreakEffect(pos, crystalColor)
-            nearest:Destroy()
-            CrystalSpawner.spawnChest(pos, {color=crystalColor, name=rarity}, player)
-            return
+        if not template then
+            ball = Instance.new("Part")
+            ball.Name = "ThrownBall"
+            ball.Size = Vector3.new(1.5, 1.5, 1.5)
+            ball.Shape = Enum.PartType.Ball
+            ball.Color = ballCfg.color
+            ball.Material = ballCfg.material
+            mainPart = ball
         end
 
-        -- Calcular dano segun el tipo de pelota
-        local BALL_DAMAGE = {
-            basic = 1,
-            fire = 2,
-            -- Futuras: earth = 3, air = 1, water = 2
-        }
-        local DAMAGE = BALL_DAMAGE[ballType] or 1
-        hpObj.Value = hpObj.Value - DAMAGE
-
-        -- Actualizar barra de vida
-        CrystalSpawner.updateCrystalHealthUI(nearest, hpObj.Value, mhpObj.Value)
-
-        -- Sonido de golpe (no de romper todavia)
-        local hitSound = CRYSTAL_BREAK_SOUNDS[math.random(#CRYSTAL_BREAK_SOUNDS)]
-        playSoundAt(hitSound, pos)
-
-        -- Si la vida llego a 0, romper el cristal
-        if hpObj.Value <= 0 then
-            -- Sonido de cristal rompiendose
-            local randomCrystalSound = CRYSTAL_BREAK_SOUNDS[math.random(#CRYSTAL_BREAK_SOUNDS)]
-            playSoundAt(randomCrystalSound, pos)
-            -- Efecto visual de cristal rompiendose en pedazos
-            createCrystalBreakEffect(pos, crystalColor)
-            nearest:Destroy()
-            CrystalSpawner.spawnChest(pos, {color=crystalColor, name=rarity}, player)
+        -- Configurar partes del modelo
+        for _, desc in ipairs(ball:GetDescendants()) do
+            if desc:IsA("BasePart") and desc ~= mainPart then
+                desc.Anchored = false
+                desc.CanCollide = false
+                desc.CanQuery = false
+                desc.Massless = true
+                local w = Instance.new("WeldConstraint")
+                w.Part0 = mainPart
+                w.Part1 = desc
+                w.Parent = desc
+            end
         end
+
+        mainPart.Anchored = false
+        mainPart.CanCollide = true
+        mainPart.CanQuery = true
+        mainPart.Massless = false
+
+        -- Posicionar y lanzar
+        mainPart.Position = root.Position + root.CFrame.LookVector * 3 + Vector3.new(0, 3, 0)
+        local gravity = ballCfg.gravity or 1.0
+        local bounceVal = ballCfg.bounce and 0.8 or 0.0
+        mainPart.CustomPhysicalProperties = PhysicalProperties.new(0.5, 0.3, gravity, bounceVal, 1.0)
+        ball.Parent = Workspace
+
+        -- Calcular direccion y aplicar velocidad
+        if targetPos then
+            local direction = (targetPos - mainPart.Position).Unit
+            local upImpulse = 20 * (ballCfg.gravity or 1.0)
+            mainPart.AssemblyLinearVelocity = direction * ballCfg.speed + Vector3.new(0, upImpulse, 0)
+        end
+
+        -- Sonido de lanzar (posicional, todos lo escuchan)
+        playSoundAt(SOUND_CRYSTAL_BREAK, mainPart.Position)
+
+        -- DETECCION DE CRISTAL: cuando la pelota toca un cristal, dañarlo
+        local ballHitSent = false
+        local ballTouchedConn
+        ballTouchedConn = mainPart.Touched:Connect(function(hit)
+            if ballHitSent then return end
+            if hit.Name == "Crystal" then
+                ballHitSent = true
+
+                -- Dañar el cristal
+                local rt = hit:FindFirstChild("Rarity")
+                local rarity = rt and rt.Value or "Blanco"
+                local pos = hit.Position
+                local crystalColor = hit.Color
+                local hpObj = hit:FindFirstChild("Health")
+                local mhpObj = hit:FindFirstChild("MaxHealth")
+
+                if not hpObj or not mhpObj then
+                    -- Cristal viejo sin HP: destruir de inmediato
+                    local snd = CRYSTAL_BREAK_SOUNDS[math.random(#CRYSTAL_BREAK_SOUNDS)]
+                    playSoundAt(snd, pos)
+                    createCrystalBreakEffect(pos, crystalColor)
+                    hit:Destroy()
+                    CrystalSpawner.spawnChest(pos, {color=crystalColor, name=rarity}, player)
+                else
+                    -- Aplicar daño
+                    local DAMAGE = ballCfg.damage
+                    hpObj.Value = hpObj.Value - DAMAGE
+                    CrystalSpawner.updateCrystalHealthUI(hit, hpObj.Value, mhpObj.Value)
+                    local hitSound = CRYSTAL_BREAK_SOUNDS[math.random(#CRYSTAL_BREAK_SOUNDS)]
+                    playSoundAt(hitSound, pos)
+
+                    -- Si la vida llego a 0, romper
+                    if hpObj.Value <= 0 then
+                        local breakSound = CRYSTAL_BREAK_SOUNDS[math.random(#CRYSTAL_BREAK_SOUNDS)]
+                        playSoundAt(breakSound, pos)
+                        createCrystalBreakEffect(pos, crystalColor)
+                        hit:Destroy()
+                        CrystalSpawner.spawnChest(pos, {color=crystalColor, name=rarity}, player)
+                    end
+                end
+
+                -- Desconectar evento
+                if ballTouchedConn then
+                    ballTouchedConn:Disconnect()
+                    ballTouchedConn = nil
+                end
+            end
+        end)
+
+        -- Si la pelota no rebota (ej: fuego), destruirla al tocar cualquier cosa
+        if not ballCfg.bounce then
+            local destroyConn
+            destroyConn = mainPart.Touched:Connect(function(hit)
+                if ball and ball.Parent then
+                    ball:Destroy()
+                end
+                if destroyConn then
+                    destroyConn:Disconnect()
+                end
+            end)
+        end
+
+        -- Auto-eliminar despues de 4 segundos
+        Debris:AddItem(ball, 4)
     end)
     if not ok then warn("Error ThrowBall: "..tostring(err)) end
 end)
@@ -1545,6 +1624,7 @@ task.delay(3, function()
 end)
 
 print("=== GameHandler iniciado ===")
+
 
 
 
