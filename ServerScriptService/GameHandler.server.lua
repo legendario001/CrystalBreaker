@@ -459,7 +459,7 @@ Events.ThrowBall.OnServerEvent:Connect(function(player, startPos, launchVel, bal
         local SERVER_BALL_CONFIG = {
             basic = { color = Color3.fromRGB(100, 200, 255), material = Enum.Material.SmoothPlastic, gravity = 1.0, bounce = true, damage = 1, modelName = nil },
             fire = { color = Color3.fromRGB(255, 100, 30), material = Enum.Material.Neon, gravity = 0.3, bounce = false, damage = 2, modelName = "FireBallModel" },
-            earth = { color = Color3.fromRGB(140, 90, 50), material = Enum.Material.Slate, gravity = 2.0, bounce = false, damage = 3, modelName = "EarthBallModel" }
+            earth = { color = Color3.fromRGB(140, 90, 50), material = Enum.Material.Slate, gravity = 1.5, bounce = false, damage = 3, modelName = "EarthBallModel" }
         }
         local ballCfg = SERVER_BALL_CONFIG[ballType] or SERVER_BALL_CONFIG.basic
 
@@ -1647,6 +1647,7 @@ task.delay(3, function()
 end)
 
 print("=== GameHandler iniciado ===")
+
 
 
 
