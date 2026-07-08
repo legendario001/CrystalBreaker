@@ -1192,6 +1192,19 @@ Players.PlayerRemoving:Connect(function(player)
         local base = BaseManager.getBase(userId)
         if base then
             BaseUpgradeManager.removeUpgradeButton(base)
+            -- OCULTAR todos los pisos comprados (Floor2-5) al salir
+            for floorNum = 2, 5 do
+                local floor = base:FindFirstChild("Floor" .. floorNum)
+                if floor then
+                    for _, desc in ipairs(floor:GetDescendants()) do
+                        if desc:IsA("BasePart") then
+                            desc.Transparency = 1
+                            desc.CanCollide = false
+                            desc.CanQuery = false
+                        end
+                    end
+                end
+            end
         end
     end
 
@@ -1609,6 +1622,7 @@ task.delay(3, function()
 end)
 
 print("=== GameHandler iniciado ===")
+
 
 
 
