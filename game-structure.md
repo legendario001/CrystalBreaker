@@ -11,8 +11,8 @@
 | Campo | Valor |
 |-------|-------|
 | **Nombre del proyecto** | CrystalBreaker |
-| **Versión actual** | 1.7.0 |
-| **Última actualización** | 2026-07-08 |
+| **Versión actual** | 1.8.0 |
+| **Última actualización** | 2026-07-09 |
 | **Repositorio GitHub** | `legendario001/CrystalBreaker` |
 | **Plataforma** | Roblox (Luau) |
 | **Tipo de juego** | Tycoon / Colección de personajes |
@@ -26,6 +26,7 @@
 ```
 CrystalBreaker/
 ├── ReplicatedStorage/
+│   ├── FireBallModel/                      (Model - modelo 3D de pelota de fuego con partículas)
 │   └── RemoteEvents.lua                    (ModuleScript - crea todos los RemoteEvents)
 │
 ├── ServerScriptService/
@@ -236,6 +237,7 @@ CrystalBreaker/
 | **DepositCharacter** | RemoteEvent | `ReplicatedStorage` | BallThrower → GameHandler | Depositar personaje en slot de fusión (tecla E) |
 | **RemoveFromFusionSlot** | RemoteEvent | `ReplicatedStorage` | BallThrower → GameHandler | Quitar personaje de slot de fusión (click en slot) |
 | **FuseCharacters** | RemoteEvent | `ReplicatedStorage` | BallThrower → GameHandler | Fusionar 2 personajes idénticos |
+| **EquipBall** | RemoteEvent | `ReplicatedStorage` | BallThrower → GameHandler | Equipar/desequipar pelota (servidor crea pelota visible para todos) |
 
 ---
 
@@ -312,6 +314,16 @@ BuildMap (Command Bar, una sola vez)
 ---
 
 ## 10. Convenciones del Proyecto
+
+### Controles:
+- **1** = Equipar/desequipar pelota
+- **Click / Toque pantalla** = Lanzar pelota (PC y móvil)
+- **E** = Recoger/colocar personaje, recoger cofre
+- **G** = Soltar personaje
+- **F** = Mejorar personaje (cerca del botón de mejora)
+- **H** = Mejorar base (cerca del botón dorado)
+- **Mochila** = Click para abrir/cerrar panel de pelotas
+- **Móvil**: Botones táctiles 👆 ⬆️ 🏰 aparecen automáticamente
 
 ### Reglas permanentes:
 
@@ -431,6 +443,18 @@ BuildMap (Command Bar, una sola vez)
 - ✅ Fix: base ownership check en todas las interacciones
 - ✅ Fix: carry tool solo se destruye después de confirmar pedestal
 
+### Versión 1.8.0 (2026-07-09)
+- ✅ Pelota visible para todos los jugadores (creada en servidor via EquipBallEvent)
+- ✅ Lanzamiento híbrido: pelota local (cero lag) + servidor (visible para todos)
+- ✅ Pelota de fuego con modelo 3D personalizado (FireBallModel en ReplicatedStorage)
+- ✅ Sistema de vida de cristales con barra visual (Blanco=2, Azul=4, Amarillo=6, Rojo=8, Morado=10)
+- ✅ Botones táctiles para móvil (👆 interactuar, ⬆️ mejorar personaje, 🏰 mejorar base)
+- ✅ Lanzar pelota en móvil tocando pantalla (sin pausar movimiento)
+- ✅ Detección física de cristales (la pelota toca para dañar)
+- ✅ Bloqueo de pinch-zoom en móvil (FOV forzado a 70)
+- ✅ Mochila con icono personalizado (rbxassetid://113160993563399)
+- ✅ Soporte móvil completo
+
 ### Versión 1.7.0 (2026-07-08)
 - ✅ Soporte móvil completo: toque en pantalla para lanzar pelota
 - ✅ Detección física de cristales (la pelota toca el cristal para dañarlo)
@@ -540,4 +564,5 @@ BuildMap (Command Bar, una sola vez)
 > - Si detectas arquitectura inconsistente, **reorganizar antes de continuar**.
 > 
 > La prioridad no es solo generar código, sino mantener una **arquitectura limpia, consistente, escalable y bien documentada**.
+
 
