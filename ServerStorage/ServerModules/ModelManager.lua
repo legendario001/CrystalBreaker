@@ -512,7 +512,7 @@ end
 -- Crear PILA DE DINERO (solo dinero, separada del boton mejorar)
 -- Moneda verde en el suelo, genera dinero, se recoge al caminar
 -- ============================================
-function ModelManager.createMoneyPile(pedestal, rarity, level, fusionLevel)
+function ModelManager.createMoneyPile(pedestal, rarity, level, fusionLevel, ownerPlayer)
         local platform = pedestal:FindFirstChild("Platform")
         if not platform then return nil end
 
@@ -556,6 +556,12 @@ function ModelManager.createMoneyPile(pedestal, rarity, level, fusionLevel)
         fusionTag.Name = "FusionLevel"
         fusionTag.Value = fusionLevel or 0
         fusionTag.Parent = moneyPile
+
+        -- Owner tag: solo el dueño de la base puede recoger el dinero
+        local ownerTag = Instance.new("ObjectValue")
+        ownerTag.Name = "Owner"
+        ownerTag.Value = ownerPlayer
+        ownerTag.Parent = moneyPile
 
         -- Crear CollectEvent ANTES del Touched para que setupMoneyPileEvents lo encuentre
         local collectEvent = Instance.new("BindableEvent")
@@ -603,6 +609,10 @@ function ModelManager.createMoneyPile(pedestal, rarity, level, fusionLevel)
                 if not character then return end
                 local player = game:GetService("Players"):GetPlayerFromCharacter(character)
                 if not player then return end
+
+                -- SOLO el dueño puede recoger el dinero
+                local ownerTag = moneyPile:FindFirstChild("Owner")
+                if ownerTag and ownerTag.Value ~= player then return end
 
                 local mv = moneyPile:FindFirstChild("MoneyValue")
                 if not mv or mv.Value <= 0 then return end
@@ -851,6 +861,7 @@ function ModelManager.clearPedestal(pedestal)
 end
 
 return ModelManager
+
 
 
 
