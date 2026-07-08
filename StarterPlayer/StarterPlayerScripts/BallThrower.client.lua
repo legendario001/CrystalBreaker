@@ -543,37 +543,27 @@ local function throwBall(targetPosition)
 
     -- Crear la pelota lanzada (modelo 3D o Part simple)
     local ball, mainPart = createBallObject(ballConfig)
-    ball.Name = "ThrownBall"
-    -- Configurar para fisica de lanzamiento (puede colisionar)
-    if mainPart:IsA("BasePart") then
-        mainPart.Anchored = false
-        mainPart.CanCollide = true
-        mainPart.CanQuery = true
-        mainPart.Massless = false
-        -- Configurar todas las partes del modelo si es un Model
-        for _, desc in ipairs(ball:GetDescendants()) do
-            if desc:IsA("BasePart") and desc ~= mainPart then
-                desc.Anchored = false
-                desc.CanCollide = false
-                desc.CanQuery = false
-                desc.Massless = true
-                -- Weld partes secundarias al mainPart para que se muevan juntas
-                local w = Instance.new("WeldConstraint")
-                w.Part0 = mainPart
-                w.Part1 = desc
-                w.Parent = desc
-            end
+    ball.Name = "ThrownBallLocal"
+    -- Configurar para fisica de lanzamiento
+    mainPart.Anchored = false
+    mainPart.CanCollide = ballConfig.bounce and true or false
+    mainPart.CanQuery = false
+    mainPart.Massless = true
+    -- Configurar todas las partes del modelo si es un Model
+    for _, desc in ipairs(ball:GetDescendants()) do
+        if desc:IsA("BasePart") and desc ~= mainPart then
+            desc.Anchored = false
+            desc.CanCollide = false
+            desc.CanQuery = false
+            desc.Massless = true
+            local w = Instance.new("WeldConstraint")
+            w.Part0 = mainPart
+            w.Part1 = desc
+            w.Parent = desc
         end
     end
-    -- Si es una Part simple (no Model), configurar directamente
-    if ball:IsA("BasePart") then
-        ball.Anchored = false
-        ball.CanCollide = true
-        ball.CanQuery = true
-        ball.Massless = false
-    end
-    mainPart.Position = root.Position + root.CFrame.LookVector*3 + Vector3.new(0, 3, 0)
-    -- Fisicas personalizadas segun la pelota (gravedad, friccion, rebote)
+    local startPos = root.Position + root.CFrame.LookVector * 3 + Vector3.new(0, 3, 0)
+    mainPart.Position = startPos
     local gravity = ballConfig.gravity or 1.0
     local bounce = ballConfig.bounce and 0.8 or 0.0
     mainPart.CustomPhysicalProperties = PhysicalProperties.new(0.5, 0.3, gravity, bounce, 1.0)
@@ -586,50 +576,26 @@ local function throwBall(targetPosition)
         if mouseHit then aimPos = mouseHit.Position end
     end
 
+    local launchVel = Vector3.new(0, 0, 0)
     if aimPos then
-        local direction = (aimPos - mainPart.Position).Unit
+        local direction = (aimPos - startPos).Unit
         local upImpulse = 20 * (ballConfig.gravity or 1.0)
-        mainPart.AssemblyLinearVelocity = direction * ballConfig.speed + Vector3.new(0, upImpulse, 0)
+        launchVel = direction * ballConfig.speed + Vector3.new(0, upImpulse, 0)
+        mainPart.AssemblyLinearVelocity = launchVel
     end
 
-    -- NO enviar ThrowBallEvent aqui - solo se envia cuando la pelota
-    -- TOCA FISICAMENTE un cristal (evento Touched de abajo)
-    -- Esto arregla el bug de golpes de cerca (el cooldown bloqueaba el 2do evento)
+    -- Enviar al servidor para crear pelota visible para TODOS
+    -- 3 parametros: startPos (Vector3), launchVel (Vector3), ballType (string)
+    if ThrowBallEvent then
+        ThrowBallEvent:FireServer(startPos, launchVel, selectedBallType)
+    end
 
-    -- DETECCION FISICA: cuando la pelota toca un cristal, enviar posicion exacta
-    -- Esto funciona tanto en PC como en movil, de cerca y de lejos
-    local ballHitSent = false
-    local ballTouchedConn
-    ballTouchedConn = mainPart.Touched:Connect(function(hit)
-        if ballHitSent then return end
-        -- Verificar si toco un cristal
-        if hit.Name == "Crystal" then
-            ballHitSent = true
-            -- Enviar posicion EXACTA del cristal al servidor
-            if ThrowBallEvent then
-                ThrowBallEvent:FireServer(hit.Position, selectedBallType)
-            end
-            -- Desconectar el evento
-            if ballTouchedConn then
-                ballTouchedConn:Disconnect()
-                ballTouchedConn = nil
-            end
+    -- Destruir pelota local despues de 0.15s (la del servidor aparece)
+    task.delay(0.15, function()
+        if ball and ball.Parent then
+            ball:Destroy()
         end
     end)
-
-    -- Si la pelota no rebota (ej: fuego), destruirla al tocar el suelo
-    if not ballConfig.bounce then
-        local touchedConn
-        touchedConn = mainPart.Touched:Connect(function(hit)
-            -- Destruir al tocar cualquier cosa (suelo, pared, etc)
-            if ball and ball.Parent then
-                ball:Destroy()
-            end
-            if touchedConn then
-                touchedConn:Disconnect()
-            end
-        end)
-    end
 
     activeBalls = activeBalls + 1
     Debris:AddItem(ball, 4)
@@ -1647,10 +1613,19 @@ backpackBtn.Size = UDim2.new(0, 60, 0, 60)
 backpackBtn.Position = UDim2.new(0, 20, 1, -150)
 backpackBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
 backpackBtn.BorderSizePixel = 0
-backpackBtn.Text = "🎒"
-backpackBtn.TextScaled = true
+backpackBtn.Text = ""
 backpackBtn.Parent = screenGui
 Instance.new("UICorner", backpackBtn).CornerRadius = UDim.new(0, 12)
+
+-- Icono de mochila personalizado
+local backpackIcon = Instance.new("ImageLabel")
+backpackIcon.Name = "BackpackIcon"
+backpackIcon.Size = UDim2.new(1.4, 0, 1.4, 0)
+backpackIcon.Position = UDim2.new(-0.2, 0, -0.2, 0)
+backpackIcon.BackgroundTransparency = 1
+backpackIcon.Image = "rbxassetid://113160993563399"
+backpackIcon.ScaleType = Enum.ScaleType.Fit
+backpackIcon.Parent = backpackBtn
 
 local backpackStroke = Instance.new("UIStroke")
 backpackStroke.Color = Color3.fromRGB(255, 215, 0)
@@ -1838,6 +1813,7 @@ end)
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
 
 
