@@ -77,14 +77,12 @@ local BALL_TYPES = {
         material = Enum.Material.Slate,
         damage = 3,
         speed = 70,
-        gravity = 2.0, -- gravedad alta (cae rapido)
+        gravity = 1.5, -- gravedad alta (cae rapido)
         bounce = false, -- rebote bajo, se detiene casi
         transparency = 0,
         unlocked = false,
         cost = 50000,
         description = "Pesada, dano x3, cae rapido",
-        soundEquip = "rbxassetid://129504465599355", -- usar mismo sonido por ahora
-        soundThrow = "rbxassetid://130422645188028",  -- usar mismo sonido por ahora
         modelName = "EarthBallModel" -- modelo 3D personalizado en ReplicatedStorage
     },
     -- Futuras: air, water
@@ -1905,6 +1903,7 @@ end)
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
 
 
