@@ -658,9 +658,36 @@ if isMobile then
         end
 
         -- Prevenir que el pinch-to-zoom bloquee la camara
+        -- Resetear FOV continuamente mientras se hace pinch
         UserInputService.TouchPinch:Connect(function(touchPositions, scale, velocity, state)
-            if state == Enum.UserInputState.Begin then
+            if state == Enum.UserInputState.Begin or state == Enum.UserInputState.Change then
                 camera.FieldOfView = 70
+            end
+        end)
+
+        -- Tambien monitorear el FOV continuamente y resetearlo si cambia
+        task.spawn(function()
+            while true do
+                task.wait(0.1)
+                if camera and camera.FieldOfView ~= 70 then
+                    camera.FieldOfView = 70
+                end
+            end
+        end)
+
+        -- Bloquear el zoom del Humanoid (distancia minima y maxima de camara)
+        task.spawn(function()
+            while true do
+                task.wait(0.5)
+                local char = player.Character
+                if char then
+                    local humanoid = char:FindFirstChildOfClass("Humanoid")
+                    if humanoid then
+                        -- Forzar que la distancia de la camara no cambie
+                        humanoid.CameraMinZoomDistance = 0.5
+                        humanoid.CameraMaxZoomDistance = 0.5
+                    end
+                end
             end
         end)
     end
@@ -1738,6 +1765,7 @@ end)
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
 
 
