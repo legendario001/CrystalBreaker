@@ -59,7 +59,7 @@ local BALL_TYPES = {
         color = Color3.fromRGB(255, 100, 30),
         material = Enum.Material.Neon,
         damage = 2,
-        speed = 120,
+        speed = 100,
         gravity = 0.3, -- gravedad baja (vuela mas recto)
         bounce = false, -- no rebota, se extingue
         transparency = 0,
@@ -1717,6 +1717,7 @@ end)
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
 
 
