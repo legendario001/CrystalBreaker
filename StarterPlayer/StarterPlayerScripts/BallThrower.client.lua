@@ -33,6 +33,7 @@ local FusionUIUpdateEvent = ReplicatedStorage:WaitForChild("FusionUIUpdate", 15)
 local FuseCharactersEvent = ReplicatedStorage:WaitForChild("FuseCharacters", 15)
 local DepositCharacterEvent = ReplicatedStorage:WaitForChild("DepositCharacter", 15)
 local RemoveFromFusionSlotEvent = ReplicatedStorage:WaitForChild("RemoveFromFusionSlot", 15)
+local EquipBallEvent = ReplicatedStorage:WaitForChild("EquipBall", 15)
 
 -- ============================================
 -- CONFIGURACION DE PELOTAS
@@ -58,7 +59,7 @@ local BALL_TYPES = {
         color = Color3.fromRGB(255, 100, 30),
         material = Enum.Material.Neon,
         damage = 2,
-        speed = 120,
+        speed = 100,
         gravity = 0.3, -- gravedad baja (vuela mas recto)
         bounce = false, -- no rebota, se extingue
         transparency = 0,
@@ -104,7 +105,7 @@ local MONEY_GREEN_BRIGHT = Color3.fromRGB(129,199,132)
 -- Bottom bar
 local bottomBar = Instance.new("Frame")
 bottomBar.Size = UDim2.new(0,80,0,70)
-bottomBar.Position = UDim2.new(0,20,1,-80)
+bottomBar.Position = UDim2.new(0.7,-40,1,-80)
 bottomBar.BackgroundColor3 = Color3.fromRGB(20,20,30)
 bottomBar.BackgroundTransparency = 0.2
 bottomBar.BorderSizePixel = 0
@@ -417,42 +418,24 @@ local function createBallObject(ballConfig)
 end
 
 -- BALL SYSTEM
--- En vez de usar Tool (que fuerza la pose del brazo), usamos un Weld
--- directo a la mano derecha. Asi el brazo se ve natural y la pelota se ve sostenida.
+-- La pelota se crea en el SERVIDOR para que todos los jugadores la vean
+-- El cliente solo envia el tipo de pelota a equipar
 local function equipBall()
     if ballEquipped or isCarrying then return end
     local char = player.Character
     if not char then return end
 
-    -- Limpiar pelota anterior
-    local oldBall = char:FindFirstChild("CrystalBall")
-    if oldBall then oldBall:Destroy() end
-
-    -- Buscar la mano derecha del personaje
-    local rightHand = char:FindFirstChild("RightHand") or char:FindFirstChild("Right Arm")
-    if not rightHand then return end
-
-    -- Obtener configuracion de la pelota seleccionada
-    local ballConfig = BALL_TYPES[selectedBallType] or BALL_TYPES.basic
-
-    -- Crear la pelota (modelo 3D o Part simple)
-    local ball, mainPart = createBallObject(ballConfig)
-    -- Posicionar la pelota en la punta de los dedos
-    mainPart.Position = rightHand.Position + Vector3.new(0, 0, -1.0)
-    ball.Parent = char
-
-    -- Weld (no WeldConstraint) para poder ajustar el offset C0
-    local weld = Instance.new("Weld")
-    weld.Name = "BallWeld"
-    weld.Part0 = rightHand
-    weld.Part1 = mainPart
-    weld.C0 = CFrame.new(0, 0, -1.0)
-    weld.Parent = ball
+    -- Enviar evento al servidor para crear la pelota (visible para todos)
+    if EquipBallEvent then
+        EquipBallEvent:FireServer(selectedBallType, true)
+    end
 
     ballEquipped = true
     updateButton()
     updateUI()
+
     -- Sonido al equipar (si la pelota tiene sonido)
+    local ballConfig = BALL_TYPES[selectedBallType] or BALL_TYPES.basic
     if ballConfig.soundEquip then
         playClientSound(ballConfig.soundEquip, 0.6)
     end
@@ -460,49 +443,21 @@ end
 
 local function unequipBall()
     if not ballEquipped then return end
-    local char = player.Character
-    if char then
-        local oldBall = char:FindFirstChild("CrystalBall")
-        if oldBall then oldBall:Destroy() end
+    -- Enviar evento al servidor para quitar la pelota
+    if EquipBallEvent then
+        EquipBallEvent:FireServer(selectedBallType, false)
     end
     ballEquipped = false
     updateButton()
     updateUI()
 end
 
--- Re-equipar la pelota en la mano (sin el check de ballEquipped)
--- Usado despues de lanzar para volver a poner la pelota
+-- Re-equipar la pelota en la mano (despues de lanzar)
+-- El servidor la crea automaticamente, solo reproducir sonido si aplica
 local function reEquipBall()
-    local char = player.Character
-    if not char then return end
-    if isCarrying then return end
-
-    -- Limpiar pelota anterior si existe
-    local oldBall = char:FindFirstChild("CrystalBall")
-    if oldBall then oldBall:Destroy() end
-
-    -- Buscar la mano derecha del personaje
-    local rightHand = char:FindFirstChild("RightHand") or char:FindFirstChild("Right Arm")
-    if not rightHand then return end
-
-    -- Obtener configuracion de la pelota seleccionada
-    local ballConfig = BALL_TYPES[selectedBallType] or BALL_TYPES.basic
-
-    -- Crear la pelota (modelo 3D o Part simple)
-    local ball, mainPart = createBallObject(ballConfig)
-    -- Posicionar la pelota en la punta de los dedos
-    mainPart.Position = rightHand.Position + Vector3.new(0, 0, -1.0)
-    ball.Parent = char
-
-    -- Weld (no WeldConstraint) para poder ajustar el offset C0
-    local weld = Instance.new("Weld")
-    weld.Name = "BallWeld"
-    weld.Part0 = rightHand
-    weld.Part1 = mainPart
-    weld.C0 = CFrame.new(0, 0, -1.0)
-    weld.Parent = ball
-    -- NO reproducir sonido aqui (reEquipBall es automatico despues de lanzar)
-    -- El sonido de equipar solo suena cuando el jugador lo elige (mochila o tecla 1)
+    if EquipBallEvent then
+        EquipBallEvent:FireServer(selectedBallType, true)
+    end
 end
 
 local function throwBall(targetPosition)
@@ -516,11 +471,12 @@ local function throwBall(targetPosition)
     local humanoid = char:FindFirstChild("Humanoid")
     if not root then throwDebounce=false return end
 
-    -- Quitar la pelota de la mano durante el lanzamiento
-    local handBall = char:FindFirstChild("CrystalBall")
-    if handBall then handBall:Destroy() end
+    -- Quitar la pelota de la mano durante el lanzamiento (pedir al servidor)
+    if EquipBallEvent then
+        EquipBallEvent:FireServer(selectedBallType, false)
+    end
 
-    -- OPTIMIZADO: reusar track cacheado
+    -- Animacion de lanzar
     if humanoid then
         local animator = humanoid:FindFirstChildOfClass("Animator")
         if animator then
@@ -541,34 +497,6 @@ local function throwBall(targetPosition)
         playClientSound(ballConfig.soundThrow, 0.6)
     end
 
-    -- Crear la pelota lanzada (modelo 3D o Part simple)
-    local ball, mainPart = createBallObject(ballConfig)
-    ball.Name = "ThrownBallLocal"
-    -- Configurar para fisica de lanzamiento
-    mainPart.Anchored = false
-    mainPart.CanCollide = ballConfig.bounce and true or false
-    mainPart.CanQuery = false
-    mainPart.Massless = true
-    -- Configurar todas las partes del modelo si es un Model
-    for _, desc in ipairs(ball:GetDescendants()) do
-        if desc:IsA("BasePart") and desc ~= mainPart then
-            desc.Anchored = false
-            desc.CanCollide = false
-            desc.CanQuery = false
-            desc.Massless = true
-            local w = Instance.new("WeldConstraint")
-            w.Part0 = mainPart
-            w.Part1 = desc
-            w.Parent = desc
-        end
-    end
-    local startPos = root.Position + root.CFrame.LookVector * 3 + Vector3.new(0, 3, 0)
-    mainPart.Position = startPos
-    local gravity = ballConfig.gravity or 1.0
-    local bounce = ballConfig.bounce and 0.8 or 0.0
-    mainPart.CustomPhysicalProperties = PhysicalProperties.new(0.5, 0.3, gravity, bounce, 1.0)
-    ball.Parent = workspace
-
     -- Calcular direccion: usar targetPosition (toque movil) o mouse.Hit (PC)
     local aimPos = targetPosition
     if not aimPos then
@@ -576,29 +504,103 @@ local function throwBall(targetPosition)
         if mouseHit then aimPos = mouseHit.Position end
     end
 
+    -- ============================================
+    -- LANZAMIENTO HIBRIDO: pelota local + servidor
+    -- ============================================
+    -- 1. Crear pelota LOCAL inmediatamente (cero lag, 100% fluido)
+    --    Esta pelota es solo visual, no daña cristales
+    local localBall, localMainPart = createBallObject(ballConfig)
+    localBall.Name = "ThrownBallLocal"
+    local startPos = root.Position + root.CFrame.LookVector * 3 + Vector3.new(0, 3, 0)
+    localMainPart.Position = startPos
+    localMainPart.Anchored = false
+    -- CanCollide depende de si rebota o no
+    -- Si rebota (basic): CanCollide = true para que choque con el suelo y rebote
+    -- Si no rebota (fire): CanCollide = false para que no choque, solo se destruye
+    localMainPart.CanCollide = ballConfig.bounce and true or false
+    localMainPart.CanQuery = false
+    localMainPart.Massless = true
+    local gravity = ballConfig.gravity or 1.0
+    local bounceVal = ballConfig.bounce and 0.8 or 0.0
+    localMainPart.CustomPhysicalProperties = PhysicalProperties.new(0.5, 0.3, gravity, bounceVal, 1.0)
+    -- Weld partes secundarias
+    for _, desc in ipairs(localBall:GetDescendants()) do
+        if desc:IsA("BasePart") and desc ~= localMainPart then
+            desc.Anchored = false
+            desc.CanCollide = false
+            desc.CanQuery = false
+            desc.Massless = true
+            local w = Instance.new("WeldConstraint")
+            w.Part0 = localMainPart
+            w.Part1 = desc
+            w.Parent = desc
+        end
+    end
+    localBall.Parent = workspace
+
+    -- Aplicar velocidad INMEDIATAMENTE (antes de parentear ya esta lista)
+    if aimPos then
+        local direction = (aimPos - startPos).Unit
+        local upImpulse = 20 * (ballConfig.gravity or 1.0)
+        localMainPart.AssemblyLinearVelocity = direction * ballConfig.speed + Vector3.new(0, upImpulse, 0)
+    end
+
+    -- Auto-eliminar la pelota local despues de 4s
+    Debris:AddItem(localBall, 4)
+
+    -- Si la pelota local toca un cristal, enviar evento al servidor
+    local localHitSent = false
+    local localTouchedConn
+    localTouchedConn = localMainPart.Touched:Connect(function(hit)
+        if localHitSent then return end
+        if hit.Name == "Crystal" then
+            localHitSent = true
+            if ThrowBallEvent then
+                ThrowBallEvent:FireServer(hit.Position, selectedBallType)
+            end
+            if localTouchedConn then
+                localTouchedConn:Disconnect()
+                localTouchedConn = nil
+            end
+        end
+    end)
+
+    -- Si la pelota no rebota (ej: fuego), destruirla al tocar el suelo
+    if not ballConfig.bounce then
+        local destroyConn
+        destroyConn = localMainPart.Touched:Connect(function(hit)
+            if localBall and localBall.Parent then
+                localBall:Destroy()
+            end
+            if destroyConn then
+                destroyConn:Disconnect()
+            end
+        end)
+    end
+
+    -- 2. ENVIAR al servidor para crear pelota visible para TODOS
+    -- El servidor crea una pelota que todos ven (incluido el que lanza)
+    -- Despues de 0.15s, destruir la pelota local para evitar duplicado
+    -- (la pelota del servidor ya estara visible para entonces)
     local launchVel = Vector3.new(0, 0, 0)
     if aimPos then
         local direction = (aimPos - startPos).Unit
         local upImpulse = 20 * (ballConfig.gravity or 1.0)
         launchVel = direction * ballConfig.speed + Vector3.new(0, upImpulse, 0)
-        mainPart.AssemblyLinearVelocity = launchVel
     end
 
-    -- Enviar al servidor para crear pelota visible para TODOS
-    -- 3 parametros: startPos (Vector3), launchVel (Vector3), ballType (string)
     if ThrowBallEvent then
         ThrowBallEvent:FireServer(startPos, launchVel, selectedBallType)
     end
 
-    -- Destruir pelota local despues de 0.15s (la del servidor aparece)
+    -- Destruir pelota local despues de 0.15s (cuando la del servidor aparece)
     task.delay(0.15, function()
-        if ball and ball.Parent then
-            ball:Destroy()
+        if localBall and localBall.Parent then
+            localBall:Destroy()
         end
     end)
 
     activeBalls = activeBalls + 1
-    Debris:AddItem(ball, 4)
     task.delay(4.5, function() activeBalls = math.max(0, activeBalls-1) end)
 
     -- Despues del lanzamiento, volver a poner la pelota en la mano
@@ -731,6 +733,58 @@ end)
 
 -- Solo crear botones si es dispositivo movil (tacto)
 local isMobile = UserInputService.TouchEnabled and not UserInputService.MouseEnabled
+
+-- ============================================
+-- CONFIGURACION DE CAMARA PARA MOVIL
+-- Bloquear el pinch-to-zoom que se queda activado y bloquea el giro de camara
+-- ============================================
+if isMobile then
+    local camera = workspace.CurrentCamera
+
+    -- Forzar el modo de camara Classic
+    player.CameraMode = Enum.CameraMode.Classic
+
+    -- Restaurar distancias normales de camara (no forzar 0.5)
+    player.CameraMinZoomDistance = 0.5
+    player.CameraMaxZoomDistance = 128
+
+    -- INTERCEPTAR el pinch: cuando se detecta 2 dedos (pinch), 
+    -- simular que NO hay pinch reseteando el FOV inmediatamente
+    -- y forzando la distancia de camara a su valor actual
+    local lastZoom = 12.5 -- distancia normal de camara
+
+    UserInputService.TouchPinch:Connect(function(touchPositions, scale, velocity, state)
+        if state == Enum.UserInputState.Begin then
+            -- Guardar la distancia actual de la camara
+            local playerZoom = (player.CameraMaxZoomDistance + player.CameraMinZoomDistance) / 2
+            lastZoom = playerZoom
+        end
+        if state == Enum.UserInputState.Begin or state == Enum.UserInputState.Change then
+            -- Resetear FOV inmediatamente
+            if camera then
+                camera.FieldOfView = 70
+            end
+        end
+        if state == Enum.UserInputState.End then
+            -- Al terminar el pinch, restaurar la distancia de camara
+            player.CameraMinZoomDistance = 0.5
+            player.CameraMaxZoomDistance = 128
+            if camera then
+                camera.FieldOfView = 70
+            end
+        end
+    end)
+
+    -- Monitoreo continuo: si el FOV cambia por pinch, resetearlo
+    task.spawn(function()
+        while true do
+            task.wait(0.05)
+            if camera and camera.FieldOfView ~= 70 then
+                camera.FieldOfView = 70
+            end
+        end
+    end)
+end
 
 -- Funcion helper para crear un boton de interaccion con estilo: solo borde negro, sin relleno
 local function createMobileButton(name, icon)
@@ -1610,7 +1664,7 @@ end)
 local backpackBtn = Instance.new("TextButton")
 backpackBtn.Name = "BackpackBtn"
 backpackBtn.Size = UDim2.new(0, 60, 0, 60)
-backpackBtn.Position = UDim2.new(0, 20, 1, -150)
+backpackBtn.Position = UDim2.new(0, 20, 1, -200)
 backpackBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
 backpackBtn.BorderSizePixel = 0
 backpackBtn.Text = ""
@@ -1813,6 +1867,17 @@ end)
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
+
+
+
+
+
+
+
+
+
+
 
 
 
