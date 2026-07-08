@@ -1687,11 +1687,12 @@ backpackStroke.Thickness = 2
 backpackStroke.Transparency = 0.3
 backpackStroke.Parent = backpackBtn
 
--- Panel de mochila (se abre/cierra)
+-- Panel de mochila (se abre/cierra) - centrado abajo, abre hacia arriba
 local backpackPanel = Instance.new("Frame")
 backpackPanel.Name = "BackpackPanel"
 backpackPanel.Size = UDim2.new(0, 400, 0, 350)
-backpackPanel.Position = UDim2.new(0, 90, 1, -430)
+-- Centrado horizontalmente (0.5 - mitad del ancho), abajo de la pantalla
+backpackPanel.Position = UDim2.new(0.5, -200, 1, -370)
 backpackPanel.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
 backpackPanel.BackgroundTransparency = 0.05
 backpackPanel.BorderSizePixel = 0
@@ -1699,6 +1700,21 @@ backpackPanel.Visible = false
 backpackPanel.ZIndex = 50
 backpackPanel.Parent = screenGui
 Instance.new("UICorner", backpackPanel).CornerRadius = UDim.new(0, 16)
+
+-- Boton X para cerrar (esquina superior derecha del panel)
+local bpCloseBtn = Instance.new("TextButton")
+bpCloseBtn.Name = "BpCloseBtn"
+bpCloseBtn.Size = UDim2.new(0, 30, 0, 30)
+bpCloseBtn.Position = UDim2.new(1, -35, 0, 5)
+bpCloseBtn.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
+bpCloseBtn.BorderSizePixel = 0
+bpCloseBtn.Text = "X"
+bpCloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+bpCloseBtn.TextScaled = true
+bpCloseBtn.Font = Enum.Font.GothamBold
+bpCloseBtn.ZIndex = 52
+bpCloseBtn.Parent = backpackPanel
+Instance.new("UICorner", bpCloseBtn).CornerRadius = UDim.new(0, 8)
 
 local bpStroke = Instance.new("UIStroke")
 bpStroke.Color = Color3.fromRGB(255, 215, 0)
@@ -1864,9 +1880,15 @@ backpackBtn.MouseButton1Click:Connect(function()
     end
 end)
 
+-- Boton X para cerrar mochila (funciona con mouse y movil)
+bpCloseBtn.MouseButton1Click:Connect(function()
+    backpackPanel.Visible = false
+end)
+
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
 
 
