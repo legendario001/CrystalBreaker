@@ -70,7 +70,24 @@ local BALL_TYPES = {
         soundThrow = "rbxassetid://130422645188028", -- sonido al lanzar
         modelName = "FireBallModel" -- modelo 3D personalizado en ReplicatedStorage
     },
-    -- Futuras: earth, air, water
+    earth = {
+        name = "Tierra",
+        icon = "🟤",
+        color = Color3.fromRGB(140, 90, 50),
+        material = Enum.Material.Slate,
+        damage = 3,
+        speed = 70,
+        gravity = 2.0, -- gravedad alta (cae rapido)
+        bounce = false, -- rebote bajo, se detiene casi
+        transparency = 0,
+        unlocked = false,
+        cost = 50000,
+        description = "Pesada, dano x3, cae rapido",
+        soundEquip = "rbxassetid://129504465599355", -- usar mismo sonido por ahora
+        soundThrow = "rbxassetid://130422645188028",  -- usar mismo sonido por ahora
+        modelName = "EarthBallModel" -- modelo 3D personalizado en ReplicatedStorage
+    },
+    -- Futuras: air, water
 }
 
 -- Pelota seleccionada actualmente
@@ -1888,6 +1905,7 @@ end)
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
 
 
