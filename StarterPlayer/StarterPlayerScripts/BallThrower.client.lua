@@ -675,18 +675,17 @@ if isMobile then
             end
         end)
 
-        -- Bloquear el zoom del Humanoid (distancia minima y maxima de camara)
+        -- Bloquear el zoom del Player (distancia minima y maxima de camara)
+        -- Estas propiedades van en Player, no en Humanoid
         task.spawn(function()
             while true do
                 task.wait(0.5)
-                local char = player.Character
-                if char then
-                    local humanoid = char:FindFirstChildOfClass("Humanoid")
-                    if humanoid then
-                        -- Forzar que la distancia de la camara no cambie
-                        humanoid.CameraMinZoomDistance = 0.5
-                        humanoid.CameraMaxZoomDistance = 0.5
-                    end
+                -- Forzar que la distancia de la camara no cambie
+                if player.CameraMinZoomDistance ~= 0.5 then
+                    player.CameraMinZoomDistance = 0.5
+                end
+                if player.CameraMaxZoomDistance ~= 0.5 then
+                    player.CameraMaxZoomDistance = 0.5
                 end
             end
         end)
@@ -1765,6 +1764,7 @@ end)
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
 
 
