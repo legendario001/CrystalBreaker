@@ -1443,11 +1443,109 @@ task.spawn(function()
     end
 end)
 
+-- ============================================
+-- SISTEMA DE PELOTAS (servidor)
+-- Crea/elimina la pelota en el personaje del jugador para que TODOS la vean
+-- ============================================
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+-- Configuracion de pelotas en el servidor
+local SERVER_BALL_TYPES = {
+    basic = {
+        color = Color3.fromRGB(100, 200, 255),
+        material = Enum.Material.SmoothPlastic,
+        transparency = 0
+    },
+    fire = {
+        color = Color3.fromRGB(255, 100, 30),
+        material = Enum.Material.Neon,
+        transparency = 0,
+        modelName = "FireBallModel"
+    }
+}
+
+Events.EquipBall.OnServerEvent:Connect(function(player, ballType, equip)
+    local ok, err = pcall(function()
+        if not isPlayerValid(player) then return end
+        local char = player.Character
+        if not char then return end
+
+        -- Limpiar pelota anterior si existe
+        local oldBall = char:FindFirstChild("CrystalBall")
+        if oldBall then oldBall:Destroy() end
+
+        if not equip then return end -- si equip=false, solo eliminar
+
+        local ballConfig = SERVER_BALL_TYPES[ballType] or SERVER_BALL_TYPES.basic
+
+        -- Buscar la mano derecha
+        local rightHand = char:FindFirstChild("RightHand") or char:FindFirstChild("Right Arm")
+        if not rightHand then return end
+
+        -- Crear la pelota (modelo 3D o Part simple)
+        local ball, mainPart
+        local template = nil
+        if ballConfig.modelName then
+            template = ReplicatedStorage:FindFirstChild(ballConfig.modelName)
+        end
+
+        if template then
+            ball = template:Clone()
+            ball.Name = "CrystalBall"
+            mainPart = ball.PrimaryPart or ball:FindFirstChild("Handle") or ball:FindFirstChildWhichIsA("BasePart")
+            if not mainPart then
+                ball:Destroy()
+                template = nil
+            end
+        end
+
+        if not template then
+            ball = Instance.new("Part")
+            ball.Name = "CrystalBall"
+            ball.Size = Vector3.new(1.5, 1.5, 1.5)
+            ball.Shape = Enum.PartType.Ball
+            ball.Color = ballConfig.color
+            ball.Material = ballConfig.material
+            ball.Transparency = ballConfig.transparency
+            mainPart = ball
+        end
+
+        -- Configurar partes
+        for _, desc in ipairs(ball:GetDescendants()) do
+            if desc:IsA("BasePart") then
+                desc.Anchored = false
+                desc.CanCollide = false
+                desc.CanQuery = false
+                desc.Massless = true
+            end
+        end
+        if ball:IsA("BasePart") then
+            ball.Anchored = false
+            ball.CanCollide = false
+            ball.CanQuery = false
+            ball.Massless = true
+        end
+
+        -- Posicionar y weld
+        mainPart.Position = rightHand.Position + Vector3.new(0, 0, -1.0)
+        ball.Parent = char
+
+        local weld = Instance.new("Weld")
+        weld.Name = "BallWeld"
+        weld.Part0 = rightHand
+        weld.Part1 = mainPart
+        weld.C0 = CFrame.new(0, 0, -1.0)
+        weld.Parent = ball
+    end)
+    if not ok then warn("Error EquipBall: "..tostring(err)) end
+end)
+
 task.delay(3, function()
     CrystalSpawner.spawnAll()
 end)
 
 print("=== GameHandler iniciado ===")
+
 
 
 
