@@ -33,6 +33,7 @@ local FusionUIUpdateEvent = ReplicatedStorage:WaitForChild("FusionUIUpdate", 15)
 local FuseCharactersEvent = ReplicatedStorage:WaitForChild("FuseCharacters", 15)
 local DepositCharacterEvent = ReplicatedStorage:WaitForChild("DepositCharacter", 15)
 local RemoveFromFusionSlotEvent = ReplicatedStorage:WaitForChild("RemoveFromFusionSlot", 15)
+local EquipBallEvent = ReplicatedStorage:WaitForChild("EquipBall", 15)
 
 -- ============================================
 -- CONFIGURACION DE PELOTAS
@@ -104,7 +105,7 @@ local MONEY_GREEN_BRIGHT = Color3.fromRGB(129,199,132)
 -- Bottom bar
 local bottomBar = Instance.new("Frame")
 bottomBar.Size = UDim2.new(0,80,0,70)
-bottomBar.Position = UDim2.new(0,20,1,-80)
+bottomBar.Position = UDim2.new(0.5,-40,1,-80)
 bottomBar.BackgroundColor3 = Color3.fromRGB(20,20,30)
 bottomBar.BackgroundTransparency = 0.2
 bottomBar.BorderSizePixel = 0
@@ -417,42 +418,24 @@ local function createBallObject(ballConfig)
 end
 
 -- BALL SYSTEM
--- En vez de usar Tool (que fuerza la pose del brazo), usamos un Weld
--- directo a la mano derecha. Asi el brazo se ve natural y la pelota se ve sostenida.
+-- La pelota se crea en el SERVIDOR para que todos los jugadores la vean
+-- El cliente solo envia el tipo de pelota a equipar
 local function equipBall()
     if ballEquipped or isCarrying then return end
     local char = player.Character
     if not char then return end
 
-    -- Limpiar pelota anterior
-    local oldBall = char:FindFirstChild("CrystalBall")
-    if oldBall then oldBall:Destroy() end
-
-    -- Buscar la mano derecha del personaje
-    local rightHand = char:FindFirstChild("RightHand") or char:FindFirstChild("Right Arm")
-    if not rightHand then return end
-
-    -- Obtener configuracion de la pelota seleccionada
-    local ballConfig = BALL_TYPES[selectedBallType] or BALL_TYPES.basic
-
-    -- Crear la pelota (modelo 3D o Part simple)
-    local ball, mainPart = createBallObject(ballConfig)
-    -- Posicionar la pelota en la punta de los dedos
-    mainPart.Position = rightHand.Position + Vector3.new(0, 0, -1.0)
-    ball.Parent = char
-
-    -- Weld (no WeldConstraint) para poder ajustar el offset C0
-    local weld = Instance.new("Weld")
-    weld.Name = "BallWeld"
-    weld.Part0 = rightHand
-    weld.Part1 = mainPart
-    weld.C0 = CFrame.new(0, 0, -1.0)
-    weld.Parent = ball
+    -- Enviar evento al servidor para crear la pelota (visible para todos)
+    if EquipBallEvent then
+        EquipBallEvent:FireServer(selectedBallType, true)
+    end
 
     ballEquipped = true
     updateButton()
     updateUI()
+
     -- Sonido al equipar (si la pelota tiene sonido)
+    local ballConfig = BALL_TYPES[selectedBallType] or BALL_TYPES.basic
     if ballConfig.soundEquip then
         playClientSound(ballConfig.soundEquip, 0.6)
     end
@@ -460,49 +443,21 @@ end
 
 local function unequipBall()
     if not ballEquipped then return end
-    local char = player.Character
-    if char then
-        local oldBall = char:FindFirstChild("CrystalBall")
-        if oldBall then oldBall:Destroy() end
+    -- Enviar evento al servidor para quitar la pelota
+    if EquipBallEvent then
+        EquipBallEvent:FireServer(selectedBallType, false)
     end
     ballEquipped = false
     updateButton()
     updateUI()
 end
 
--- Re-equipar la pelota en la mano (sin el check de ballEquipped)
--- Usado despues de lanzar para volver a poner la pelota
+-- Re-equipar la pelota en la mano (despues de lanzar)
+-- El servidor la crea automaticamente, solo reproducir sonido si aplica
 local function reEquipBall()
-    local char = player.Character
-    if not char then return end
-    if isCarrying then return end
-
-    -- Limpiar pelota anterior si existe
-    local oldBall = char:FindFirstChild("CrystalBall")
-    if oldBall then oldBall:Destroy() end
-
-    -- Buscar la mano derecha del personaje
-    local rightHand = char:FindFirstChild("RightHand") or char:FindFirstChild("Right Arm")
-    if not rightHand then return end
-
-    -- Obtener configuracion de la pelota seleccionada
-    local ballConfig = BALL_TYPES[selectedBallType] or BALL_TYPES.basic
-
-    -- Crear la pelota (modelo 3D o Part simple)
-    local ball, mainPart = createBallObject(ballConfig)
-    -- Posicionar la pelota en la punta de los dedos
-    mainPart.Position = rightHand.Position + Vector3.new(0, 0, -1.0)
-    ball.Parent = char
-
-    -- Weld (no WeldConstraint) para poder ajustar el offset C0
-    local weld = Instance.new("Weld")
-    weld.Name = "BallWeld"
-    weld.Part0 = rightHand
-    weld.Part1 = mainPart
-    weld.C0 = CFrame.new(0, 0, -1.0)
-    weld.Parent = ball
-    -- NO reproducir sonido aqui (reEquipBall es automatico despues de lanzar)
-    -- El sonido de equipar solo suena cuando el jugador lo elige (mochila o tecla 1)
+    if EquipBallEvent then
+        EquipBallEvent:FireServer(selectedBallType, true)
+    end
 end
 
 local function throwBall(targetPosition)
@@ -516,9 +471,10 @@ local function throwBall(targetPosition)
     local humanoid = char:FindFirstChild("Humanoid")
     if not root then throwDebounce=false return end
 
-    -- Quitar la pelota de la mano durante el lanzamiento
-    local handBall = char:FindFirstChild("CrystalBall")
-    if handBall then handBall:Destroy() end
+    -- Quitar la pelota de la mano durante el lanzamiento (pedir al servidor)
+    if EquipBallEvent then
+        EquipBallEvent:FireServer(selectedBallType, false)
+    end
 
     -- OPTIMIZADO: reusar track cacheado
     if humanoid then
@@ -1644,7 +1600,7 @@ end)
 local backpackBtn = Instance.new("TextButton")
 backpackBtn.Name = "BackpackBtn"
 backpackBtn.Size = UDim2.new(0, 60, 0, 60)
-backpackBtn.Position = UDim2.new(0, 20, 1, -150)
+backpackBtn.Position = UDim2.new(0, 20, 1, -200)
 backpackBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
 backpackBtn.BorderSizePixel = 0
 backpackBtn.Text = "🎒"
@@ -1838,6 +1794,7 @@ end)
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
 
 
