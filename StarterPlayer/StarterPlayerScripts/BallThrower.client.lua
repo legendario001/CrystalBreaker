@@ -476,7 +476,7 @@ local function throwBall(targetPosition)
         EquipBallEvent:FireServer(selectedBallType, false)
     end
 
-    -- OPTIMIZADO: reusar track cacheado
+    -- Animacion de lanzar
     if humanoid then
         local animator = humanoid:FindFirstChildOfClass("Animator")
         if animator then
@@ -497,44 +497,6 @@ local function throwBall(targetPosition)
         playClientSound(ballConfig.soundThrow, 0.6)
     end
 
-    -- Crear la pelota lanzada (modelo 3D o Part simple)
-    local ball, mainPart = createBallObject(ballConfig)
-    ball.Name = "ThrownBall"
-    -- Configurar para fisica de lanzamiento (puede colisionar)
-    if mainPart:IsA("BasePart") then
-        mainPart.Anchored = false
-        mainPart.CanCollide = true
-        mainPart.CanQuery = true
-        mainPart.Massless = false
-        -- Configurar todas las partes del modelo si es un Model
-        for _, desc in ipairs(ball:GetDescendants()) do
-            if desc:IsA("BasePart") and desc ~= mainPart then
-                desc.Anchored = false
-                desc.CanCollide = false
-                desc.CanQuery = false
-                desc.Massless = true
-                -- Weld partes secundarias al mainPart para que se muevan juntas
-                local w = Instance.new("WeldConstraint")
-                w.Part0 = mainPart
-                w.Part1 = desc
-                w.Parent = desc
-            end
-        end
-    end
-    -- Si es una Part simple (no Model), configurar directamente
-    if ball:IsA("BasePart") then
-        ball.Anchored = false
-        ball.CanCollide = true
-        ball.CanQuery = true
-        ball.Massless = false
-    end
-    mainPart.Position = root.Position + root.CFrame.LookVector*3 + Vector3.new(0, 3, 0)
-    -- Fisicas personalizadas segun la pelota (gravedad, friccion, rebote)
-    local gravity = ballConfig.gravity or 1.0
-    local bounce = ballConfig.bounce and 0.8 or 0.0
-    mainPart.CustomPhysicalProperties = PhysicalProperties.new(0.5, 0.3, gravity, bounce, 1.0)
-    ball.Parent = workspace
-
     -- Calcular direccion: usar targetPosition (toque movil) o mouse.Hit (PC)
     local aimPos = targetPosition
     if not aimPos then
@@ -542,53 +504,14 @@ local function throwBall(targetPosition)
         if mouseHit then aimPos = mouseHit.Position end
     end
 
-    if aimPos then
-        local direction = (aimPos - mainPart.Position).Unit
-        local upImpulse = 20 * (ballConfig.gravity or 1.0)
-        mainPart.AssemblyLinearVelocity = direction * ballConfig.speed + Vector3.new(0, upImpulse, 0)
-    end
-
-    -- NO enviar ThrowBallEvent aqui - solo se envia cuando la pelota
-    -- TOCA FISICAMENTE un cristal (evento Touched de abajo)
-    -- Esto arregla el bug de golpes de cerca (el cooldown bloqueaba el 2do evento)
-
-    -- DETECCION FISICA: cuando la pelota toca un cristal, enviar posicion exacta
-    -- Esto funciona tanto en PC como en movil, de cerca y de lejos
-    local ballHitSent = false
-    local ballTouchedConn
-    ballTouchedConn = mainPart.Touched:Connect(function(hit)
-        if ballHitSent then return end
-        -- Verificar si toco un cristal
-        if hit.Name == "Crystal" then
-            ballHitSent = true
-            -- Enviar posicion EXACTA del cristal al servidor
-            if ThrowBallEvent then
-                ThrowBallEvent:FireServer(hit.Position, selectedBallType)
-            end
-            -- Desconectar el evento
-            if ballTouchedConn then
-                ballTouchedConn:Disconnect()
-                ballTouchedConn = nil
-            end
-        end
-    end)
-
-    -- Si la pelota no rebota (ej: fuego), destruirla al tocar el suelo
-    if not ballConfig.bounce then
-        local touchedConn
-        touchedConn = mainPart.Touched:Connect(function(hit)
-            -- Destruir al tocar cualquier cosa (suelo, pared, etc)
-            if ball and ball.Parent then
-                ball:Destroy()
-            end
-            if touchedConn then
-                touchedConn:Disconnect()
-            end
-        end)
+    -- Enviar ThrowBallEvent al servidor INMEDIATAMENTE
+    -- El servidor crea la pelota visible para TODOS los jugadores
+    -- y maneja la deteccion de cristales (Touched)
+    if ThrowBallEvent then
+        ThrowBallEvent:FireServer(aimPos or root.Position + root.CFrame.LookVector*20, selectedBallType)
     end
 
     activeBalls = activeBalls + 1
-    Debris:AddItem(ball, 4)
     task.delay(4.5, function() activeBalls = math.max(0, activeBalls-1) end)
 
     -- Despues del lanzamiento, volver a poner la pelota en la mano
@@ -1794,6 +1717,7 @@ end)
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
 
 
