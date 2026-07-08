@@ -578,9 +578,27 @@ local function throwBall(targetPosition)
         end)
     end
 
-    -- 2. NO crear pelota en el servidor (evita duplicado)
-    -- El servidor solo recibe el ThrowBallEvent cuando la pelota local toca un cristal
-    -- (ver localTouchedConn arriba)
+    -- 2. ENVIAR al servidor para crear pelota visible para TODOS
+    -- El servidor crea una pelota que todos ven (incluido el que lanza)
+    -- Despues de 0.15s, destruir la pelota local para evitar duplicado
+    -- (la pelota del servidor ya estara visible para entonces)
+    local launchVel = Vector3.new(0, 0, 0)
+    if aimPos then
+        local direction = (aimPos - startPos).Unit
+        local upImpulse = 20 * (ballConfig.gravity or 1.0)
+        launchVel = direction * ballConfig.speed + Vector3.new(0, upImpulse, 0)
+    end
+
+    if ThrowBallEvent then
+        ThrowBallEvent:FireServer(startPos, launchVel, selectedBallType)
+    end
+
+    -- Destruir pelota local despues de 0.15s (cuando la del servidor aparece)
+    task.delay(0.15, function()
+        if localBall and localBall.Parent then
+            localBall:Destroy()
+        end
+    end)
 
     activeBalls = activeBalls + 1
     task.delay(4.5, function() activeBalls = math.max(0, activeBalls-1) end)
@@ -1840,6 +1858,7 @@ end)
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
 
 
