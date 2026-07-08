@@ -77,7 +77,7 @@ local BALL_TYPES = {
         material = Enum.Material.Slate,
         damage = 3,
         speed = 70,
-        gravity = 1.5, -- gravedad alta (cae rapido)
+        gravity = 0.9, -- densidad alta (mas pesada, cae rapido)
         bounce = false, -- rebote bajo, se detiene casi
         transparency = 0,
         unlocked = false,
@@ -1903,6 +1903,7 @@ end)
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
 
 
