@@ -514,7 +514,10 @@ local function throwBall(targetPosition)
     local startPos = root.Position + root.CFrame.LookVector * 3 + Vector3.new(0, 3, 0)
     localMainPart.Position = startPos
     localMainPart.Anchored = false
-    localMainPart.CanCollide = false
+    -- CanCollide depende de si rebota o no
+    -- Si rebota (basic): CanCollide = true para que choque con el suelo y rebote
+    -- Si no rebota (fire): CanCollide = false para que no choque, solo se destruye
+    localMainPart.CanCollide = ballConfig.bounce and true or false
     localMainPart.CanQuery = false
     localMainPart.Massless = true
     local gravity = ballConfig.gravity or 1.0
@@ -1837,6 +1840,7 @@ end)
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
 
 
