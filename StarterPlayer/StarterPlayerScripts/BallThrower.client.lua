@@ -78,7 +78,7 @@ local BALL_TYPES = {
         damage = 3,
         speed = 70,
         gravity = 0.9, -- densidad alta (mas pesada, cae rapido)
-        bounce = false, -- rebote bajo, se detiene casi
+        bounce = true, -- rebota poco (se detiene casi)
         transparency = 0,
         unlocked = false,
         cost = 50000,
@@ -1903,6 +1903,7 @@ end)
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
 
 
