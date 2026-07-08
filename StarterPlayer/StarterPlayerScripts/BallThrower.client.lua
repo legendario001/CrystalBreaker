@@ -104,8 +104,8 @@ local MONEY_GREEN_BRIGHT = Color3.fromRGB(129,199,132)
 
 -- Bottom bar
 local bottomBar = Instance.new("Frame")
-bottomBar.Size = UDim2.new(0,80,0,70)
-bottomBar.Position = UDim2.new(0.7,-40,1,-80)
+bottomBar.Size = UDim2.new(0.12,0,0,70)
+bottomBar.Position = UDim2.new(0.7,0,1,-80)
 bottomBar.BackgroundColor3 = Color3.fromRGB(20,20,30)
 bottomBar.BackgroundTransparency = 0.2
 bottomBar.BorderSizePixel = 0
@@ -116,8 +116,8 @@ uiStroke.Color = Color3.fromRGB(100,200,255)
 uiStroke.Thickness = 2 uiStroke.Transparency = 0.5 uiStroke.Parent = bottomBar
 
 local ballButton = Instance.new("TextButton")
-ballButton.Size = UDim2.new(0,60,0,60)
-ballButton.Position = UDim2.new(0.5,-30,0.5,-30)
+ballButton.Size = UDim2.new(0.75,0,0.85,0)
+ballButton.Position = UDim2.new(0.5,0,0.5,0)
 ballButton.BackgroundColor3 = Color3.fromRGB(40,40,60)
 ballButton.BorderSizePixel = 0 ballButton.Text = ""
 ballButton.Parent = bottomBar
@@ -145,8 +145,8 @@ Instance.new("UICorner", keyLabel).CornerRadius = UDim.new(0,4)
 
 -- Carry panel
 local carryPanel = Instance.new("Frame")
-carryPanel.Size = UDim2.new(0,220,0,70)
-carryPanel.Position = UDim2.new(1,-240,1,-80)
+carryPanel.Size = UDim2.new(0.3,0,0,70)
+carryPanel.Position = UDim2.new(0.68,0,1,-80)
 carryPanel.BackgroundColor3 = Color3.fromRGB(20,20,30)
 carryPanel.BackgroundTransparency = 0.2
 carryPanel.BorderSizePixel = 0 carryPanel.Visible = false
@@ -157,8 +157,8 @@ carryStroke.Color = Color3.fromRGB(255,200,50)
 carryStroke.Thickness = 2 carryStroke.Transparency = 0.3 carryStroke.Parent = carryPanel
 
 local placeBtn = Instance.new("TextButton")
-placeBtn.Size = UDim2.new(0,90,0,50)
-placeBtn.Position = UDim2.new(0,10,0,10)
+placeBtn.Size = UDim2.new(0.4,0,0.7,0)
+placeBtn.Position = UDim2.new(0.05,0,0.15,0)
 placeBtn.BackgroundColor3 = Color3.fromRGB(0,120,60)
 placeBtn.BorderSizePixel = 0 placeBtn.Text = "Colocar"
 placeBtn.TextColor3 = Color3.fromRGB(255,255,255)
@@ -176,8 +176,8 @@ placeKey.Parent = placeBtn
 Instance.new("UICorner", placeKey).CornerRadius = UDim.new(0,4)
 
 local dropBtn = Instance.new("TextButton")
-dropBtn.Size = UDim2.new(0,90,0,50)
-dropBtn.Position = UDim2.new(0,120,0,10)
+dropBtn.Size = UDim2.new(0.4,0,0.7,0)
+dropBtn.Position = UDim2.new(0.55,0,0.15,0)
 dropBtn.BackgroundColor3 = Color3.fromRGB(150,30,30)
 dropBtn.BorderSizePixel = 0 dropBtn.Text = "Soltar"
 dropBtn.TextColor3 = Color3.fromRGB(255,255,255)
@@ -196,8 +196,8 @@ Instance.new("UICorner", dropKey).CornerRadius = UDim.new(0,4)
 
 -- Money panel
 local moneyPanel = Instance.new("Frame")
-moneyPanel.Size = UDim2.new(0,180,0,55)
-moneyPanel.Position = UDim2.new(1,-200,0,15)
+moneyPanel.Size = UDim2.new(0.25,0,0,55)
+moneyPanel.Position = UDim2.new(0.72,0,0,15)
 moneyPanel.BackgroundColor3 = Color3.fromRGB(20,20,30)
 moneyPanel.BackgroundTransparency = 0.2
 moneyPanel.BorderSizePixel = 0 moneyPanel.Parent = screenGui
@@ -226,8 +226,8 @@ moneyLabel.Parent = moneyPanel
 
 -- Upgrade hint
 local upgradeHint = Instance.new("Frame")
-upgradeHint.Size = UDim2.new(0,250,0,55)
-upgradeHint.Position = UDim2.new(0.5,-125,0.7,0)
+upgradeHint.Size = UDim2.new(0.35,0,0,55)
+upgradeHint.Position = UDim2.new(0.5,0,0.7,0)
 upgradeHint.BackgroundColor3 = Color3.fromRGB(20,20,30)
 upgradeHint.BackgroundTransparency = 0.15
 upgradeHint.BorderSizePixel = 0 upgradeHint.Visible = false
@@ -790,7 +790,7 @@ end
 local function createMobileButton(name, icon)
     local btn = Instance.new("TextButton")
     btn.Name = name
-    btn.Size = UDim2.new(0, 60, 0, 60)
+    btn.Size = UDim2.new(0.1, 0, 0.08, 0)
     btn.Position = UDim2.new(0.5, -30, 0.7, 0)
     btn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
     btn.BackgroundTransparency = 0.85 -- casi transparente
@@ -804,6 +804,11 @@ local function createMobileButton(name, icon)
     btn.ZIndex = 100 -- ZIndex alto para que aparezca encima del panel de fusion (ZIndex 50)
     btn.Parent = screenGui
     Instance.new("UICorner", btn).CornerRadius = UDim.new(1, 0)
+
+    -- Mantener proporcion 1:1 (botones circulares no se deformen)
+    local mobAspect = Instance.new("UIAspectRatioConstraint")
+    mobAspect.AspectRatio = 1
+    mobAspect.Parent = btn
 
     -- Borde negro bien marcado
     local stroke = Instance.new("UIStroke")
@@ -1148,8 +1153,8 @@ ChestOpenEvent.OnClientEvent:Connect(function(rarityName, rarityColor, charName)
     -- Contenedor central
     local container = Instance.new("Frame")
     container.Name = "ChestContainer"
-    container.Size = UDim2.new(0, 300, 0, 400)
-    container.Position = UDim2.new(0.5, -150, 0.5, -200)
+    container.Size = UDim2.new(0.4, 0, 0.6, 0)
+    container.Position = UDim2.new(0.5, 0, 0.5, 0)
     container.BackgroundTransparency = 1
     container.ZIndex = 101
     container.Parent = backdrop
@@ -1157,8 +1162,8 @@ ChestOpenEvent.OnClientEvent:Connect(function(rarityName, rarityColor, charName)
     -- Cuadro del cofre (gira)
     local box = Instance.new("Frame")
     box.Name = "ChestBox"
-    box.Size = UDim2.new(0, 200, 0, 200)
-    box.Position = UDim2.new(0.5, -100, 0, 50)
+    box.Size = UDim2.new(0.3, 0, 0.3, 0)
+    box.Position = UDim2.new(0.35, 0, 0.12, 0)
     box.BackgroundColor3 = rarityColor
     box.BorderSizePixel = 0
     box.ZIndex = 102
@@ -1253,7 +1258,7 @@ ChestOpenEvent.OnClientEvent:Connect(function(rarityName, rarityColor, charName)
 
         -- Resetear rotacion y tamano
         box.Rotation = 0
-        box.Size = UDim2.new(0, 200, 0, 200)
+        box.Size = UDim2.new(0.3, 0, 0.3, 0)
 
         -- Cambiar el signo de interrogacion por una estrella/check
         questionMark.Text = "★"
@@ -1671,6 +1676,11 @@ backpackBtn.Text = ""
 backpackBtn.Parent = screenGui
 Instance.new("UICorner", backpackBtn).CornerRadius = UDim.new(0, 12)
 
+-- Mantener proporcion 1:1
+local bpAspect = Instance.new("UIAspectRatioConstraint")
+bpAspect.AspectRatio = 1
+bpAspect.Parent = backpackBtn
+
 -- Icono de mochila personalizado
 local backpackIcon = Instance.new("ImageLabel")
 backpackIcon.Name = "BackpackIcon"
@@ -1867,6 +1877,7 @@ end)
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
 
 
