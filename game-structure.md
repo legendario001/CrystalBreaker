@@ -11,8 +11,8 @@
 | Campo | Valor |
 |-------|-------|
 | **Nombre del proyecto** | CrystalBreaker |
-| **Versión actual** | 1.8.0 |
-| **Última actualización** | 2026-07-09 |
+| **Versión actual** | 1.9.0 |
+| **Última actualización** | 2026-07-10 |
 | **Repositorio GitHub** | `legendario001/CrystalBreaker` |
 | **Plataforma** | Roblox (Luau) |
 | **Tipo de juego** | Tycoon / Colección de personajes |
@@ -27,6 +27,7 @@
 CrystalBreaker/
 ├── ReplicatedStorage/
 │   ├── FireBallModel/                      (Model - modelo 3D de pelota de fuego con partículas)
+│   ├── EarthBallModel/                     (Model - modelo 3D de pelota de tierra con partículas)
 │   └── RemoteEvents.lua                    (ModuleScript - crea todos los RemoteEvents)
 │
 ├── ServerScriptService/
@@ -387,6 +388,63 @@ BuildMap (Command Bar, una sola vez)
 
 ## 12. Sistemas Pendientes
 
+### 📖 GUÍA: Cómo agregar una nueva pelota al juego
+
+Para agregar una pelota nueva (ej: Aire, Agua), seguir estos pasos EXACTOS:
+
+#### Paso 1: Modelo 3D
+1. Crear modelo en Roblox Studio (Part + partículas/efectos)
+2. Nombrarlo `XxxBallModel` (ej: `AirBallModel`, `WaterBallModel`)
+3. El PrimaryPart debe llamarse `Handle`
+4. Guardarlo en `ReplicatedStorage` (NO ServerStorage, el cliente necesita acceso)
+
+#### Paso 2: Cliente (BallThrower.client.lua)
+Agregar entrada a `BALL_TYPES` (línea ~41):
+```lua
+air = {
+    name = "Aire",
+    icon = "💨",
+    color = Color3.fromRGB(240, 250, 255),
+    material = Enum.Material.Glass,
+    damage = 1,
+    speed = 150,
+    gravity = 1.0,  -- se usa como density en PhysicalProperties
+    bounce = true,  -- true = CanCollide true + elasticity 0.8, false = se destruye
+    transparency = 0.3,
+    unlocked = false,
+    cost = 100000,
+    description = "Muy rapida, alcance largo",
+    soundEquip = nil, -- opcional
+    soundThrow = nil, -- opcional
+    modelName = "AirBallModel"
+},
+```
+
+#### Paso 3: Servidor - ThrowBall handler (GameHandler.server.lua)
+Agregar a `SERVER_BALL_CONFIG` (línea ~459):
+```lua
+air = { color = Color3.fromRGB(240, 250, 255), material = Enum.Material.Glass, gravity = 1.0, bounce = true, damage = 1, modelName = "AirBallModel" },
+```
+
+#### Paso 4: Servidor - EquipBall handler (GameHandler.server.lua)
+Agregar a `SERVER_BALL_TYPES` (línea ~1531):
+```lua
+air = {
+    color = Color3.fromRGB(240, 250, 255),
+    material = Enum.Material.Glass,
+    transparency = 0.3,
+    modelName = "AirBallModel"
+},
+```
+
+#### ⚠️ Importante
+- `gravity` se usa como **density** en `PhysicalProperties.new(gravity, 0.3, bounceVal, 0.5, 0.5)`
+- `bounce = true` → `CanCollide = true` + `elasticity = 0.8` (rebota)
+- `bounce = false` → `CanCollide = false` + `elasticity = 0.0` (se destruye al tocar)
+- El modelo DEBE estar en `ReplicatedStorage` (no ServerStorage)
+- El PrimaryPart del modelo debe llamarse `Handle`
+- PhysicalProperties params order: `(density, friction, elasticity, frictionWeight, elasticityWeight)`
+
 ### No implementados aún:
 - [ ] Sistema de guardado (DataStore) — actualmente los datos se pierden al salir
 - [ ] Sistema de mascotas
@@ -400,7 +458,7 @@ BuildMap (Command Bar, una sola vez)
 - [ ] Música de fondo
 - [ ] Sistema de recompensas diarias
 - [ ] Tienda para comprar con dinero del juego
-- [ ] Pelotas de Tierra, Aire y Agua (solo Básica y Fuego implementadas)
+- [ ] Pelotas de Aire y Agua (Básica, Fuego y Tierra implementadas)
 - [ ] Modelos 3D personalizados para cada pelota
 - [ ] Costos reales de pelotas (actualmente gratis para testear)
 
@@ -442,6 +500,18 @@ BuildMap (Command Bar, una sola vez)
 - ✅ Fix: cristales dejan de funcionar (nearest.Color después de Destroy)
 - ✅ Fix: base ownership check en todas las interacciones
 - ✅ Fix: carry tool solo se destruye después de confirmar pedestal
+
+### Versión 1.9.0 (2026-07-10)
+- ✅ Pelota de Tierra integrada (daño 3, mismas físicas que básica, EarthBallModel)
+- ✅ Mochila con icono personalizado (rbxassetid://113160993563399)
+- ✅ Botón X para cerrar mochila (mouse y móvil)
+- ✅ Panel de mochila centrado abajo
+- ✅ Fix: solo el dueño de la base puede recoger dinero (Owner tag)
+- ✅ Fix: pisos comprados se ocultan al salir del jugador
+- ✅ Fix: pelota visible para todos (servidor crea pelota via EquipBallEvent)
+- ✅ Fix: lanzamiento híbrido (pelota local cero lag + servidor visible para todos)
+- ✅ Fix: PhysicalProperties params corregidos (density, friction, elasticity, frictionWeight, elasticityWeight)
+- ✅ Fix: bloqueo de pinch-zoom en móvil
 
 ### Versión 1.8.0 (2026-07-09)
 - ✅ Pelota visible para todos los jugadores (creada en servidor via EquipBallEvent)
@@ -564,5 +634,6 @@ BuildMap (Command Bar, una sola vez)
 > - Si detectas arquitectura inconsistente, **reorganizar antes de continuar**.
 > 
 > La prioridad no es solo generar código, sino mantener una **arquitectura limpia, consistente, escalable y bien documentada**.
+
 
 
