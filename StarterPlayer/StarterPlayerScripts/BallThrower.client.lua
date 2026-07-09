@@ -39,53 +39,38 @@ local EquipBallEvent = ReplicatedStorage:WaitForChild("EquipBall", 15)
 -- CONFIGURACION DE PELOTAS
 -- ============================================
 local BALL_TYPES = {
-    basic = {
-        name = "Basica",
-        icon = "⚽",
-        color = Color3.fromRGB(100, 200, 255),
-        material = Enum.Material.SmoothPlastic,
-        damage = 1,
-        speed = 100,
-        gravity = 1.0, -- gravedad normal
-        bounce = true,
-        transparency = 0,
-        unlocked = true,
-        cost = 0,
-        description = "Pelota balanceada"
-    },
-    fire = {
-        name = "Fuego",
-        icon = "🔥",
-        color = Color3.fromRGB(255, 100, 30),
-        material = Enum.Material.Neon,
-        damage = 2,
-        speed = 100,
-        gravity = 0.3, -- gravedad baja (vuela mas recto)
-        bounce = false, -- no rebota, se extingue
-        transparency = 0,
-        unlocked = false,
-        cost = 10000,
-        description = "Mas rapida y dano x2",
-        soundEquip = "rbxassetid://129504465599355", -- sonido al equipar
-        soundThrow = "rbxassetid://130422645188028", -- sonido al lanzar
-        modelName = "FireBallModel" -- modelo 3D personalizado en ReplicatedStorage
-    },
-    earth = {
-        name = "Tierra",
-        icon = "🟤",
-        color = Color3.fromRGB(140, 90, 50),
-        material = Enum.Material.Slate,
-        damage = 3,
-        speed = 70,
-        gravity = 0.9, -- densidad alta (mas pesada, cae rapido)
-        bounce = true, -- rebota poco (se detiene casi)
-        transparency = 0,
-        unlocked = false,
-        cost = 50000,
-        description = "Pesada, dano x3, cae rapido",
-        modelName = "EarthBallModel" -- modelo 3D personalizado en ReplicatedStorage
-    },
-    -- Futuras: air, water
+	basic = {
+		name = "Basica",
+		icon = "⚽",
+		color = Color3.fromRGB(100, 200, 255),
+		material = Enum.Material.SmoothPlastic,
+		damage = 1,
+		speed = 100,
+		gravity = 1.0, -- gravedad normal
+		bounce = true,
+		transparency = 0,
+		unlocked = true,
+		cost = 0,
+		description = "Pelota balanceada"
+	},
+	fire = {
+		name = "Fuego",
+		icon = "🔥",
+		color = Color3.fromRGB(255, 100, 30),
+		material = Enum.Material.Neon,
+		damage = 2,
+		speed = 100,
+		gravity = 0.3, -- gravedad baja (vuela mas recto)
+		bounce = false, -- no rebota, se extingue
+		transparency = 0,
+		unlocked = false,
+		cost = 10000,
+		description = "Mas rapida y dano x2",
+		soundEquip = "rbxassetid://129504465599355", -- sonido al equipar
+		soundThrow = "rbxassetid://130422645188028", -- sonido al lanzar
+		modelName = "FireBallModel" -- modelo 3D personalizado en ReplicatedStorage
+	},
+	-- Futuras: earth, air, water
 }
 
 -- Pelota seleccionada actualmente
@@ -98,13 +83,13 @@ local cachedTrack = nil
 
 -- Funcion helper para reproducir sonidos en el cliente
 local function playClientSound(soundId, volume)
-    local sound = Instance.new("Sound")
-    sound.SoundId = soundId
-    sound.Volume = volume or 0.5
-    sound.Parent = player:WaitForChild("PlayerGui")
-    sound:Play()
-    -- Auto-destruir despues de 5 segundos
-    Debris:AddItem(sound, 5)
+	local sound = Instance.new("Sound")
+	sound.SoundId = soundId
+	sound.Volume = volume or 0.5
+	sound.Parent = player:WaitForChild("PlayerGui")
+	sound:Play()
+	-- Auto-destruir despues de 5 segundos
+	Debris:AddItem(sound, 5)
 end
 
 -- GUI
@@ -120,7 +105,7 @@ local MONEY_GREEN_BRIGHT = Color3.fromRGB(129,199,132)
 -- Bottom bar
 local bottomBar = Instance.new("Frame")
 bottomBar.Size = UDim2.new(0,80,0,70)
-bottomBar.Position = UDim2.new(0, 0, 1, -80)
+bottomBar.Position = UDim2.new(0.7,-40,1,-80)
 bottomBar.BackgroundColor3 = Color3.fromRGB(20,20,30)
 bottomBar.BackgroundTransparency = 0.2
 bottomBar.BorderSizePixel = 0
@@ -277,102 +262,102 @@ hintText.Parent = upgradeHint
 
 -- FUNCIONES
 local function updateUI()
-    bottomBar.Visible = not isCarrying
-    carryPanel.Visible = isCarrying
+	bottomBar.Visible = not isCarrying
+	carryPanel.Visible = isCarrying
 end
 
 local function updateButton()
-    if ballEquipped then
-        ballButton.BackgroundColor3 = Color3.fromRGB(100,200,255)
-        ballIcon.TextColor3 = Color3.fromRGB(0,0,0)
-        keyLabel.TextColor3 = Color3.fromRGB(100,200,255)
-        keyLabel.BackgroundColor3 = Color3.fromRGB(0,0,0)
-        btnStroke.Color = Color3.fromRGB(150,230,255)
-    else
-        ballButton.BackgroundColor3 = Color3.fromRGB(40,40,60)
-        ballIcon.TextColor3 = Color3.fromRGB(255,255,255)
-        keyLabel.TextColor3 = Color3.fromRGB(0,0,0)
-        keyLabel.BackgroundColor3 = Color3.fromRGB(100,200,255)
-        btnStroke.Color = Color3.fromRGB(100,200,255)
-    end
+	if ballEquipped then
+		ballButton.BackgroundColor3 = Color3.fromRGB(100,200,255)
+		ballIcon.TextColor3 = Color3.fromRGB(0,0,0)
+		keyLabel.TextColor3 = Color3.fromRGB(100,200,255)
+		keyLabel.BackgroundColor3 = Color3.fromRGB(0,0,0)
+		btnStroke.Color = Color3.fromRGB(150,230,255)
+	else
+		ballButton.BackgroundColor3 = Color3.fromRGB(40,40,60)
+		ballIcon.TextColor3 = Color3.fromRGB(255,255,255)
+		keyLabel.TextColor3 = Color3.fromRGB(0,0,0)
+		keyLabel.BackgroundColor3 = Color3.fromRGB(100,200,255)
+		btnStroke.Color = Color3.fromRGB(100,200,255)
+	end
 end
 
 -- OPTIMIZADO: Un solo loop con RunService en lugar de dos task.spawn separados
 local checkTimer = 0
 local upgradeCheckTimer = 0
 RunService.Heartbeat:Connect(function(dt)
-    checkTimer = checkTimer + dt
-    upgradeCheckTimer = upgradeCheckTimer + dt
+	checkTimer = checkTimer + dt
+	upgradeCheckTimer = upgradeCheckTimer + dt
 
-    -- Check carrying cada 0.5s
-    if checkTimer >= 0.5 then
-        checkTimer = 0
-        local char = player.Character
-        local newCarrying = false
-        if char and char:FindFirstChild("Carrying") then
-            newCarrying = true
-        elseif player:FindFirstChild("Backpack") and player.Backpack:FindFirstChild("Carrying") then
-            newCarrying = true
-        end
-        if newCarrying ~= isCarrying then
-            isCarrying = newCarrying
-            updateUI()
-        end
-    end
+	-- Check carrying cada 0.5s
+	if checkTimer >= 0.5 then
+		checkTimer = 0
+		local char = player.Character
+		local newCarrying = false
+		if char and char:FindFirstChild("Carrying") then
+			newCarrying = true
+		elseif player:FindFirstChild("Backpack") and player.Backpack:FindFirstChild("Carrying") then
+			newCarrying = true
+		end
+		if newCarrying ~= isCarrying then
+			isCarrying = newCarrying
+			updateUI()
+		end
+	end
 
-    -- Check upgrade button cada 0.3s
-    if upgradeCheckTimer >= 0.3 then
-        upgradeCheckTimer = 0
-        if isCarrying then
-            if nearUpgradeButton then
-                nearUpgradeButton = false
-                upgradeHint.Visible = false
-            end
-            return
-        end
+	-- Check upgrade button cada 0.3s
+	if upgradeCheckTimer >= 0.3 then
+		upgradeCheckTimer = 0
+		if isCarrying then
+			if nearUpgradeButton then
+				nearUpgradeButton = false
+				upgradeHint.Visible = false
+			end
+			return
+		end
 
-        local char = player.Character
-        if not char then return end
-        local root = char:FindFirstChild("HumanoidRootPart")
-        if not root then return end
+		local char = player.Character
+		if not char then return end
+		local root = char:FindFirstChild("HumanoidRootPart")
+		if not root then return end
 
-        local found = false
-        local map = workspace:FindFirstChild("Map")
-        if map then
-            local bases = map:FindFirstChild("Bases")
-            if bases then
-                for _, base in ipairs(bases:GetChildren()) do
-                    if found then break end
-                    -- Buscar en TODOS los pisos (1, 2, 3, 4, 5)
-                    local allPedestalFolders = {}
-                    local p1 = base:FindFirstChild("Pedestals")
-                    if p1 then table.insert(allPedestalFolders, p1) end
-                    for floorNum = 2, 5 do
-                        local floor = base:FindFirstChild("Floor" .. floorNum)
-                        if floor then
-                            local peds = floor:FindFirstChild("Pedestals" .. floorNum)
-                            if peds then table.insert(allPedestalFolders, peds) end
-                        end
-                    end
-                    -- Buscar UpgradeButtons en todos los pedestales
-                    for _, pedFolder in ipairs(allPedestalFolders) do
-                        if found then break end
-                        for _, ped in ipairs(pedFolder:GetChildren()) do
-                            local btn = ped:FindFirstChild("UpgradeButton")
-                            if btn and (btn.Position - root.Position).Magnitude < 8 then
-                                found = true break
-                            end
-                        end
-                    end
-                end
-            end
-        end
+		local found = false
+		local map = workspace:FindFirstChild("Map")
+		if map then
+			local bases = map:FindFirstChild("Bases")
+			if bases then
+				for _, base in ipairs(bases:GetChildren()) do
+					if found then break end
+					-- Buscar en TODOS los pisos (1, 2, 3, 4, 5)
+					local allPedestalFolders = {}
+					local p1 = base:FindFirstChild("Pedestals")
+					if p1 then table.insert(allPedestalFolders, p1) end
+					for floorNum = 2, 5 do
+						local floor = base:FindFirstChild("Floor" .. floorNum)
+						if floor then
+							local peds = floor:FindFirstChild("Pedestals" .. floorNum)
+							if peds then table.insert(allPedestalFolders, peds) end
+						end
+					end
+					-- Buscar UpgradeButtons en todos los pedestales
+					for _, pedFolder in ipairs(allPedestalFolders) do
+						if found then break end
+						for _, ped in ipairs(pedFolder:GetChildren()) do
+							local btn = ped:FindFirstChild("UpgradeButton")
+							if btn and (btn.Position - root.Position).Magnitude < 8 then
+								found = true break
+							end
+						end
+					end
+				end
+			end
+		end
 
-        if found ~= nearUpgradeButton then
-            nearUpgradeButton = found
-            upgradeHint.Visible = found
-        end
-    end
+		if found ~= nearUpgradeButton then
+			nearUpgradeButton = found
+			upgradeHint.Visible = found
+		end
+	end
 end)
 
 -- ============================================
@@ -381,309 +366,323 @@ end)
 -- Retorna: (objeto, mainPart) donde objeto puede ser Model o Part
 -- ============================================
 local function createBallObject(ballConfig)
-    local template = nil
-    if ballConfig.modelName then
-        template = ReplicatedStorage:FindFirstChild(ballConfig.modelName)
-    end
+	local template = nil
+	if ballConfig.modelName then
+		template = ReplicatedStorage:FindFirstChild(ballConfig.modelName)
+	end
 
-    if template then
-        -- Clonar el modelo 3D personalizado
-        local obj = template:Clone()
-        obj.Name = "CrystalBall"
+	if template then
+		-- Clonar el modelo 3D personalizado
+		local obj = template:Clone()
+		obj.Name = "CrystalBall"
 
-        -- Encontrar la parte principal (PrimaryPart, Handle, o primera BasePart)
-        local mainPart = obj.PrimaryPart or obj:FindFirstChild("Handle") or obj:FindFirstChildWhichIsA("BasePart")
-        if not mainPart then
-            obj:Destroy()
-            template = nil -- fallback a Part simple
-        else
-            -- Configurar todas las partes del modelo
-            for _, desc in ipairs(obj:GetDescendants()) do
-                if desc:IsA("BasePart") then
-                    desc.Anchored = false
-                    desc.CanCollide = false
-                    desc.CanQuery = false
-                    desc.Massless = true
-                end
-            end
-            -- Si el propio objeto es una Part (no un Model)
-            if obj:IsA("BasePart") then
-                obj.Anchored = false
-                obj.CanCollide = false
-                obj.CanQuery = false
-                obj.Massless = true
-                mainPart = obj
-            end
-            return obj, mainPart
-        end
-    end
+		-- Encontrar la parte principal (PrimaryPart, Handle, o primera BasePart)
+		local mainPart = obj.PrimaryPart or obj:FindFirstChild("Handle") or obj:FindFirstChildWhichIsA("BasePart")
+		if not mainPart then
+			obj:Destroy()
+			template = nil -- fallback a Part simple
+		else
+			-- Configurar todas las partes del modelo
+			for _, desc in ipairs(obj:GetDescendants()) do
+				if desc:IsA("BasePart") then
+					desc.Anchored = false
+					desc.CanCollide = false
+					desc.CanQuery = false
+					desc.Massless = true
+				end
+			end
+			-- Si el propio objeto es una Part (no un Model)
+			if obj:IsA("BasePart") then
+				obj.Anchored = false
+				obj.CanCollide = false
+				obj.CanQuery = false
+				obj.Massless = true
+				mainPart = obj
+			end
+			return obj, mainPart
+		end
+	end
 
-    -- Fallback: crear Part simple
-    local ball = Instance.new("Part")
-    ball.Name = "CrystalBall"
-    ball.Size = Vector3.new(1.5, 1.5, 1.5)
-    ball.Shape = Enum.PartType.Ball
-    ball.Color = ballConfig.color
-    ball.Material = ballConfig.material
-    ball.Anchored = false
-    ball.CanCollide = false
-    ball.Massless = true
-    ball.Transparency = ballConfig.transparency
-    return ball, ball
+	-- Fallback: crear Part simple
+	local ball = Instance.new("Part")
+	ball.Name = "CrystalBall"
+	ball.Size = Vector3.new(1.5, 1.5, 1.5)
+	ball.Shape = Enum.PartType.Ball
+	ball.Color = ballConfig.color
+	ball.Material = ballConfig.material
+	ball.Anchored = false
+	ball.CanCollide = false
+	ball.Massless = true
+	ball.Transparency = ballConfig.transparency
+	return ball, ball
 end
 
 -- BALL SYSTEM
 -- La pelota se crea en el SERVIDOR para que todos los jugadores la vean
 -- El cliente solo envia el tipo de pelota a equipar
 local function equipBall()
-    if ballEquipped or isCarrying then return end
-    local char = player.Character
-    if not char then return end
+	if ballEquipped or isCarrying then return end
+	local char = player.Character
+	if not char then return end
 
-    -- Enviar evento al servidor para crear la pelota (visible para todos)
-    if EquipBallEvent then
-        EquipBallEvent:FireServer(selectedBallType, true)
-    end
+	-- Enviar evento al servidor para crear la pelota (visible para todos)
+	if EquipBallEvent then
+		EquipBallEvent:FireServer(selectedBallType, true)
+	end
 
-    ballEquipped = true
-    updateButton()
-    updateUI()
+	ballEquipped = true
+	updateButton()
+	updateUI()
 
-    -- Sonido al equipar (si la pelota tiene sonido)
-    local ballConfig = BALL_TYPES[selectedBallType] or BALL_TYPES.basic
-    if ballConfig.soundEquip then
-        playClientSound(ballConfig.soundEquip, 0.6)
-    end
+	-- Sonido al equipar (si la pelota tiene sonido)
+	local ballConfig = BALL_TYPES[selectedBallType] or BALL_TYPES.basic
+	if ballConfig.soundEquip then
+		playClientSound(ballConfig.soundEquip, 0.6)
+	end
 end
 
 local function unequipBall()
-    if not ballEquipped then return end
-    -- Enviar evento al servidor para quitar la pelota
-    if EquipBallEvent then
-        EquipBallEvent:FireServer(selectedBallType, false)
-    end
-    ballEquipped = false
-    updateButton()
-    updateUI()
+	if not ballEquipped then return end
+	-- Enviar evento al servidor para quitar la pelota
+	if EquipBallEvent then
+		EquipBallEvent:FireServer(selectedBallType, false)
+	end
+	ballEquipped = false
+	updateButton()
+	updateUI()
 end
 
 -- Re-equipar la pelota en la mano (despues de lanzar)
 -- El servidor la crea automaticamente, solo reproducir sonido si aplica
 local function reEquipBall()
-    if EquipBallEvent then
-        EquipBallEvent:FireServer(selectedBallType, true)
-    end
+	if EquipBallEvent then
+		EquipBallEvent:FireServer(selectedBallType, true)
+	end
 end
 
 local function throwBall(targetPosition)
-    if not ballEquipped or isCarrying then return end
-    if throwDebounce or activeBalls >= MAX_ACTIVE_BALLS then return end
-    throwDebounce = true
+	if not ballEquipped or isCarrying then return end
+	if throwDebounce or activeBalls >= MAX_ACTIVE_BALLS then return end
+	throwDebounce = true
 
-    local char = player.Character
-    if not char then throwDebounce=false return end
-    local root = char:FindFirstChild("HumanoidRootPart")
-    local humanoid = char:FindFirstChild("Humanoid")
-    if not root then throwDebounce=false return end
+	local char = player.Character
+	if not char then throwDebounce=false return end
+	local root = char:FindFirstChild("HumanoidRootPart")
+	local humanoid = char:FindFirstChild("Humanoid")
+	if not root then throwDebounce=false return end
 
-    -- Quitar la pelota de la mano durante el lanzamiento (pedir al servidor)
-    if EquipBallEvent then
-        EquipBallEvent:FireServer(selectedBallType, false)
-    end
+	-- Quitar la pelota de la mano durante el lanzamiento (pedir al servidor)
+	if EquipBallEvent then
+		EquipBallEvent:FireServer(selectedBallType, false)
+	end
 
-    -- Animacion de lanzar
-    if humanoid then
-        local animator = humanoid:FindFirstChildOfClass("Animator")
-        if animator then
-            if not cachedTrack then
-                cachedTrack = animator:LoadAnimation(cachedThrowAnim)
-            end
-            if cachedTrack and not cachedTrack.IsPlaying then
-                cachedTrack:Play(0.1)
-            end
-        end
-    end
+	-- Animacion de lanzar
+	if humanoid then
+		local animator = humanoid:FindFirstChildOfClass("Animator")
+		if animator then
+			if not cachedTrack then
+				cachedTrack = animator:LoadAnimation(cachedThrowAnim)
+			end
+			if cachedTrack and not cachedTrack.IsPlaying then
+				cachedTrack:Play(0.1)
+			end
+		end
+	end
 
-    -- Obtener configuracion de la pelota seleccionada
-    local ballConfig = BALL_TYPES[selectedBallType] or BALL_TYPES.basic
+	-- Obtener configuracion de la pelota seleccionada
+	local ballConfig = BALL_TYPES[selectedBallType] or BALL_TYPES.basic
 
-    -- Sonido al lanzar (si la pelota tiene sonido)
-    if ballConfig.soundThrow then
-        playClientSound(ballConfig.soundThrow, 0.6)
-    end
+	-- Sonido al lanzar (si la pelota tiene sonido)
+	if ballConfig.soundThrow then
+		playClientSound(ballConfig.soundThrow, 0.6)
+	end
 
-    -- Calcular direccion: usar targetPosition (toque movil) o mouse.Hit (PC)
-    local aimPos = targetPosition
-    if not aimPos then
-        local mouseHit = mouse.Hit
-        if mouseHit then aimPos = mouseHit.Position end
-    end
+	-- Calcular direccion: usar targetPosition (toque movil) o mouse.Hit (PC)
+	local aimPos = targetPosition
+	if not aimPos then
+		local mouseHit = mouse.Hit
+		if mouseHit then aimPos = mouseHit.Position end
+	end
 
-    -- ============================================
-    -- LANZAMIENTO HIBRIDO: pelota local + servidor
-    -- ============================================
-    -- 1. Crear pelota LOCAL inmediatamente (cero lag, 100% fluido)
-    --    Esta pelota es solo visual, no daña cristales
-    local localBall, localMainPart = createBallObject(ballConfig)
-    localBall.Name = "ThrownBallLocal"
-    local startPos = root.Position + root.CFrame.LookVector * 3 + Vector3.new(0, 3, 0)
-    localMainPart.Position = startPos
-    localMainPart.Anchored = false
-    -- CanCollide depende de si rebota o no
-    -- Si rebota (basic): CanCollide = true para que choque con el suelo y rebote
-    -- Si no rebota (fire): CanCollide = false para que no choque, solo se destruye
-    localMainPart.CanCollide = ballConfig.bounce and true or false
-    localMainPart.CanQuery = false
-    localMainPart.Massless = true
-    local gravity = ballConfig.gravity or 1.0
-    local bounceVal = ballConfig.bounce and 0.8 or 0.0
-    localMainPart.CustomPhysicalProperties = PhysicalProperties.new(gravity, 0.3, bounceVal, 1.0, 1.0)
-    -- Weld partes secundarias
-    for _, desc in ipairs(localBall:GetDescendants()) do
-        if desc:IsA("BasePart") and desc ~= localMainPart then
-            desc.Anchored = false
-            desc.CanCollide = false
-            desc.CanQuery = false
-            desc.Massless = true
-            local w = Instance.new("WeldConstraint")
-            w.Part0 = localMainPart
-            w.Part1 = desc
-            w.Parent = desc
-        end
-    end
-    localBall.Parent = workspace
+	-- ============================================
+	-- LANZAMIENTO HIBRIDO: pelota local + servidor
+	-- ============================================
+	-- 1. Crear pelota LOCAL inmediatamente (cero lag, 100% fluido)
+	--    Esta pelota es solo visual, no daña cristales
+	local localBall, localMainPart = createBallObject(ballConfig)
+	localBall.Name = "ThrownBallLocal"
+	local startPos = root.Position + root.CFrame.LookVector * 3 + Vector3.new(0, 3, 0)
+	localMainPart.Position = startPos
+	localMainPart.Anchored = false
+	-- CanCollide depende de si rebota o no
+	-- Si rebota (basic): CanCollide = true para que choque con el suelo y rebote
+	-- Si no rebota (fire): CanCollide = false para que no choque, solo se destruye
+	localMainPart.CanCollide = ballConfig.bounce and true or false
+	localMainPart.CanQuery = false
+	localMainPart.Massless = true
+	local gravity = ballConfig.gravity or 1.0
+	local bounceVal = ballConfig.bounce and 0.8 or 0.0
+	localMainPart.CustomPhysicalProperties = PhysicalProperties.new(0.5, 0.3, gravity, bounceVal, 1.0)
+	-- Weld partes secundarias
+	for _, desc in ipairs(localBall:GetDescendants()) do
+		if desc:IsA("BasePart") and desc ~= localMainPart then
+			desc.Anchored = false
+			desc.CanCollide = false
+			desc.CanQuery = false
+			desc.Massless = true
+			local w = Instance.new("WeldConstraint")
+			w.Part0 = localMainPart
+			w.Part1 = desc
+			w.Parent = desc
+		end
+	end
+	localBall.Parent = workspace
 
-    -- Aplicar velocidad INMEDIATAMENTE (antes de parentear ya esta lista)
-    if aimPos then
-        local direction = (aimPos - startPos).Unit
-        local upImpulse = 20 * (ballConfig.gravity or 1.0)
-        localMainPart.AssemblyLinearVelocity = direction * ballConfig.speed + Vector3.new(0, upImpulse, 0)
-    end
+	-- Aplicar velocidad INMEDIATAMENTE (antes de parentear ya esta lista)
+	if aimPos then
+		local direction = (aimPos - startPos).Unit
+		local upImpulse = 20 * (ballConfig.gravity or 1.0)
+		localMainPart.AssemblyLinearVelocity = direction * ballConfig.speed + Vector3.new(0, upImpulse, 0)
+	end
 
-    -- Auto-eliminar la pelota local despues de 4s
-    Debris:AddItem(localBall, 8)
+	-- Auto-eliminar la pelota local despues de 4s
+	Debris:AddItem(localBall, 4)
 
-    -- El servidor maneja la deteccion de cristales con su propia pelota
-    -- No necesitamos Touched local del cliente
+	-- Si la pelota local toca un cristal, enviar evento al servidor
+	local localHitSent = false
+	local localTouchedConn
+	localTouchedConn = localMainPart.Touched:Connect(function(hit)
+		if localHitSent then return end
+		if hit.Name == "Crystal" then
+			localHitSent = true
+			if ThrowBallEvent then
+				ThrowBallEvent:FireServer(hit.Position, selectedBallType)
+			end
+			if localTouchedConn then
+				localTouchedConn:Disconnect()
+				localTouchedConn = nil
+			end
+		end
+	end)
 
-    -- Si la pelota no rebota (ej: fuego), destruirla al tocar el suelo
-    if not ballConfig.bounce then
-        local destroyConn
-        destroyConn = localMainPart.Touched:Connect(function(hit)
-            if localBall and localBall.Parent then
-                localBall:Destroy()
-            end
-            if destroyConn then
-                destroyConn:Disconnect()
-            end
-        end)
-    end
+	-- Si la pelota no rebota (ej: fuego), destruirla al tocar el suelo
+	if not ballConfig.bounce then
+		local destroyConn
+		destroyConn = localMainPart.Touched:Connect(function(hit)
+			if localBall and localBall.Parent then
+				localBall:Destroy()
+			end
+			if destroyConn then
+				destroyConn:Disconnect()
+			end
+		end)
+	end
 
-    -- 2. ENVIAR al servidor para crear pelota visible para TODOS
-    -- El servidor crea una pelota que todos ven (incluido el que lanza)
-    -- Despues de 0.15s, destruir la pelota local para evitar duplicado
-    -- (la pelota del servidor ya estara visible para entonces)
-    local launchVel = Vector3.new(0, 0, 0)
-    if aimPos then
-        local direction = (aimPos - startPos).Unit
-        local upImpulse = 20 * (ballConfig.gravity or 1.0)
-        launchVel = direction * ballConfig.speed + Vector3.new(0, upImpulse, 0)
-    end
+	-- 2. ENVIAR al servidor para crear pelota visible para TODOS
+	-- El servidor crea una pelota que todos ven (incluido el que lanza)
+	-- Despues de 0.15s, destruir la pelota local para evitar duplicado
+	-- (la pelota del servidor ya estara visible para entonces)
+	local launchVel = Vector3.new(0, 0, 0)
+	if aimPos then
+		local direction = (aimPos - startPos).Unit
+		local upImpulse = 20 * (ballConfig.gravity or 1.0)
+		launchVel = direction * ballConfig.speed + Vector3.new(0, upImpulse, 0)
+	end
 
-    if ThrowBallEvent then
-        ThrowBallEvent:FireServer(startPos, launchVel, selectedBallType)
-    end
+	if ThrowBallEvent then
+		ThrowBallEvent:FireServer(startPos, launchVel, selectedBallType)
+	end
 
-    -- Destruir pelota local despues de 0.15s (cuando la del servidor aparece)
-    task.delay(0.15, function()
-        if localBall and localBall.Parent then
-            localBall:Destroy()
-        end
-    end)
+	-- Destruir pelota local despues de 0.15s (cuando la del servidor aparece)
+	task.delay(0.15, function()
+		if localBall and localBall.Parent then
+			localBall:Destroy()
+		end
+	end)
 
-    activeBalls = activeBalls + 1
-    task.delay(4.5, function() activeBalls = math.max(0, activeBalls-1) end)
+	activeBalls = activeBalls + 1
+	task.delay(4.5, function() activeBalls = math.max(0, activeBalls-1) end)
 
-    -- Despues del lanzamiento, volver a poner la pelota en la mano
-    task.delay(0.5, function()
-        if ballEquipped and not isCarrying then
-            reEquipBall()
-        end
-    end)
+	-- Despues del lanzamiento, volver a poner la pelota en la mano
+	task.delay(0.5, function()
+		if ballEquipped and not isCarrying then
+			reEquipBall()
+		end
+	end)
 
-    task.wait(0.5)
-    throwDebounce = false
+	task.wait(0.5)
+	throwDebounce = false
 end
 
 -- INPUTS
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
+	if gameProcessed then return end
 
-    if input.KeyCode == Enum.KeyCode.One then
-        if isCarrying or inputDebounce then return end
-        inputDebounce = true
-        if ballEquipped then unequipBall() else equipBall() end
-        task.wait(0.3)
-        inputDebounce = false
+	if input.KeyCode == Enum.KeyCode.One then
+		if isCarrying or inputDebounce then return end
+		inputDebounce = true
+		if ballEquipped then unequipBall() else equipBall() end
+		task.wait(0.3)
+		inputDebounce = false
 
-    elseif input.KeyCode == Enum.KeyCode.E then
-        if inputDebounce then return end
-        inputDebounce = true
-        if isCarrying then
-            -- Si esta cerca de la maquina de fusion, depositar ahi
-            if nearFusionMachine and DepositCharacterEvent then
-                DepositCharacterEvent:FireServer()
-            elseif PlaceCharacterEvent then
-                PlaceCharacterEvent:FireServer()
-            end
-        else
-            -- Solo dispara UN evento, el servidor decide qué hacer
-            if PickupChestEvent then PickupChestEvent:FireServer() end
-            task.wait(0.15)
-            if not isCarrying then
-                if RemoveFromPedestalEvent then RemoveFromPedestalEvent:FireServer() end
-            end
-            task.wait(0.15)
-            if not isCarrying then
-                if PickupDroppedEvent then PickupDroppedEvent:FireServer() end
-            end
-        end
-        task.wait(0.3)
-        inputDebounce = false
+	elseif input.KeyCode == Enum.KeyCode.E then
+		if inputDebounce then return end
+		inputDebounce = true
+		if isCarrying then
+			-- Si esta cerca de la maquina de fusion, depositar ahi
+			if nearFusionMachine and DepositCharacterEvent then
+				DepositCharacterEvent:FireServer()
+			elseif PlaceCharacterEvent then
+				PlaceCharacterEvent:FireServer()
+			end
+		else
+			-- Solo dispara UN evento, el servidor decide qué hacer
+			if PickupChestEvent then PickupChestEvent:FireServer() end
+			task.wait(0.15)
+			if not isCarrying then
+				if RemoveFromPedestalEvent then RemoveFromPedestalEvent:FireServer() end
+			end
+			task.wait(0.15)
+			if not isCarrying then
+				if PickupDroppedEvent then PickupDroppedEvent:FireServer() end
+			end
+		end
+		task.wait(0.3)
+		inputDebounce = false
 
-    elseif input.KeyCode == Enum.KeyCode.G then
-        if isCarrying and DropCharacterEvent then
-            DropCharacterEvent:FireServer()
-        end
+	elseif input.KeyCode == Enum.KeyCode.G then
+		if isCarrying and DropCharacterEvent then
+			DropCharacterEvent:FireServer()
+		end
 
-    elseif input.KeyCode == Enum.KeyCode.F then
-        if not isCarrying and nearUpgradeButton and not upgradeDebounce then
-            upgradeDebounce = true
-            if UpgradeCharacterEvent then UpgradeCharacterEvent:FireServer() end
-            task.delay(0.3, function() upgradeDebounce = false end)
-        end
+	elseif input.KeyCode == Enum.KeyCode.F then
+		if not isCarrying and nearUpgradeButton and not upgradeDebounce then
+			upgradeDebounce = true
+			if UpgradeCharacterEvent then UpgradeCharacterEvent:FireServer() end
+			task.delay(0.3, function() upgradeDebounce = false end)
+		end
 
-    elseif input.KeyCode == Enum.KeyCode.H then
-        -- Mejorar base (solo si no esta cargando nada)
-        if not isCarrying and UpgradeBaseEvent then
-            UpgradeBaseEvent:FireServer()
-        end
-    end
+	elseif input.KeyCode == Enum.KeyCode.H then
+		-- Mejorar base (solo si no esta cargando nada)
+		if not isCarrying and UpgradeBaseEvent then
+			UpgradeBaseEvent:FireServer()
+		end
+	end
 end)
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        if ballEquipped and not isCarrying then throwBall() end
-    end
+	if gameProcessed then return end
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		if ballEquipped and not isCarrying then throwBall() end
+	end
 end)
 
 ballButton.MouseButton1Click:Connect(function()
-    if isCarrying or inputDebounce then return end
-    inputDebounce = true
-    if ballEquipped then unequipBall() else equipBall() end
-    task.wait(0.3)
-    inputDebounce = false
+	if isCarrying or inputDebounce then return end
+	inputDebounce = true
+	if ballEquipped then unequipBall() else equipBall() end
+	task.wait(0.3)
+	inputDebounce = false
 end)
 
 -- ============================================
@@ -695,31 +694,31 @@ local touchDebounce = false
 
 -- Funcion para obtener la posicion 3D del toque en pantalla
 local function getTouchWorldPosition(touchPosition)
-    local camera = workspace.CurrentCamera
-    if not camera then return nil end
-    -- Crear un rayo desde la camara hacia la posicion del toque
-    local unitRay = camera:ScreenPointToRay(touchPosition.X, touchPosition.Y)
-    -- Calcular un punto a 100 studs de distancia (donde "apunta" el toque)
-    return camera.CFrame.Position + unitRay.Direction * 100
+	local camera = workspace.CurrentCamera
+	if not camera then return nil end
+	-- Crear un rayo desde la camara hacia la posicion del toque
+	local unitRay = camera:ScreenPointToRay(touchPosition.X, touchPosition.Y)
+	-- Calcular un punto a 100 studs de distancia (donde "apunta" el toque)
+	return camera.CFrame.Position + unitRay.Direction * 100
 end
 
 -- Detectar toques en la pantalla (movil)
 -- Usar TouchStart en vez de TouchTap para que NO pause el movimiento del jugador
 -- TouchTap se dispara al levantar el dedo (pausa el personaje), TouchStart es instantaneo
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    -- Solo procesar toques en pantalla (movil)
-    if input.UserInputType ~= Enum.UserInputType.Touch then return end
-    if not ballEquipped or isCarrying then return end
-    if touchDebounce or throwDebounce then return end
+	-- Solo procesar toques en pantalla (movil)
+	if input.UserInputType ~= Enum.UserInputType.Touch then return end
+	if not ballEquipped or isCarrying then return end
+	if touchDebounce or throwDebounce then return end
 
-    touchDebounce = true
-    -- Obtener la posicion 3D donde se toco
-    local touchPos = input.Position
-    local targetPos = getTouchWorldPosition(touchPos)
-    throwBall(targetPos)
-    task.delay(0.5, function()
-        touchDebounce = false
-    end)
+	touchDebounce = true
+	-- Obtener la posicion 3D donde se toco
+	local touchPos = input.Position
+	local targetPos = getTouchWorldPosition(touchPos)
+	throwBall(targetPos)
+	task.delay(0.5, function()
+		touchDebounce = false
+	end)
 end)
 
 -- Para PC: el click del mouse ya funciona con el handler de InputBegan existente
@@ -740,89 +739,89 @@ local isMobile = UserInputService.TouchEnabled and not UserInputService.MouseEna
 -- Bloquear el pinch-to-zoom que se queda activado y bloquea el giro de camara
 -- ============================================
 if isMobile then
-    local camera = workspace.CurrentCamera
+	local camera = workspace.CurrentCamera
 
-    -- Forzar el modo de camara Classic
-    player.CameraMode = Enum.CameraMode.Classic
+	-- Forzar el modo de camara Classic
+	player.CameraMode = Enum.CameraMode.Classic
 
-    -- Restaurar distancias normales de camara (no forzar 0.5)
-    player.CameraMinZoomDistance = 0.5
-    player.CameraMaxZoomDistance = 128
+	-- Restaurar distancias normales de camara (no forzar 0.5)
+	player.CameraMinZoomDistance = 0.5
+	player.CameraMaxZoomDistance = 128
 
-    -- INTERCEPTAR el pinch: cuando se detecta 2 dedos (pinch), 
-    -- simular que NO hay pinch reseteando el FOV inmediatamente
-    -- y forzando la distancia de camara a su valor actual
-    local lastZoom = 12.5 -- distancia normal de camara
+	-- INTERCEPTAR el pinch: cuando se detecta 2 dedos (pinch), 
+	-- simular que NO hay pinch reseteando el FOV inmediatamente
+	-- y forzando la distancia de camara a su valor actual
+	local lastZoom = 12.5 -- distancia normal de camara
 
-    UserInputService.TouchPinch:Connect(function(touchPositions, scale, velocity, state)
-        if state == Enum.UserInputState.Begin then
-            -- Guardar la distancia actual de la camara
-            local playerZoom = (player.CameraMaxZoomDistance + player.CameraMinZoomDistance) / 2
-            lastZoom = playerZoom
-        end
-        if state == Enum.UserInputState.Begin or state == Enum.UserInputState.Change then
-            -- Resetear FOV inmediatamente
-            if camera then
-                camera.FieldOfView = 70
-            end
-        end
-        if state == Enum.UserInputState.End then
-            -- Al terminar el pinch, restaurar la distancia de camara
-            player.CameraMinZoomDistance = 0.5
-            player.CameraMaxZoomDistance = 128
-            if camera then
-                camera.FieldOfView = 70
-            end
-        end
-    end)
+	UserInputService.TouchPinch:Connect(function(touchPositions, scale, velocity, state)
+		if state == Enum.UserInputState.Begin then
+			-- Guardar la distancia actual de la camara
+			local playerZoom = (player.CameraMaxZoomDistance + player.CameraMinZoomDistance) / 2
+			lastZoom = playerZoom
+		end
+		if state == Enum.UserInputState.Begin or state == Enum.UserInputState.Change then
+			-- Resetear FOV inmediatamente
+			if camera then
+				camera.FieldOfView = 70
+			end
+		end
+		if state == Enum.UserInputState.End then
+			-- Al terminar el pinch, restaurar la distancia de camara
+			player.CameraMinZoomDistance = 0.5
+			player.CameraMaxZoomDistance = 128
+			if camera then
+				camera.FieldOfView = 70
+			end
+		end
+	end)
 
-    -- Monitoreo continuo: si el FOV cambia por pinch, resetearlo
-    task.spawn(function()
-        while true do
-            task.wait(0.05)
-            if camera and camera.FieldOfView ~= 70 then
-                camera.FieldOfView = 70
-            end
-        end
-    end)
+	-- Monitoreo continuo: si el FOV cambia por pinch, resetearlo
+	task.spawn(function()
+		while true do
+			task.wait(0.05)
+			if camera and camera.FieldOfView ~= 70 then
+				camera.FieldOfView = 70
+			end
+		end
+	end)
 end
 
 -- Funcion helper para crear un boton de interaccion con estilo: solo borde negro, sin relleno
 local function createMobileButton(name, icon)
-    local btn = Instance.new("TextButton")
-    btn.Name = name
-    btn.Size = UDim2.new(0, 60, 0, 60)
-    btn.Position = UDim2.new(0.5, -30, 0.7, 0)
-    btn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    btn.BackgroundTransparency = 0.85 -- casi transparente
-    btn.BorderSizePixel = 0
-    btn.Text = icon
-    btn.TextColor3 = Color3.fromRGB(0, 0, 0)
-    btn.TextTransparency = 0 -- texto negro visible
-    btn.TextScaled = true
-    btn.Font = Enum.Font.GothamBlack
-    btn.Visible = false
-    btn.ZIndex = 100 -- ZIndex alto para que aparezca encima del panel de fusion (ZIndex 50)
-    btn.Parent = screenGui
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(1, 0)
+	local btn = Instance.new("TextButton")
+	btn.Name = name
+	btn.Size = UDim2.new(0, 60, 0, 60)
+	btn.Position = UDim2.new(0.5, -30, 0.7, 0)
+	btn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	btn.BackgroundTransparency = 0.85 -- casi transparente
+	btn.BorderSizePixel = 0
+	btn.Text = icon
+	btn.TextColor3 = Color3.fromRGB(0, 0, 0)
+	btn.TextTransparency = 0 -- texto negro visible
+	btn.TextScaled = true
+	btn.Font = Enum.Font.GothamBlack
+	btn.Visible = false
+	btn.ZIndex = 100 -- ZIndex alto para que aparezca encima del panel de fusion (ZIndex 50)
+	btn.Parent = screenGui
+	Instance.new("UICorner", btn).CornerRadius = UDim.new(1, 0)
 
-    -- Borde negro bien marcado
-    local stroke = Instance.new("UIStroke")
-    stroke.Color = Color3.fromRGB(0, 0, 0)
-    stroke.Thickness = 3
-    stroke.Transparency = 0.1
-    stroke.Parent = btn
+	-- Borde negro bien marcado
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = Color3.fromRGB(0, 0, 0)
+	stroke.Thickness = 3
+	stroke.Transparency = 0.1
+	stroke.Parent = btn
 
-    -- Outline blanco para que el icono se vea sobre cualquier fondo
-    local textStroke = Instance.new("UIStroke")
-    textStroke.Name = "TextOutline"
-    textStroke.Color = Color3.fromRGB(255, 255, 255)
-    textStroke.Thickness = 2
-    textStroke.Transparency = 0.3
-    textStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-    textStroke.Parent = btn
+	-- Outline blanco para que el icono se vea sobre cualquier fondo
+	local textStroke = Instance.new("UIStroke")
+	textStroke.Name = "TextOutline"
+	textStroke.Color = Color3.fromRGB(255, 255, 255)
+	textStroke.Thickness = 2
+	textStroke.Transparency = 0.3
+	textStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	textStroke.Parent = btn
 
-    return btn
+	return btn
 end
 
 -- Boton de interaccion principal (colocar/recoger/cofre/fusion)
@@ -833,9 +832,9 @@ local upgradeMobBtn = nil
 local baseUpgradeMobBtn = nil
 
 if isMobile then
-    interactBtn = createMobileButton("MobInteractBtn", "👆")
-    upgradeMobBtn = createMobileButton("MobUpgradeBtn", "⬆️")
-    baseUpgradeMobBtn = createMobileButton("MobBaseUpgradeBtn", "🏰")
+	interactBtn = createMobileButton("MobInteractBtn", "👆")
+	upgradeMobBtn = createMobileButton("MobUpgradeBtn", "⬆️")
+	baseUpgradeMobBtn = createMobileButton("MobBaseUpgradeBtn", "🏰")
 end
 
 local interactDebounce = false
@@ -844,57 +843,57 @@ local baseUpgradeMobDebounce = false
 
 -- Accion del boton de interaccion (mismo que presionar E)
 if interactBtn then
-    interactBtn.MouseButton1Click:Connect(function()
-        if interactDebounce then return end
-        interactDebounce = true
-        if isCarrying then
-            -- Colocar personaje en pedestal o depositar en fusion
-            if nearFusionMachine and DepositCharacterEvent then
-                DepositCharacterEvent:FireServer()
-            elseif PlaceCharacterEvent then
-                PlaceCharacterEvent:FireServer()
-            end
-        else
-            -- Recoger (cofre, pedestal, o suelo)
-            if PickupChestEvent then PickupChestEvent:FireServer() end
-            task.wait(0.15)
-            if not isCarrying then
-                if RemoveFromPedestalEvent then RemoveFromPedestalEvent:FireServer() end
-            end
-            task.wait(0.15)
-            if not isCarrying then
-                if PickupDroppedEvent then PickupDroppedEvent:FireServer() end
-            end
-        end
-        task.wait(0.5)
-        interactDebounce = false
-    end)
+	interactBtn.MouseButton1Click:Connect(function()
+		if interactDebounce then return end
+		interactDebounce = true
+		if isCarrying then
+			-- Colocar personaje en pedestal o depositar en fusion
+			if nearFusionMachine and DepositCharacterEvent then
+				DepositCharacterEvent:FireServer()
+			elseif PlaceCharacterEvent then
+				PlaceCharacterEvent:FireServer()
+			end
+		else
+			-- Recoger (cofre, pedestal, o suelo)
+			if PickupChestEvent then PickupChestEvent:FireServer() end
+			task.wait(0.15)
+			if not isCarrying then
+				if RemoveFromPedestalEvent then RemoveFromPedestalEvent:FireServer() end
+			end
+			task.wait(0.15)
+			if not isCarrying then
+				if PickupDroppedEvent then PickupDroppedEvent:FireServer() end
+			end
+		end
+		task.wait(0.5)
+		interactDebounce = false
+	end)
 end
 
 -- Accion del boton de mejorar personaje (mismo que presionar F)
 if upgradeMobBtn then
-    upgradeMobBtn.MouseButton1Click:Connect(function()
-        if upgradeMobDebounce then return end
-        upgradeMobDebounce = true
-        if UpgradeCharacterEvent then
-            UpgradeCharacterEvent:FireServer()
-        end
-        task.wait(0.5)
-        upgradeMobDebounce = false
-    end)
+	upgradeMobBtn.MouseButton1Click:Connect(function()
+		if upgradeMobDebounce then return end
+		upgradeMobDebounce = true
+		if UpgradeCharacterEvent then
+			UpgradeCharacterEvent:FireServer()
+		end
+		task.wait(0.5)
+		upgradeMobDebounce = false
+	end)
 end
 
 -- Accion del boton de mejorar base (mismo que presionar H)
 if baseUpgradeMobBtn then
-    baseUpgradeMobBtn.MouseButton1Click:Connect(function()
-        if baseUpgradeMobDebounce then return end
-        baseUpgradeMobDebounce = true
-        if UpgradeBaseEvent then
-            UpgradeBaseEvent:FireServer()
-        end
-        task.wait(0.5)
-        baseUpgradeMobDebounce = false
-    end)
+	baseUpgradeMobBtn.MouseButton1Click:Connect(function()
+		if baseUpgradeMobDebounce then return end
+		baseUpgradeMobDebounce = true
+		if UpgradeBaseEvent then
+			UpgradeBaseEvent:FireServer()
+		end
+		task.wait(0.5)
+		baseUpgradeMobDebounce = false
+	end)
 end
 
 -- ============================================
@@ -902,226 +901,226 @@ end
 -- Posiciona los botones cerca del objeto 3D usando WorldToViewportPoint
 -- ============================================
 if isMobile then
-    task.spawn(function()
-        while true do
-            task.wait(0.2)
-            local char = player.Character
-            if not char then
-                if interactBtn then interactBtn.Visible = false end
-                if upgradeMobBtn then upgradeMobBtn.Visible = false end
-                if baseUpgradeMobBtn then baseUpgradeMobBtn.Visible = false end
-                continue
-            end
-            local root = char:FindFirstChild("HumanoidRootPart")
-            if not root then
-                if interactBtn then interactBtn.Visible = false end
-                if upgradeMobBtn then upgradeMobBtn.Visible = false end
-                if baseUpgradeMobBtn then baseUpgradeMobBtn.Visible = false end
-                continue
-            end
+	task.spawn(function()
+		while true do
+			task.wait(0.2)
+			local char = player.Character
+			if not char then
+				if interactBtn then interactBtn.Visible = false end
+				if upgradeMobBtn then upgradeMobBtn.Visible = false end
+				if baseUpgradeMobBtn then baseUpgradeMobBtn.Visible = false end
+				continue
+			end
+			local root = char:FindFirstChild("HumanoidRootPart")
+			if not root then
+				if interactBtn then interactBtn.Visible = false end
+				if upgradeMobBtn then upgradeMobBtn.Visible = false end
+				if baseUpgradeMobBtn then baseUpgradeMobBtn.Visible = false end
+				continue
+			end
 
-            local playerPos = root.Position
-            local camera = workspace.CurrentCamera
-            local showInteract = false
-            local showUpgrade = false
-            local showBaseUpgrade = false
-            local interactScreenPos = nil
-            local upgradeScreenPos = nil
-            local baseUpgradeScreenPos = nil
+			local playerPos = root.Position
+			local camera = workspace.CurrentCamera
+			local showInteract = false
+			local showUpgrade = false
+			local showBaseUpgrade = false
+			local interactScreenPos = nil
+			local upgradeScreenPos = nil
+			local baseUpgradeScreenPos = nil
 
-            -- 1. Verificar cofres cerca (solo si no esta cargando)
-            if not isCarrying then
-                for _, obj in ipairs(workspace:GetChildren()) do
-                    if obj.Name == "Chest" then
-                        local owner = obj:FindFirstChild("Owner")
-                        if owner and owner.Value == player then
-                            local d = (obj.Position - playerPos).Magnitude
-                            if d < 15 then
-                                showInteract = true
-                                interactScreenPos = camera:WorldToViewportPoint(obj.Position)
-                                break
-                            end
-                        end
-                    end
-                end
-            end
+			-- 1. Verificar cofres cerca (solo si no esta cargando)
+			if not isCarrying then
+				for _, obj in ipairs(workspace:GetChildren()) do
+					if obj.Name == "Chest" then
+						local owner = obj:FindFirstChild("Owner")
+						if owner and owner.Value == player then
+							local d = (obj.Position - playerPos).Magnitude
+							if d < 15 then
+								showInteract = true
+								interactScreenPos = camera:WorldToViewportPoint(obj.Position)
+								break
+							end
+						end
+					end
+				end
+			end
 
-            -- 2. Verificar personajes soltados cerca (DropTimer)
-            if not showInteract and not isCarrying then
-                for _, obj in ipairs(workspace:GetChildren()) do
-                    if obj.Name == "DropTimer" then
-                        local owner = obj:FindFirstChild("Owner")
-                        if owner and owner.Value == player then
-                            local d = (obj.Position - playerPos).Magnitude
-                            if d < 15 then
-                                showInteract = true
-                                interactScreenPos = camera:WorldToViewportPoint(obj.Position)
-                                break
-                            end
-                        end
-                    end
-                end
-            end
+			-- 2. Verificar personajes soltados cerca (DropTimer)
+			if not showInteract and not isCarrying then
+				for _, obj in ipairs(workspace:GetChildren()) do
+					if obj.Name == "DropTimer" then
+						local owner = obj:FindFirstChild("Owner")
+						if owner and owner.Value == player then
+							local d = (obj.Position - playerPos).Magnitude
+							if d < 15 then
+								showInteract = true
+								interactScreenPos = camera:WorldToViewportPoint(obj.Position)
+								break
+							end
+						end
+					end
+				end
+			end
 
-            -- 3. Verificar pedestales (colocar/recoger + mejorar)
-            if not showInteract or not showUpgrade then
-                local map = workspace:FindFirstChild("Map")
-                if map then
-                    local bases = map:FindFirstChild("Bases")
-                    if bases then
-                        for _, base in ipairs(bases:GetChildren()) do
-                            if showInteract and showUpgrade then break end
-                            -- Buscar en todos los pisos
-                            local allPeds = {}
-                            local p1 = base:FindFirstChild("Pedestals")
-                            if p1 then table.insert(allPeds, p1) end
-                            for floorNum = 2, 5 do
-                                local floor = base:FindFirstChild("Floor" .. floorNum)
-                                if floor then
-                                    local peds = floor:FindFirstChild("Pedestals" .. floorNum)
-                                    if peds then table.insert(allPeds, peds) end
-                                end
-                            end
+			-- 3. Verificar pedestales (colocar/recoger + mejorar)
+			if not showInteract or not showUpgrade then
+				local map = workspace:FindFirstChild("Map")
+				if map then
+					local bases = map:FindFirstChild("Bases")
+					if bases then
+						for _, base in ipairs(bases:GetChildren()) do
+							if showInteract and showUpgrade then break end
+							-- Buscar en todos los pisos
+							local allPeds = {}
+							local p1 = base:FindFirstChild("Pedestals")
+							if p1 then table.insert(allPeds, p1) end
+							for floorNum = 2, 5 do
+								local floor = base:FindFirstChild("Floor" .. floorNum)
+								if floor then
+									local peds = floor:FindFirstChild("Pedestals" .. floorNum)
+									if peds then table.insert(allPeds, peds) end
+								end
+							end
 
-                            for _, pedFolder in ipairs(allPeds) do
-                                if showInteract and showUpgrade then break end
-                                for _, ped in ipairs(pedFolder:GetChildren()) do
-                                    local platform = ped:FindFirstChild("Platform")
-                                    if platform then
-                                        local d = (platform.Position - playerPos).Magnitude
-                                        if d < 14 then
-                                            -- Boton de interaccion (colocar/recoger)
-                                            if not showInteract then
-                                                if isCarrying then
-                                                    -- Verificar pedestal vacio
-                                                    local hasModel = false
-                                                    for _, child in ipairs(ped:GetChildren()) do
-                                                        if child:IsA("Model") then hasModel = true break end
-                                                    end
-                                                    if not hasModel then
-                                                        showInteract = true
-                                                        interactScreenPos = camera:WorldToViewportPoint(platform.Position)
-                                                    end
-                                                else
-                                                    -- Verificar pedestal con personaje
-                                                    local hasModel = false
-                                                    for _, child in ipairs(ped:GetChildren()) do
-                                                        if child:IsA("Model") then hasModel = true break end
-                                                    end
-                                                    if hasModel then
-                                                        showInteract = true
-                                                        interactScreenPos = camera:WorldToViewportPoint(platform.Position)
-                                                    end
-                                                end
-                                            end
+							for _, pedFolder in ipairs(allPeds) do
+								if showInteract and showUpgrade then break end
+								for _, ped in ipairs(pedFolder:GetChildren()) do
+									local platform = ped:FindFirstChild("Platform")
+									if platform then
+										local d = (platform.Position - playerPos).Magnitude
+										if d < 14 then
+											-- Boton de interaccion (colocar/recoger)
+											if not showInteract then
+												if isCarrying then
+													-- Verificar pedestal vacio
+													local hasModel = false
+													for _, child in ipairs(ped:GetChildren()) do
+														if child:IsA("Model") then hasModel = true break end
+													end
+													if not hasModel then
+														showInteract = true
+														interactScreenPos = camera:WorldToViewportPoint(platform.Position)
+													end
+												else
+													-- Verificar pedestal con personaje
+													local hasModel = false
+													for _, child in ipairs(ped:GetChildren()) do
+														if child:IsA("Model") then hasModel = true break end
+													end
+													if hasModel then
+														showInteract = true
+														interactScreenPos = camera:WorldToViewportPoint(platform.Position)
+													end
+												end
+											end
 
-                                            -- Boton de mejora (cerca del UpgradeButton)
-                                            if not showUpgrade and not isCarrying then
-                                                local upgradeBtn3D = ped:FindFirstChild("UpgradeButton")
-                                                if upgradeBtn3D then
-                                                    local ud = (upgradeBtn3D.Position - playerPos).Magnitude
-                                                    if ud < 10 then
-                                                        showUpgrade = true
-                                                        upgradeScreenPos = camera:WorldToViewportPoint(upgradeBtn3D.Position)
-                                                    end
-                                                end
-                                            end
-                                        end
-                                    end
-                                end
-                            end
-                        end
-                    end
-                end
-            end
+											-- Boton de mejora (cerca del UpgradeButton)
+											if not showUpgrade and not isCarrying then
+												local upgradeBtn3D = ped:FindFirstChild("UpgradeButton")
+												if upgradeBtn3D then
+													local ud = (upgradeBtn3D.Position - playerPos).Magnitude
+													if ud < 10 then
+														showUpgrade = true
+														upgradeScreenPos = camera:WorldToViewportPoint(upgradeBtn3D.Position)
+													end
+												end
+											end
+										end
+									end
+								end
+							end
+						end
+					end
+				end
+			end
 
-            -- 4. Verificar maquina de fusion (siempre que este cerca, cargando o no)
-            if not showInteract then
-                local FUSION_MACHINE_CENTER = Vector3.new(-142.3, 10.8, 11.0)
-                local dist = (playerPos - FUSION_MACHINE_CENTER).Magnitude
-                if dist < 20 then
-                    -- Solo mostrar el boton de interaccion si esta cargando (para depositar)
-                    -- Si no esta cargando, el panel de fusion ya muestra la info
-                    if isCarrying then
-                        showInteract = true
-                        interactScreenPos = camera:WorldToViewportPoint(FUSION_MACHINE_CENTER)
-                    end
-                end
-            end
+			-- 4. Verificar maquina de fusion (siempre que este cerca, cargando o no)
+			if not showInteract then
+				local FUSION_MACHINE_CENTER = Vector3.new(-142.3, 10.8, 11.0)
+				local dist = (playerPos - FUSION_MACHINE_CENTER).Magnitude
+				if dist < 20 then
+					-- Solo mostrar el boton de interaccion si esta cargando (para depositar)
+					-- Si no esta cargando, el panel de fusion ya muestra la info
+					if isCarrying then
+						showInteract = true
+						interactScreenPos = camera:WorldToViewportPoint(FUSION_MACHINE_CENTER)
+					end
+				end
+			end
 
-            -- 5. Verificar boton de mejora de base (BaseUpgradeButton)
-            if not showBaseUpgrade then
-                local map = workspace:FindFirstChild("Map")
-                if map then
-                    local bases = map:FindFirstChild("Bases")
-                    if bases then
-                        for _, base in ipairs(bases:GetChildren()) do
-                            if showBaseUpgrade then break end
-                            local baseUpgradeBtn3D = base:FindFirstChild("BaseUpgradeButton")
-                            if baseUpgradeBtn3D then
-                                local d = (baseUpgradeBtn3D.Position - playerPos).Magnitude
-                                if d < 12 then
-                                    showBaseUpgrade = true
-                                    baseUpgradeScreenPos = camera:WorldToViewportPoint(baseUpgradeBtn3D.Position)
-                                end
-                            end
-                        end
-                    end
-                end
-            end
+			-- 5. Verificar boton de mejora de base (BaseUpgradeButton)
+			if not showBaseUpgrade then
+				local map = workspace:FindFirstChild("Map")
+				if map then
+					local bases = map:FindFirstChild("Bases")
+					if bases then
+						for _, base in ipairs(bases:GetChildren()) do
+							if showBaseUpgrade then break end
+							local baseUpgradeBtn3D = base:FindFirstChild("BaseUpgradeButton")
+							if baseUpgradeBtn3D then
+								local d = (baseUpgradeBtn3D.Position - playerPos).Magnitude
+								if d < 12 then
+									showBaseUpgrade = true
+									baseUpgradeScreenPos = camera:WorldToViewportPoint(baseUpgradeBtn3D.Position)
+								end
+							end
+						end
+					end
+				end
+			end
 
-            -- Actualizar visibilidad y posicion de los botones
-            if interactBtn then
-                if showInteract and interactScreenPos and interactScreenPos.Z > 0 then
-                    interactBtn.Visible = true
-                    interactBtn.Position = UDim2.new(0, interactScreenPos.X - 30, 0, interactScreenPos.Y - 30)
-                else
-                    interactBtn.Visible = false
-                end
-            end
+			-- Actualizar visibilidad y posicion de los botones
+			if interactBtn then
+				if showInteract and interactScreenPos and interactScreenPos.Z > 0 then
+					interactBtn.Visible = true
+					interactBtn.Position = UDim2.new(0, interactScreenPos.X - 30, 0, interactScreenPos.Y - 30)
+				else
+					interactBtn.Visible = false
+				end
+			end
 
-            if upgradeMobBtn then
-                if showUpgrade and upgradeScreenPos and upgradeScreenPos.Z > 0 then
-                    upgradeMobBtn.Visible = true
-                    upgradeMobBtn.Position = UDim2.new(0, upgradeScreenPos.X - 30, 0, upgradeScreenPos.Y - 30)
-                else
-                    upgradeMobBtn.Visible = false
-                end
-            end
+			if upgradeMobBtn then
+				if showUpgrade and upgradeScreenPos and upgradeScreenPos.Z > 0 then
+					upgradeMobBtn.Visible = true
+					upgradeMobBtn.Position = UDim2.new(0, upgradeScreenPos.X - 30, 0, upgradeScreenPos.Y - 30)
+				else
+					upgradeMobBtn.Visible = false
+				end
+			end
 
-            if baseUpgradeMobBtn then
-                if showBaseUpgrade and baseUpgradeScreenPos and baseUpgradeScreenPos.Z > 0 then
-                    baseUpgradeMobBtn.Visible = true
-                    baseUpgradeMobBtn.Position = UDim2.new(0, baseUpgradeScreenPos.X - 30, 0, baseUpgradeScreenPos.Y - 30)
-                else
-                    baseUpgradeMobBtn.Visible = false
-                end
-            end
-        end
-    end)
+			if baseUpgradeMobBtn then
+				if showBaseUpgrade and baseUpgradeScreenPos and baseUpgradeScreenPos.Z > 0 then
+					baseUpgradeMobBtn.Visible = true
+					baseUpgradeMobBtn.Position = UDim2.new(0, baseUpgradeScreenPos.X - 30, 0, baseUpgradeScreenPos.Y - 30)
+				else
+					baseUpgradeMobBtn.Visible = false
+				end
+			end
+		end
+	end)
 end
 
 placeBtn.MouseButton1Click:Connect(function()
-    if isCarrying and PlaceCharacterEvent then PlaceCharacterEvent:FireServer() end
+	if isCarrying and PlaceCharacterEvent then PlaceCharacterEvent:FireServer() end
 end)
 
 dropBtn.MouseButton1Click:Connect(function()
-    if isCarrying and DropCharacterEvent then DropCharacterEvent:FireServer() end
+	if isCarrying and DropCharacterEvent then DropCharacterEvent:FireServer() end
 end)
 
 player.CharacterAdded:Connect(function()
-    ballEquipped = false
-    inputDebounce = false
-    throwDebounce = false
-    isCarrying = false
-    activeBalls = 0
-    cachedTrack = nil
-    updateButton()
-    updateUI()
+	ballEquipped = false
+	inputDebounce = false
+	throwDebounce = false
+	isCarrying = false
+	activeBalls = 0
+	cachedTrack = nil
+	updateButton()
+	updateUI()
 end)
 
 MoneyUpdateEvent.OnClientEvent:Connect(function(amount)
-    moneyLabel.Text = tostring(amount)
+	moneyLabel.Text = tostring(amount)
 end)
 
 -- ============================================
@@ -1133,170 +1132,170 @@ local TweenService = game:GetService("TweenService")
 local isChestAnimating = false
 
 ChestOpenEvent.OnClientEvent:Connect(function(rarityName, rarityColor, charName)
-    if isChestAnimating then return end
-    isChestAnimating = true
+	if isChestAnimating then return end
+	isChestAnimating = true
 
-    -- Fondo oscuro que cubre toda la pantalla
-    local backdrop = Instance.new("Frame")
-    backdrop.Name = "ChestBackdrop"
-    backdrop.Size = UDim2.new(1, 0, 1, 0)
-    backdrop.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    backdrop.BackgroundTransparency = 0.5
-    backdrop.BorderSizePixel = 0
-    backdrop.ZIndex = 100
-    backdrop.Parent = screenGui
+	-- Fondo oscuro que cubre toda la pantalla
+	local backdrop = Instance.new("Frame")
+	backdrop.Name = "ChestBackdrop"
+	backdrop.Size = UDim2.new(1, 0, 1, 0)
+	backdrop.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	backdrop.BackgroundTransparency = 0.5
+	backdrop.BorderSizePixel = 0
+	backdrop.ZIndex = 100
+	backdrop.Parent = screenGui
 
-    -- Contenedor central
-    local container = Instance.new("Frame")
-    container.Name = "ChestContainer"
-    container.Size = UDim2.new(0, 300, 0, 400)
-    container.Position = UDim2.new(0.5, -150, 0.5, -200)
-    container.BackgroundTransparency = 1
-    container.ZIndex = 101
-    container.Parent = backdrop
+	-- Contenedor central
+	local container = Instance.new("Frame")
+	container.Name = "ChestContainer"
+	container.Size = UDim2.new(0, 300, 0, 400)
+	container.Position = UDim2.new(0.5, -150, 0.5, -200)
+	container.BackgroundTransparency = 1
+	container.ZIndex = 101
+	container.Parent = backdrop
 
-    -- Cuadro del cofre (gira)
-    local box = Instance.new("Frame")
-    box.Name = "ChestBox"
-    box.Size = UDim2.new(0, 200, 0, 200)
-    box.Position = UDim2.new(0.5, -100, 0, 50)
-    box.BackgroundColor3 = rarityColor
-    box.BorderSizePixel = 0
-    box.ZIndex = 102
-    box.Parent = container
-    Instance.new("UICorner", box).CornerRadius = UDim.new(0, 20)
+	-- Cuadro del cofre (gira)
+	local box = Instance.new("Frame")
+	box.Name = "ChestBox"
+	box.Size = UDim2.new(0, 200, 0, 200)
+	box.Position = UDim2.new(0.5, -100, 0, 50)
+	box.BackgroundColor3 = rarityColor
+	box.BorderSizePixel = 0
+	box.ZIndex = 102
+	box.Parent = container
+	Instance.new("UICorner", box).CornerRadius = UDim.new(0, 20)
 
-    -- Borde brillante
-    local boxStroke = Instance.new("UIStroke")
-    boxStroke.Color = Color3.fromRGB(255, 255, 255)
-    boxStroke.Thickness = 4
-    boxStroke.Transparency = 0.2
-    boxStroke.Parent = box
+	-- Borde brillante
+	local boxStroke = Instance.new("UIStroke")
+	boxStroke.Color = Color3.fromRGB(255, 255, 255)
+	boxStroke.Thickness = 4
+	boxStroke.Transparency = 0.2
+	boxStroke.Parent = box
 
-    -- Signo de interrogacion
-    local questionMark = Instance.new("TextLabel")
-    questionMark.Name = "QuestionMark"
-    questionMark.Size = UDim2.new(1, 0, 1, 0)
-    questionMark.BackgroundTransparency = 1
-    questionMark.Text = "?"
-    questionMark.TextColor3 = Color3.fromRGB(255, 255, 255)
-    questionMark.TextScaled = true
-    questionMark.Font = Enum.Font.GothamBlack
-    questionMark.ZIndex = 103
-    questionMark.Parent = box
+	-- Signo de interrogacion
+	local questionMark = Instance.new("TextLabel")
+	questionMark.Name = "QuestionMark"
+	questionMark.Size = UDim2.new(1, 0, 1, 0)
+	questionMark.BackgroundTransparency = 1
+	questionMark.Text = "?"
+	questionMark.TextColor3 = Color3.fromRGB(255, 255, 255)
+	questionMark.TextScaled = true
+	questionMark.Font = Enum.Font.GothamBlack
+	questionMark.ZIndex = 103
+	questionMark.Parent = box
 
-    -- Texto superior "ABRIENDO COFRE"
-    local titleLabel = Instance.new("TextLabel")
-    titleLabel.Name = "TitleLabel"
-    titleLabel.Size = UDim2.new(1, 0, 0, 40)
-    titleLabel.Position = UDim2.new(0, 0, 0, 0)
-    titleLabel.BackgroundTransparency = 1
-    titleLabel.Text = "ABRIENDO COFRE..."
-    titleLabel.TextColor3 = rarityColor
-    titleLabel.TextScaled = true
-    titleLabel.Font = Enum.Font.GothamBlack
-    titleLabel.ZIndex = 102
-    titleLabel.Parent = container
+	-- Texto superior "ABRIENDO COFRE"
+	local titleLabel = Instance.new("TextLabel")
+	titleLabel.Name = "TitleLabel"
+	titleLabel.Size = UDim2.new(1, 0, 0, 40)
+	titleLabel.Position = UDim2.new(0, 0, 0, 0)
+	titleLabel.BackgroundTransparency = 1
+	titleLabel.Text = "ABRIENDO COFRE..."
+	titleLabel.TextColor3 = rarityColor
+	titleLabel.TextScaled = true
+	titleLabel.Font = Enum.Font.GothamBlack
+	titleLabel.ZIndex = 102
+	titleLabel.Parent = container
 
-    -- Texto de rareza (debajo del cuadro)
-    local rarityLabel = Instance.new("TextLabel")
-    rarityLabel.Name = "RarityLabel"
-    rarityLabel.Size = UDim2.new(1, 0, 0, 35)
-    rarityLabel.Position = UDim2.new(0, 0, 0, 270)
-    rarityLabel.BackgroundTransparency = 1
-    rarityLabel.Text = rarityName
-    rarityLabel.TextColor3 = rarityColor
-    rarityLabel.TextScaled = true
-    rarityLabel.Font = Enum.Font.GothamBold
-    rarityLabel.ZIndex = 102
-    rarityLabel.Parent = container
+	-- Texto de rareza (debajo del cuadro)
+	local rarityLabel = Instance.new("TextLabel")
+	rarityLabel.Name = "RarityLabel"
+	rarityLabel.Size = UDim2.new(1, 0, 0, 35)
+	rarityLabel.Position = UDim2.new(0, 0, 0, 270)
+	rarityLabel.BackgroundTransparency = 1
+	rarityLabel.Text = rarityName
+	rarityLabel.TextColor3 = rarityColor
+	rarityLabel.TextScaled = true
+	rarityLabel.Font = Enum.Font.GothamBold
+	rarityLabel.ZIndex = 102
+	rarityLabel.Parent = container
 
-    -- Texto del personaje ganado (oculto al inicio)
-    local resultLabel = Instance.new("TextLabel")
-    resultLabel.Name = "ResultLabel"
-    resultLabel.Size = UDim2.new(1, 0, 0, 40)
-    resultLabel.Position = UDim2.new(0, 0, 0, 320)
-    resultLabel.BackgroundTransparency = 1
-    resultLabel.Text = ""
-    resultLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    resultLabel.TextScaled = true
-    resultLabel.Font = Enum.Font.GothamBold
-    resultLabel.ZIndex = 102
-    resultLabel.Parent = container
+	-- Texto del personaje ganado (oculto al inicio)
+	local resultLabel = Instance.new("TextLabel")
+	resultLabel.Name = "ResultLabel"
+	resultLabel.Size = UDim2.new(1, 0, 0, 40)
+	resultLabel.Position = UDim2.new(0, 0, 0, 320)
+	resultLabel.BackgroundTransparency = 1
+	resultLabel.Text = ""
+	resultLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	resultLabel.TextScaled = true
+	resultLabel.Font = Enum.Font.GothamBold
+	resultLabel.ZIndex = 102
+	resultLabel.Parent = container
 
-    -- Animacion: girar el cuadro por 6 segundos
-    -- Velocidad variable: empieza lento, acelera, frena al final
-    local totalDuration = 6.5
-    local startTime = tick()
+	-- Animacion: girar el cuadro por 6 segundos
+	-- Velocidad variable: empieza lento, acelera, frena al final
+	local totalDuration = 6.5
+	local startTime = tick()
 
-    -- Tween de rotacion continua (gira multiples veces)
-    local rotationTween = TweenService:Create(
-        box,
-        TweenInfo.new(0.5, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1, false, 0),
-        {Rotation = 360}
-    )
-    rotationTween:Play()
+	-- Tween de rotacion continua (gira multiples veces)
+	local rotationTween = TweenService:Create(
+		box,
+		TweenInfo.new(0.5, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1, false, 0),
+		{Rotation = 360}
+	)
+	rotationTween:Play()
 
-    -- Efecto de pulso (escala)
-    local pulseTween = TweenService:Create(
-        box,
-        TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true, 0),
-        {Size = UDim2.new(0, 220, 0, 220)}
-    )
-    pulseTween:Play()
+	-- Efecto de pulso (escala)
+	local pulseTween = TweenService:Create(
+		box,
+		TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true, 0),
+		{Size = UDim2.new(0, 220, 0, 220)}
+	)
+	pulseTween:Play()
 
-    -- Esperar casi hasta el final (5.5s) para mostrar el resultado
-    task.delay(5.5, function()
-        if not box or not box.Parent then return end
-        -- Detener animaciones
-        rotationTween:Cancel()
-        pulseTween:Cancel()
+	-- Esperar casi hasta el final (5.5s) para mostrar el resultado
+	task.delay(5.5, function()
+		if not box or not box.Parent then return end
+		-- Detener animaciones
+		rotationTween:Cancel()
+		pulseTween:Cancel()
 
-        -- Resetear rotacion y tamano
-        box.Rotation = 0
-        box.Size = UDim2.new(0, 200, 0, 200)
+		-- Resetear rotacion y tamano
+		box.Rotation = 0
+		box.Size = UDim2.new(0, 200, 0, 200)
 
-        -- Cambiar el signo de interrogacion por una estrella/check
-        questionMark.Text = "★"
-        questionMark.TextColor3 = Color3.fromRGB(255, 215, 0)
+		-- Cambiar el signo de interrogacion por una estrella/check
+		questionMark.Text = "★"
+		questionMark.TextColor3 = Color3.fromRGB(255, 215, 0)
 
-        -- Efecto de aparicion del resultado
-        titleLabel.Text = "¡FELICIDADES!"
-        titleLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
-        resultLabel.Text = charName
+		-- Efecto de aparicion del resultado
+		titleLabel.Text = "¡FELICIDADES!"
+		titleLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
+		resultLabel.Text = charName
 
-        -- Flash de brillo
-        local flashTween = TweenService:Create(
-            box,
-            TweenInfo.new(0.3, Enum.EasingStyle.Bounce, Enum.EasingDirection.Out),
-            {BackgroundColor3 = Color3.fromRGB(255, 215, 0)}
-        )
-        flashTween:Play()
+		-- Flash de brillo
+		local flashTween = TweenService:Create(
+			box,
+			TweenInfo.new(0.3, Enum.EasingStyle.Bounce, Enum.EasingDirection.Out),
+			{BackgroundColor3 = Color3.fromRGB(255, 215, 0)}
+		)
+		flashTween:Play()
 
-        -- Expandir el resultado
-        resultLabel.TextTransparency = 1
-        local revealTween = TweenService:Create(
-            resultLabel,
-            TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-            {TextTransparency = 0}
-        )
-        revealTween:Play()
-    end)
+		-- Expandir el resultado
+		resultLabel.TextTransparency = 1
+		local revealTween = TweenService:Create(
+			resultLabel,
+			TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+			{TextTransparency = 0}
+		)
+		revealTween:Play()
+	end)
 
-    -- Al final (6.5s) eliminar todo
-    task.delay(totalDuration, function()
-        if backdrop and backdrop.Parent then
-            local fadeOut = TweenService:Create(
-                backdrop,
-                TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-                {BackgroundTransparency = 1}
-            )
-            fadeOut:Play()
-            fadeOut.Completed:Wait()
-            backdrop:Destroy()
-        end
-        isChestAnimating = false
-    end)
+	-- Al final (6.5s) eliminar todo
+	task.delay(totalDuration, function()
+		if backdrop and backdrop.Parent then
+			local fadeOut = TweenService:Create(
+				backdrop,
+				TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+				{BackgroundTransparency = 1}
+			)
+			fadeOut:Play()
+			fadeOut.Completed:Wait()
+			backdrop:Destroy()
+		end
+		isChestAnimating = false
+	end)
 end)
 
 -- ============================================
@@ -1473,16 +1472,16 @@ Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 8)
 
 -- Colores de rareza para el UI
 local rarityColorsClient = {
-    Morado = Color3.fromRGB(170, 85, 255),
-    Rojo = Color3.fromRGB(255, 80, 80),
-    Amarillo = Color3.fromRGB(255, 255, 100),
-    Azul = Color3.fromRGB(85, 170, 255),
-    Blanco = Color3.fromRGB(220, 220, 220)
+	Morado = Color3.fromRGB(170, 85, 255),
+	Rojo = Color3.fromRGB(255, 80, 80),
+	Amarillo = Color3.fromRGB(255, 255, 100),
+	Azul = Color3.fromRGB(85, 170, 255),
+	Blanco = Color3.fromRGB(220, 220, 220)
 }
 
 local rarityDisplayClient = {
-    Morado = "MITICO", Rojo = "EPICO", Amarillo = "RARO",
-    Azul = "INCOMUN", Blanco = "COMUN"
+	Morado = "MITICO", Rojo = "EPICO", Amarillo = "RARO",
+	Azul = "INCOMUN", Blanco = "COMUN"
 }
 
 -- Texto de ayuda (instrucciones) - abajo de los slots
@@ -1523,139 +1522,139 @@ depositHint.Parent = fusionPanel
 
 -- Actualizar el UI de fusion con el nuevo formato
 local function updateFusionUI(state)
-    fusionSlotA = state.slotA
-    fusionSlotB = state.slotB
-    fusionCarrying = state.carrying
+	fusionSlotA = state.slotA
+	fusionSlotB = state.slotB
+	fusionCarrying = state.carrying
 
-    -- Actualizar Slot A
-    if state.slotA then
-        local name = state.slotA.name
-        if state.slotA.fusionLevel > 0 then
-            name = name .. " Fusion"
-        end
-        slotAContent.Text = name .. "\nLv." .. state.slotA.level
-        slotAContent.TextColor3 = rarityColorsClient[state.slotA.rarity] or Color3.fromRGB(255, 255, 255)
-    else
-        slotAContent.Text = "Vacio"
-        slotAContent.TextColor3 = Color3.fromRGB(120, 120, 120)
-    end
+	-- Actualizar Slot A
+	if state.slotA then
+		local name = state.slotA.name
+		if state.slotA.fusionLevel > 0 then
+			name = name .. " Fusion"
+		end
+		slotAContent.Text = name .. "\nLv." .. state.slotA.level
+		slotAContent.TextColor3 = rarityColorsClient[state.slotA.rarity] or Color3.fromRGB(255, 255, 255)
+	else
+		slotAContent.Text = "Vacio"
+		slotAContent.TextColor3 = Color3.fromRGB(120, 120, 120)
+	end
 
-    -- Actualizar Slot B
-    if state.slotB then
-        local name = state.slotB.name
-        if state.slotB.fusionLevel > 0 then
-            name = name .. " Fusion"
-        end
-        slotBContent.Text = name .. "\nLv." .. state.slotB.level
-        slotBContent.TextColor3 = rarityColorsClient[state.slotB.rarity] or Color3.fromRGB(255, 255, 255)
-    else
-        slotBContent.Text = "Vacio"
-        slotBContent.TextColor3 = Color3.fromRGB(120, 120, 120)
-    end
+	-- Actualizar Slot B
+	if state.slotB then
+		local name = state.slotB.name
+		if state.slotB.fusionLevel > 0 then
+			name = name .. " Fusion"
+		end
+		slotBContent.Text = name .. "\nLv." .. state.slotB.level
+		slotBContent.TextColor3 = rarityColorsClient[state.slotB.rarity] or Color3.fromRGB(255, 255, 255)
+	else
+		slotBContent.Text = "Vacio"
+		slotBContent.TextColor3 = Color3.fromRGB(120, 120, 120)
+	end
 
-    -- Actualizar "En mano"
-    if state.carrying then
-        local name = state.carrying.name
-        if state.carrying.fusionLevel > 0 then
-            name = name .. " Fusion"
-        end
-        carryingLabel.Text = "En mano: " .. name .. " Lv." .. state.carrying.level
-        carryingLabel.TextColor3 = rarityColorsClient[state.carrying.rarity] or Color3.fromRGB(255, 255, 255)
-    else
-        carryingLabel.Text = "En mano: nada"
-        carryingLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
-    end
+	-- Actualizar "En mano"
+	if state.carrying then
+		local name = state.carrying.name
+		if state.carrying.fusionLevel > 0 then
+			name = name .. " Fusion"
+		end
+		carryingLabel.Text = "En mano: " .. name .. " Lv." .. state.carrying.level
+		carryingLabel.TextColor3 = rarityColorsClient[state.carrying.rarity] or Color3.fromRGB(255, 255, 255)
+	else
+		carryingLabel.Text = "En mano: nada"
+		carryingLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+	end
 
-    -- Verificar si se puede fusionar
-    local canFuse = false
-    if state.slotA and state.slotB then
-        if state.slotA.name == state.slotB.name
-            and state.slotA.rarity == state.slotB.rarity
-            and state.slotA.fusionLevel == state.slotB.fusionLevel then
-            canFuse = true
-            local mult = math.pow(3, state.slotA.fusionLevel + 1)
-            local fusedName = state.slotA.name
-            if state.slotA.fusionLevel == 0 then
-                fusedName = state.slotA.name .. " Fusion"
-            else
-                fusedName = state.slotA.name .. " Fusion+"
-            end
-            outputContent.Text = fusedName .. "\nx" .. mult .. " produccion"
-            outputContent.TextColor3 = Color3.fromRGB(255, 215, 0)
-        else
-            outputContent.Text = "No compatible"
-            outputContent.TextColor3 = Color3.fromRGB(255, 100, 100)
-        end
-    else
-        outputContent.Text = "Esperando..."
-        outputContent.TextColor3 = Color3.fromRGB(120, 120, 120)
-    end
+	-- Verificar si se puede fusionar
+	local canFuse = false
+	if state.slotA and state.slotB then
+		if state.slotA.name == state.slotB.name
+			and state.slotA.rarity == state.slotB.rarity
+			and state.slotA.fusionLevel == state.slotB.fusionLevel then
+			canFuse = true
+			local mult = math.pow(3, state.slotA.fusionLevel + 1)
+			local fusedName = state.slotA.name
+			if state.slotA.fusionLevel == 0 then
+				fusedName = state.slotA.name .. " Fusion"
+			else
+				fusedName = state.slotA.name .. " Fusion+"
+			end
+			outputContent.Text = fusedName .. "\nx" .. mult .. " produccion"
+			outputContent.TextColor3 = Color3.fromRGB(255, 215, 0)
+		else
+			outputContent.Text = "No compatible"
+			outputContent.TextColor3 = Color3.fromRGB(255, 100, 100)
+		end
+	else
+		outputContent.Text = "Esperando..."
+		outputContent.TextColor3 = Color3.fromRGB(120, 120, 120)
+	end
 
-    -- Actualizar boton
-    if canFuse then
-        fuseBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
-        fuseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        fuseBtn.Active = true
-    else
-        fuseBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
-        fuseBtn.TextColor3 = Color3.fromRGB(150, 150, 150)
-        fuseBtn.Active = false
-    end
+	-- Actualizar boton
+	if canFuse then
+		fuseBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
+		fuseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		fuseBtn.Active = true
+	else
+		fuseBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+		fuseBtn.TextColor3 = Color3.fromRGB(150, 150, 150)
+		fuseBtn.Active = false
+	end
 end
 
 -- Recibir actualizaciones del servidor
 FusionUIUpdateEvent.OnClientEvent:Connect(function(state)
-    nearFusionMachine = true
-    fusionPanel.Visible = true
-    updateFusionUI(state)
+	nearFusionMachine = true
+	fusionPanel.Visible = true
+	updateFusionUI(state)
 end)
 
 -- Loop para ocultar el panel si el jugador se aleja de la maquina
 task.spawn(function()
-    local FUSION_MACHINE_CENTER = Vector3.new(-142.3, 10.8, 11.0)
-    local FUSION_PROXIMITY = 20
-    while true do
-        task.wait(0.5)
-        local char = player.Character
-        if char then
-            local root = char:FindFirstChild("HumanoidRootPart")
-            if root then
-                local dist = (root.Position - FUSION_MACHINE_CENTER).Magnitude
-                if dist > FUSION_PROXIMITY then
-                    -- Se alejo: ocultar panel
-                    nearFusionMachine = false
-                    fusionPanel.Visible = false
-                end
-            end
-        end
-    end
+	local FUSION_MACHINE_CENTER = Vector3.new(-142.3, 10.8, 11.0)
+	local FUSION_PROXIMITY = 20
+	while true do
+		task.wait(0.5)
+		local char = player.Character
+		if char then
+			local root = char:FindFirstChild("HumanoidRootPart")
+			if root then
+				local dist = (root.Position - FUSION_MACHINE_CENTER).Magnitude
+				if dist > FUSION_PROXIMITY then
+					-- Se alejo: ocultar panel
+					nearFusionMachine = false
+					fusionPanel.Visible = false
+				end
+			end
+		end
+	end
 end)
 
 -- Boton FUSIONAR (sin argumentos, el servidor usa los slots almacenados)
 fuseBtn.MouseButton1Click:Connect(function()
-    if not fuseBtn.Active then return end
-    if FuseCharactersEvent then
-        FuseCharactersEvent:FireServer()
-    end
+	if not fuseBtn.Active then return end
+	if FuseCharactersEvent then
+		FuseCharactersEvent:FireServer()
+	end
 end)
 
 -- Click en Slot A para quitar personaje
 slotABg.MouseButton1Click:Connect(function()
-    if fusionSlotA and RemoveFromFusionSlotEvent then
-        RemoveFromFusionSlotEvent:FireServer("A")
-    end
+	if fusionSlotA and RemoveFromFusionSlotEvent then
+		RemoveFromFusionSlotEvent:FireServer("A")
+	end
 end)
 
 -- Click en Slot B para quitar personaje
 slotBBg.MouseButton1Click:Connect(function()
-    if fusionSlotB and RemoveFromFusionSlotEvent then
-        RemoveFromFusionSlotEvent:FireServer("B")
-    end
+	if fusionSlotB and RemoveFromFusionSlotEvent then
+		RemoveFromFusionSlotEvent:FireServer("B")
+	end
 end)
 
 -- Boton cerrar (ocultar manualmente)
 closeBtn.MouseButton1Click:Connect(function()
-    fusionPanel.Visible = false
+	fusionPanel.Visible = false
 end)
 
 -- ============================================
@@ -1665,7 +1664,7 @@ end)
 local backpackBtn = Instance.new("TextButton")
 backpackBtn.Name = "BackpackBtn"
 backpackBtn.Size = UDim2.new(0, 60, 0, 60)
-backpackBtn.Position = UDim2.new(0, 20, 1, -80)
+backpackBtn.Position = UDim2.new(0, 20, 1, -200)
 backpackBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
 backpackBtn.BorderSizePixel = 0
 backpackBtn.Text = ""
@@ -1693,7 +1692,7 @@ local backpackPanel = Instance.new("Frame")
 backpackPanel.Name = "BackpackPanel"
 backpackPanel.Size = UDim2.new(0, 400, 0, 350)
 -- Centrado horizontalmente (0.5 - mitad del ancho), abajo de la pantalla
-backpackPanel.Position = UDim2.new(0.5, -200, 0.5, -175)
+backpackPanel.Position = UDim2.new(0.5, -200, 1, -370)
 backpackPanel.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
 backpackPanel.BackgroundTransparency = 0.05
 backpackPanel.BorderSizePixel = 0
@@ -1751,152 +1750,144 @@ bpListLayout.Parent = bpScroll
 
 -- Funcion para actualizar la mochila
 local function updateBackpackUI()
-    -- Limpiar lista anterior
-    for _, child in ipairs(bpScroll:GetChildren()) do
-        if child:IsA("Frame") then child:Destroy() end
-    end
+	-- Limpiar lista anterior
+	for _, child in ipairs(bpScroll:GetChildren()) do
+		if child:IsA("Frame") then child:Destroy() end
+	end
 
-    -- Crear card por cada pelota
-    for ballKey, ballConfig in pairs(BALL_TYPES) do
-        local card = Instance.new("Frame")
-        card.Name = "Card_" .. ballKey
-        card.Size = UDim2.new(1, -10, 0, 70)
-        card.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
-        card.BorderSizePixel = 0
-        card.ZIndex = 52
-        card.Parent = bpScroll
-        Instance.new("UICorner", card).CornerRadius = UDim.new(0, 10)
+	-- Crear card por cada pelota
+	for ballKey, ballConfig in pairs(BALL_TYPES) do
+		local card = Instance.new("Frame")
+		card.Name = "Card_" .. ballKey
+		card.Size = UDim2.new(1, -10, 0, 70)
+		card.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+		card.BorderSizePixel = 0
+		card.ZIndex = 52
+		card.Parent = bpScroll
+		Instance.new("UICorner", card).CornerRadius = UDim.new(0, 10)
 
-        -- Color del borde segun si esta seleccionada o no
-        local cardStroke = Instance.new("UIStroke")
-        if selectedBallType == ballKey then
-            cardStroke.Color = Color3.fromRGB(80, 220, 80) -- verde = seleccionada
-            cardStroke.Thickness = 3
-        else
-            cardStroke.Color = ballConfig.color
-            cardStroke.Thickness = 2
-        end
-        cardStroke.Transparency = 0.2
-        cardStroke.Parent = card
+		-- Color del borde segun si esta seleccionada o no
+		local cardStroke = Instance.new("UIStroke")
+		if selectedBallType == ballKey then
+			cardStroke.Color = Color3.fromRGB(80, 220, 80) -- verde = seleccionada
+			cardStroke.Thickness = 3
+		else
+			cardStroke.Color = ballConfig.color
+			cardStroke.Thickness = 2
+		end
+		cardStroke.Transparency = 0.2
+		cardStroke.Parent = card
 
-        -- Icono de la pelota
-        local iconLabel = Instance.new("TextLabel")
-        iconLabel.Size = UDim2.new(0, 50, 1, -10)
-        iconLabel.Position = UDim2.new(0, 5, 0, 5)
-        iconLabel.BackgroundTransparency = 1
-        iconLabel.Text = ballConfig.icon
-        iconLabel.TextScaled = true
-        iconLabel.ZIndex = 53
-        iconLabel.Parent = card
+		-- Icono de la pelota
+		local iconLabel = Instance.new("TextLabel")
+		iconLabel.Size = UDim2.new(0, 50, 1, -10)
+		iconLabel.Position = UDim2.new(0, 5, 0, 5)
+		iconLabel.BackgroundTransparency = 1
+		iconLabel.Text = ballConfig.icon
+		iconLabel.TextScaled = true
+		iconLabel.ZIndex = 53
+		iconLabel.Parent = card
 
-        -- Info de la pelota
-        local infoLabel = Instance.new("TextLabel")
-        infoLabel.Size = UDim2.new(1, -120, 1, -10)
-        infoLabel.Position = UDim2.new(0, 60, 0, 5)
-        infoLabel.BackgroundTransparency = 1
-        infoLabel.Text = ""
-        infoLabel.RichText = true
-        infoLabel.TextXAlignment = Enum.TextXAlignment.Left
-        infoLabel.TextYAlignment = Enum.TextYAlignment.Center
-        infoLabel.ZIndex = 53
-        infoLabel.Parent = card
+		-- Info de la pelota
+		local infoLabel = Instance.new("TextLabel")
+		infoLabel.Size = UDim2.new(1, -120, 1, -10)
+		infoLabel.Position = UDim2.new(0, 60, 0, 5)
+		infoLabel.BackgroundTransparency = 1
+		infoLabel.Text = ""
+		infoLabel.RichText = true
+		infoLabel.TextXAlignment = Enum.TextXAlignment.Left
+		infoLabel.TextYAlignment = Enum.TextYAlignment.Center
+		infoLabel.ZIndex = 53
+		infoLabel.Parent = card
 
-        -- Estado: desbloqueada o bloqueada
-        if ballConfig.unlocked then
-            infoLabel.Text = '<font color="#FFFFFF">' .. ballConfig.name .. '</font>\n<font color="#81C784">Dano: ' .. ballConfig.damage .. '</font>  <font color="#B0BEC5">' .. ballConfig.description .. '</font>'
-        else
-            infoLabel.Text = '<font color="#999999">' .. ballConfig.name .. '</font> 🔒\n<font color="#FFD700">$' .. ballConfig.cost .. '</font>  <font color="#666666">' .. ballConfig.description .. '</font>'
-        end
-        infoLabel.TextScaled = true
-        infoLabel.Font = Enum.Font.GothamBold
+		-- Estado: desbloqueada o bloqueada
+		if ballConfig.unlocked then
+			infoLabel.Text = '<font color="#FFFFFF">' .. ballConfig.name .. '</font>\n<font color="#81C784">Dano: ' .. ballConfig.damage .. '</font>  <font color="#B0BEC5">' .. ballConfig.description .. '</font>'
+		else
+			infoLabel.Text = '<font color="#999999">' .. ballConfig.name .. '</font> 🔒\n<font color="#FFD700">$' .. ballConfig.cost .. '</font>  <font color="#666666">' .. ballConfig.description .. '</font>'
+		end
+		infoLabel.TextScaled = true
+		infoLabel.Font = Enum.Font.GothamBold
 
-        -- Boton para seleccionar / comprar
-        local actionBtn = Instance.new("TextButton")
-        actionBtn.Size = UDim2.new(0, 60, 0, 30)
-        actionBtn.Position = UDim2.new(1, -65, 0.5, -15)
-        actionBtn.BorderSizePixel = 0
-        actionBtn.Text = ""
-        actionBtn.ZIndex = 53
-        actionBtn.Parent = card
-        Instance.new("UICorner", actionBtn).CornerRadius = UDim.new(0, 6)
+		-- Boton para seleccionar / comprar
+		local actionBtn = Instance.new("TextButton")
+		actionBtn.Size = UDim2.new(0, 60, 0, 30)
+		actionBtn.Position = UDim2.new(1, -65, 0.5, -15)
+		actionBtn.BorderSizePixel = 0
+		actionBtn.Text = ""
+		actionBtn.ZIndex = 53
+		actionBtn.Parent = card
+		Instance.new("UICorner", actionBtn).CornerRadius = UDim.new(0, 6)
 
-        if ballConfig.unlocked then
-            -- Ya desbloqueada: boton para seleccionar
-            if selectedBallType == ballKey then
-                actionBtn.BackgroundColor3 = Color3.fromRGB(80, 220, 80)
-                actionBtn.Text = "✓"
-                actionBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-            else
-                actionBtn.BackgroundColor3 = Color3.fromRGB(60, 100, 200)
-                actionBtn.Text = "Usar"
-                actionBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-            end
-            actionBtn.Font = Enum.Font.GothamBold
-            actionBtn.TextScaled = true
+		if ballConfig.unlocked then
+			-- Ya desbloqueada: boton para seleccionar
+			if selectedBallType == ballKey then
+				actionBtn.BackgroundColor3 = Color3.fromRGB(80, 220, 80)
+				actionBtn.Text = "✓"
+				actionBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+			else
+				actionBtn.BackgroundColor3 = Color3.fromRGB(60, 100, 200)
+				actionBtn.Text = "Usar"
+				actionBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+			end
+			actionBtn.Font = Enum.Font.GothamBold
+			actionBtn.TextScaled = true
 
-            actionBtn.MouseButton1Click:Connect(function()
-                selectedBallType = ballKey
-                -- Si la pelota esta equipada, re-equipar con el nuevo tipo
-                if ballEquipped then
-                    reEquipBall()
-                end
-                -- Reproducir sonido de equipar al cambiar de pelota en la mochila
-                if ballConfig.soundEquip then
-                    playClientSound(ballConfig.soundEquip, 0.6)
-                end
-                updateBackpackUI()
-            end)
-        else
-            -- Bloqueada: boton para comprar
-            actionBtn.BackgroundColor3 = Color3.fromRGB(255, 180, 50)
-            actionBtn.Text = "Comprar"
-            actionBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
-            actionBtn.Font = Enum.Font.GothamBold
-            actionBtn.TextScaled = true
+			actionBtn.MouseButton1Click:Connect(function()
+				selectedBallType = ballKey
+				-- Si la pelota esta equipada, re-equipar con el nuevo tipo
+				if ballEquipped then
+					reEquipBall()
+				end
+				-- Reproducir sonido de equipar al cambiar de pelota en la mochila
+				if ballConfig.soundEquip then
+					playClientSound(ballConfig.soundEquip, 0.6)
+				end
+				updateBackpackUI()
+			end)
+		else
+			-- Bloqueada: boton para comprar
+			actionBtn.BackgroundColor3 = Color3.fromRGB(255, 180, 50)
+			actionBtn.Text = "Comprar"
+			actionBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
+			actionBtn.Font = Enum.Font.GothamBold
+			actionBtn.TextScaled = true
 
-            actionBtn.MouseButton1Click:Connect(function()
-                -- Por ahora, desbloquear gratis para testear
-                -- En el futuro se validara el dinero del servidor
-                BALL_TYPES[ballKey].unlocked = true
-                selectedBallType = ballKey
-                if ballEquipped then
-                    reEquipBall()
-                end
-                -- Reproducir sonido de equipar al comprar/seleccionar
-                if ballConfig.soundEquip then
-                    playClientSound(ballConfig.soundEquip, 0.6)
-                end
-                updateBackpackUI()
-                print("Pelota de " .. ballConfig.name .. " desbloqueada y seleccionada")
-            end)
-        end
-    end
+			actionBtn.MouseButton1Click:Connect(function()
+				-- Por ahora, desbloquear gratis para testear
+				-- En el futuro se validara el dinero del servidor
+				BALL_TYPES[ballKey].unlocked = true
+				selectedBallType = ballKey
+				if ballEquipped then
+					reEquipBall()
+				end
+				-- Reproducir sonido de equipar al comprar/seleccionar
+				if ballConfig.soundEquip then
+					playClientSound(ballConfig.soundEquip, 0.6)
+				end
+				updateBackpackUI()
+				print("Pelota de " .. ballConfig.name .. " desbloqueada y seleccionada")
+			end)
+		end
+	end
 end
 
 -- Toggle mochila
 backpackBtn.MouseButton1Click:Connect(function()
-    backpackPanel.Visible = not backpackPanel.Visible
-    if backpackPanel.Visible then
-        updateBackpackUI()
-    end
+	backpackPanel.Visible = not backpackPanel.Visible
+	if backpackPanel.Visible then
+		updateBackpackUI()
+	end
 end)
 
 -- Boton X para cerrar mochila (funciona con mouse y movil)
 bpCloseBtn.MouseButton1Click:Connect(function()
-    backpackPanel.Visible = false
+	backpackPanel.Visible = false
 end)
 
 updateButton()
 updateUI()
 print("BallThrower cargado!")
-
-
-
-
-
-
-
-
 
 
 
