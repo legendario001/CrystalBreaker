@@ -459,7 +459,7 @@ Events.ThrowBall.OnServerEvent:Connect(function(player, startPos, launchVel, bal
         local SERVER_BALL_CONFIG = {
             basic = { color = Color3.fromRGB(100, 200, 255), material = Enum.Material.SmoothPlastic, gravity = 1.0, bounce = true, damage = 1, modelName = nil },
             fire = { color = Color3.fromRGB(255, 100, 30), material = Enum.Material.Neon, gravity = 0.3, bounce = false, damage = 2, modelName = "FireBallModel" },
-            earth = { color = Color3.fromRGB(140, 90, 50), material = Enum.Material.Slate, gravity = 1.5, bounce = false, damage = 3, modelName = "EarthBallModel" }
+            earth = { color = Color3.fromRGB(140, 90, 50), material = Enum.Material.Slate, gravity = 1.5, bounce = true, damage = 3, modelName = "EarthBallModel" }
         }
         local ballCfg = SERVER_BALL_CONFIG[ballType] or SERVER_BALL_CONFIG.basic
 
@@ -511,7 +511,7 @@ Events.ThrowBall.OnServerEvent:Connect(function(player, startPos, launchVel, bal
         mainPart.Massless = false
         local gravity = ballCfg.gravity or 1.0
         local bounceVal = ballCfg.bounce and 0.8 or 0.0
-        mainPart.CustomPhysicalProperties = PhysicalProperties.new(ballCfg.gravity or 0.5, 0.3, bounceVal, 1.0, 1.0)
+        mainPart.CustomPhysicalProperties = PhysicalProperties.new(ballCfg.gravity or 0.5, 0.3, bounceVal, 0.5, 0.5)
 
         -- Posicionar y dar velocidad (antes de parentear)
         mainPart.Position = startPos
@@ -601,7 +601,7 @@ Events.ThrowBall.OnServerEvent:Connect(function(player, startPos, launchVel, bal
         end
 
         -- Auto-eliminar despues de 6 segundos
-        Debris:AddItem(ball, 6)
+        Debris:AddItem(ball, 8)
     end)
     if not ok then warn("Error ThrowBall: "..tostring(err)) end
 end)
@@ -1653,6 +1653,7 @@ task.delay(3, function()
 end)
 
 print("=== GameHandler iniciado ===")
+
 
 
 
