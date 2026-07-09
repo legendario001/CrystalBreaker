@@ -83,6 +83,8 @@ local BALL_TYPES = {
                 unlocked = false,
                 cost = 50000,
                 description = "Dano x3, modelo de tierra",
+                soundEquip = "rbxassetid://9085909202",
+                soundThrow = "rbxassetid://78919029033811",
                 modelName = "EarthBallModel"
         },
         -- Futuras: air, water
@@ -1903,6 +1905,7 @@ end)
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
 
 
