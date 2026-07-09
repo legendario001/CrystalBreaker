@@ -120,7 +120,7 @@ local MONEY_GREEN_BRIGHT = Color3.fromRGB(129,199,132)
 -- Bottom bar
 local bottomBar = Instance.new("Frame")
 bottomBar.Size = UDim2.new(0,80,0,70)
-bottomBar.Position = UDim2.new(0.7,-40,1,-80)
+bottomBar.Position = UDim2.new(0.75,0,1,-80)
 bottomBar.BackgroundColor3 = Color3.fromRGB(20,20,30)
 bottomBar.BackgroundTransparency = 0.2
 bottomBar.BorderSizePixel = 0
@@ -563,22 +563,8 @@ local function throwBall(targetPosition)
     -- Auto-eliminar la pelota local despues de 4s
     Debris:AddItem(localBall, 4)
 
-    -- Si la pelota local toca un cristal, enviar evento al servidor
-    local localHitSent = false
-    local localTouchedConn
-    localTouchedConn = localMainPart.Touched:Connect(function(hit)
-        if localHitSent then return end
-        if hit.Name == "Crystal" then
-            localHitSent = true
-            if ThrowBallEvent then
-                ThrowBallEvent:FireServer(hit.Position, selectedBallType)
-            end
-            if localTouchedConn then
-                localTouchedConn:Disconnect()
-                localTouchedConn = nil
-            end
-        end
-    end)
+    -- El servidor maneja la deteccion de cristales con su propia pelota
+    -- No necesitamos Touched local del cliente
 
     -- Si la pelota no rebota (ej: fuego), destruirla al tocar el suelo
     if not ballConfig.bounce then
@@ -1903,6 +1889,7 @@ end)
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
 
 
