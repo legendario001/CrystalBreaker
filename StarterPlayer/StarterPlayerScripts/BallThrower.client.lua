@@ -87,7 +87,22 @@ local BALL_TYPES = {
                 soundThrow = "rbxassetid://78919029033811",
                 modelName = "EarthBallModel"
         },
-        -- Futuras: air, water
+        air = {
+                name = "Aire",
+                icon = "💨",
+                color = Color3.fromRGB(240, 250, 255),
+                material = Enum.Material.Glass,
+                damage = 1,
+                speed = 150,
+                gravity = 0.2, -- gravedad muy baja (vuela recto)
+                bounce = true, -- rebota mucho
+                transparency = 0.5,
+                unlocked = false,
+                cost = 100000,
+                description = "Muy rapida, alcance largo",
+                modelName = "AirBallModel"
+        },
+        -- Futuras: water
 }
 
 -- Pelota seleccionada actualmente
@@ -1905,6 +1920,7 @@ end)
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
 
 
