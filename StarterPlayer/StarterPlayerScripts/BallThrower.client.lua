@@ -537,7 +537,7 @@ local function throwBall(targetPosition)
     localMainPart.Massless = true
     local gravity = ballConfig.gravity or 1.0
     local bounceVal = ballConfig.bounce and 0.8 or 0.0
-    localMainPart.CustomPhysicalProperties = PhysicalProperties.new(0.5, 0.3, gravity, bounceVal, 1.0)
+    localMainPart.CustomPhysicalProperties = PhysicalProperties.new(gravity, 0.3, bounceVal, 1.0, 1.0)
     -- Weld partes secundarias
     for _, desc in ipairs(localBall:GetDescendants()) do
         if desc:IsA("BasePart") and desc ~= localMainPart then
@@ -1679,7 +1679,7 @@ end)
 local backpackBtn = Instance.new("TextButton")
 backpackBtn.Name = "BackpackBtn"
 backpackBtn.Size = UDim2.new(0, 60, 0, 60)
-backpackBtn.Position = UDim2.new(0, 20, 1, -200)
+backpackBtn.Position = UDim2.new(0, 20, 1, -150)
 backpackBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
 backpackBtn.BorderSizePixel = 0
 backpackBtn.Text = ""
@@ -1707,7 +1707,7 @@ local backpackPanel = Instance.new("Frame")
 backpackPanel.Name = "BackpackPanel"
 backpackPanel.Size = UDim2.new(0, 400, 0, 350)
 -- Centrado horizontalmente (0.5 - mitad del ancho), abajo de la pantalla
-backpackPanel.Position = UDim2.new(0.5, -200, 1, -370)
+backpackPanel.Position = UDim2.new(0.5, -200, 1, -400)
 backpackPanel.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
 backpackPanel.BackgroundTransparency = 0.05
 backpackPanel.BorderSizePixel = 0
@@ -1903,6 +1903,7 @@ end)
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
 
 
