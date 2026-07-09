@@ -120,7 +120,7 @@ local MONEY_GREEN_BRIGHT = Color3.fromRGB(129,199,132)
 -- Bottom bar
 local bottomBar = Instance.new("Frame")
 bottomBar.Size = UDim2.new(0,80,0,70)
-bottomBar.Position = UDim2.new(0.75,0,1,-80)
+bottomBar.Position = UDim2.new(0, 0, 1, -80)
 bottomBar.BackgroundColor3 = Color3.fromRGB(20,20,30)
 bottomBar.BackgroundTransparency = 0.2
 bottomBar.BorderSizePixel = 0
@@ -561,7 +561,7 @@ local function throwBall(targetPosition)
     end
 
     -- Auto-eliminar la pelota local despues de 4s
-    Debris:AddItem(localBall, 4)
+    Debris:AddItem(localBall, 8)
 
     -- El servidor maneja la deteccion de cristales con su propia pelota
     -- No necesitamos Touched local del cliente
@@ -1665,7 +1665,7 @@ end)
 local backpackBtn = Instance.new("TextButton")
 backpackBtn.Name = "BackpackBtn"
 backpackBtn.Size = UDim2.new(0, 60, 0, 60)
-backpackBtn.Position = UDim2.new(0, 20, 1, -150)
+backpackBtn.Position = UDim2.new(0, 20, 1, -80)
 backpackBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
 backpackBtn.BorderSizePixel = 0
 backpackBtn.Text = ""
@@ -1693,7 +1693,7 @@ local backpackPanel = Instance.new("Frame")
 backpackPanel.Name = "BackpackPanel"
 backpackPanel.Size = UDim2.new(0, 400, 0, 350)
 -- Centrado horizontalmente (0.5 - mitad del ancho), abajo de la pantalla
-backpackPanel.Position = UDim2.new(0.5, -200, 1, -400)
+backpackPanel.Position = UDim2.new(0.5, -200, 0.5, -175)
 backpackPanel.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
 backpackPanel.BackgroundTransparency = 0.05
 backpackPanel.BorderSizePixel = 0
@@ -1889,6 +1889,7 @@ end)
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
 
 
