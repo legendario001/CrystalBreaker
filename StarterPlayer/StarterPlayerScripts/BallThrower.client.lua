@@ -522,7 +522,7 @@ local function throwBall(targetPosition)
 	localMainPart.Massless = true
 	local gravity = ballConfig.gravity or 1.0
 	local bounceVal = ballConfig.bounce and 0.8 or 0.0
-	localMainPart.CustomPhysicalProperties = PhysicalProperties.new(0.5, 0.3, gravity, bounceVal, 1.0)
+	localMainPart.CustomPhysicalProperties = PhysicalProperties.new(gravity, 0.3, bounceVal, 0.5, 0.5)
 	-- Weld partes secundarias
 	for _, desc in ipairs(localBall:GetDescendants()) do
 		if desc:IsA("BasePart") and desc ~= localMainPart then
@@ -1888,6 +1888,7 @@ end)
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
 
 
