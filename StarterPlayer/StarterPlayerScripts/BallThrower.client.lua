@@ -100,6 +100,8 @@ local BALL_TYPES = {
                 unlocked = false,
                 cost = 100000,
                 description = "Muy rapida, alcance largo",
+                soundEquip = "rbxassetid://92952421540994",
+                soundThrow = "rbxassetid://139638115866253",
                 modelName = "AirBallModel"
         },
         -- Futuras: water
@@ -1920,6 +1922,7 @@ end)
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
 
 
