@@ -117,6 +117,8 @@ local BALL_TYPES = {
                 unlocked = false,
                 cost = 500000,
                 description = "Rebota mucho, dano x2",
+                soundEquip = "rbxassetid://107317726222506",
+                soundThrow = "rbxassetid://140692585453797",
                 modelName = "WaterBallModel"
         }
 }
@@ -1936,6 +1938,7 @@ end)
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
 
 
