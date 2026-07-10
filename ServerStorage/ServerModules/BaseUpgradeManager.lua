@@ -77,8 +77,8 @@ function BaseUpgradeManager.createUpgradeButton(base, player)
         -- Billboard con info
         local bb = Instance.new("BillboardGui")
         bb.Name = "UpgradeGui"
-        bb.Size = UDim2.new(5, 0, 2.5, 0)
-        bb.StudsOffset = Vector3.new(0, 3, 0)
+        bb.Size = UDim2.new(9, 0, 4.5, 0)
+        bb.StudsOffset = Vector3.new(0, 5, 0)
         bb.AlwaysOnTop = false
         bb.MaxDistance = 60
         bb.Parent = upgradeBtn
@@ -111,8 +111,8 @@ function BaseUpgradeManager.createUpgradeButton(base, player)
         -- Nivel actual
         local levelLabel = Instance.new("TextLabel")
         levelLabel.Name = "LevelLabel"
-        levelLabel.Size = UDim2.new(1, 0, 0.25, 0)
-        levelLabel.Position = UDim2.new(0, 0, 0.3, 0)
+        levelLabel.Size = UDim2.new(1, 0, 0.2, 0)
+        levelLabel.Position = UDim2.new(0, 0, 0.25, 0)
         levelLabel.BackgroundTransparency = 1
         levelLabel.RichText = true
         levelLabel.Text = '<font color="#B0BEC5">Nivel: </font><font color="#FFD700">' .. baseLevel .. '/5</font>'
@@ -124,8 +124,8 @@ function BaseUpgradeManager.createUpgradeButton(base, player)
         -- Costo
         local costLabel = Instance.new("TextLabel")
         costLabel.Name = "CostLabel"
-        costLabel.Size = UDim2.new(1, 0, 0.25, 0)
-        costLabel.Position = UDim2.new(0, 0, 0.55, 0)
+        costLabel.Size = UDim2.new(1, 0, 0.2, 0)
+        costLabel.Position = UDim2.new(0, 0, 0.45, 0)
         costLabel.BackgroundTransparency = 1
         costLabel.RichText = true
         local cost = BaseManager.getUpgradeCost(baseLevel)
@@ -138,11 +138,11 @@ function BaseUpgradeManager.createUpgradeButton(base, player)
         -- Hint de tecla
         local hintLabel = Instance.new("TextLabel")
         hintLabel.Name = "HintLabel"
-        hintLabel.Size = UDim2.new(1, 0, 0.2, 0)
-        hintLabel.Position = UDim2.new(0, 0, 0.8, 0)
+        hintLabel.Size = UDim2.new(1, 0, 0.25, 0)
+        hintLabel.Position = UDim2.new(0, 0, 0.7, 0)
         hintLabel.BackgroundTransparency = 1
         hintLabel.RichText = true
-        hintLabel.Text = '<font color="#B0BEC5">Presiona </font><font color="#FFD700">H</font><font color="#B0BEC5"> cerca</font>'
+        hintLabel.Text = '<font color="#B0BEC5">Presiona </font><font color="#FFEB3B"><b>H</b></font><font color="#B0BEC5"> para mejorar</font>'
         hintLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
         hintLabel.TextScaled = true
         hintLabel.Font = Enum.Font.GothamBold
@@ -251,6 +251,7 @@ function BaseUpgradeManager.removeUpgradeButton(base)
 end
 
 return BaseUpgradeManager
+
 
 
 
