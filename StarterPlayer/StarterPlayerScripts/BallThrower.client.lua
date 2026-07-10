@@ -104,7 +104,21 @@ local BALL_TYPES = {
                 soundThrow = "rbxassetid://139638115866253",
                 modelName = "AirBallModel"
         },
-        -- Futuras: water
+        water = {
+                name = "Agua",
+                icon = "💧",
+                color = Color3.fromRGB(80, 150, 220),
+                material = Enum.Material.Glass,
+                damage = 2,
+                speed = 90,
+                gravity = 1.0,
+                bounce = true,
+                transparency = 0.3,
+                unlocked = false,
+                cost = 500000,
+                description = "Rebota mucho, dano x2",
+                modelName = "WaterBallModel"
+        }
 }
 
 -- Pelota seleccionada actualmente
@@ -1922,6 +1936,7 @@ end)
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
 
 
