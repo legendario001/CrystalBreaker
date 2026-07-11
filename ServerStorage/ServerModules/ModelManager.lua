@@ -28,7 +28,14 @@ local UPGRADE_BASE_COST = 100
 -- ============================================
 function ModelManager.formatMoney(amount)
         amount = amount or 0
-        if amount >= 1000000000 then
+        if amount >= 1000000000000 then
+                local t = amount / 1000000000000
+                if t == math.floor(t) then
+                        return tostring(math.floor(t)) .. "T"
+                else
+                        return string.format("%.1fT", t)
+                end
+        elseif amount >= 1000000000 then
                 local b = amount / 1000000000
                 if b == math.floor(b) then
                         return tostring(math.floor(b)) .. "B"
