@@ -837,6 +837,7 @@ if isMobile then
 end
 
 -- Funcion helper para crear un boton de interaccion con estilo: solo borde negro, sin relleno
+-- Soporta texto (emoji) o imagen (rbxassetid://)
 local function createMobileButton(name, icon)
         local btn = Instance.new("TextButton")
         btn.Name = name
@@ -845,13 +846,9 @@ local function createMobileButton(name, icon)
         btn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
         btn.BackgroundTransparency = 0.85 -- casi transparente
         btn.BorderSizePixel = 0
-        btn.Text = icon
-        btn.TextColor3 = Color3.fromRGB(0, 0, 0)
-        btn.TextTransparency = 0 -- texto negro visible
-        btn.TextScaled = true
-        btn.Font = Enum.Font.GothamBlack
+        btn.Text = ""
         btn.Visible = false
-        btn.ZIndex = 100 -- ZIndex alto para que aparezca encima del panel de fusion (ZIndex 50)
+        btn.ZIndex = 100
         btn.Parent = screenGui
         Instance.new("UICorner", btn).CornerRadius = UDim.new(1, 0)
 
@@ -862,14 +859,23 @@ local function createMobileButton(name, icon)
         stroke.Transparency = 0.1
         stroke.Parent = btn
 
-        -- Outline blanco para que el icono se vea sobre cualquier fondo
-        local textStroke = Instance.new("UIStroke")
-        textStroke.Name = "TextOutline"
-        textStroke.Color = Color3.fromRGB(255, 255, 255)
-        textStroke.Thickness = 2
-        textStroke.Transparency = 0.3
-        textStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-        textStroke.Parent = btn
+        -- Si es imagen, crear ImageLabel; si es texto, crear TextLabel
+        if string.sub(icon, 1, 13) == "rbxassetid://" then
+                local img = Instance.new("ImageLabel")
+                img.Size = UDim2.new(0.7, 0, 0.7, 0)
+                img.Position = UDim2.new(0.15, 0, 0.15, 0)
+                img.BackgroundTransparency = 1
+                img.Image = icon
+                img.ScaleType = Enum.ScaleType.Fit
+                img.ZIndex = 101
+                img.Parent = btn
+        else
+                btn.Text = icon
+                btn.TextColor3 = Color3.fromRGB(0, 0, 0)
+                btn.TextTransparency = 0
+                btn.TextScaled = true
+                btn.Font = Enum.Font.GothamBlack
+        end
 
         return btn
 end
@@ -882,8 +888,8 @@ local upgradeMobBtn = nil
 local baseUpgradeMobBtn = nil
 
 if isMobile then
-        interactBtn = createMobileButton("MobInteractBtn", "👆")
-        upgradeMobBtn = createMobileButton("MobUpgradeBtn", "⬆️")
+        interactBtn = createMobileButton("MobInteractBtn", "rbxassetid://18985225104")
+        upgradeMobBtn = createMobileButton("MobUpgradeBtn", "rbxassetid://90725732857650")
         baseUpgradeMobBtn = createMobileButton("MobBaseUpgradeBtn", "🏰")
 end
 
@@ -1938,6 +1944,7 @@ end)
 updateButton()
 updateUI()
 print("BallThrower cargado!")
+
 
 
 
