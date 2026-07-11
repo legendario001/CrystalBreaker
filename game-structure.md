@@ -28,6 +28,7 @@ CrystalBreaker/
 ├── ReplicatedStorage/
 │   ├── FireBallModel/                      (Model - modelo 3D de pelota de fuego con partículas)
 │   ├── EarthBallModel/                     (Model - modelo 3D de pelota de tierra con partículas)
+│   ├── BillModel/                          (Model - modelo 3D de billete para efecto al recoger dinero)
 │   └── RemoteEvents.lua                    (ModuleScript - crea todos los RemoteEvents)
 │
 ├── ServerScriptService/
@@ -239,6 +240,7 @@ CrystalBreaker/
 | **RemoveFromFusionSlot** | RemoteEvent | `ReplicatedStorage` | BallThrower → GameHandler | Quitar personaje de slot de fusión (click en slot) |
 | **FuseCharacters** | RemoteEvent | `ReplicatedStorage` | BallThrower → GameHandler | Fusionar 2 personajes idénticos |
 | **EquipBall** | RemoteEvent | `ReplicatedStorage` | BallThrower → GameHandler | Equipar/desequipar pelota (servidor crea pelota visible para todos) |
+| **ShowBillEffect** | RemoteEvent | `ReplicatedStorage` | GameHandler → BallThrower | Servidor avisa al cliente para spawnear billete visual al recoger dinero (solo dueño lo ve) |
 
 ---
 
