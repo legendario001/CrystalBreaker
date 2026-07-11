@@ -77,8 +77,8 @@ function BaseUpgradeManager.createUpgradeButton(base, player)
         -- Billboard con info
         local bb = Instance.new("BillboardGui")
         bb.Name = "UpgradeGui"
-        bb.Size = UDim2.new(9, 0, 4.5, 0)
-        bb.StudsOffset = Vector3.new(0, 5, 0)
+        bb.Size = UDim2.new(13.5, 0, 6.75, 0)
+        bb.StudsOffset = Vector3.new(0, 7, 0)
         bb.AlwaysOnTop = false
         bb.MaxDistance = 60
         bb.Parent = upgradeBtn
@@ -142,7 +142,7 @@ function BaseUpgradeManager.createUpgradeButton(base, player)
         hintLabel.Position = UDim2.new(0, 0, 0.7, 0)
         hintLabel.BackgroundTransparency = 1
         hintLabel.RichText = true
-        hintLabel.Text = '<font color="#B0BEC5">Presiona </font><font color="#FFEB3B"><b>H</b></font><font color="#B0BEC5"> para mejorar</font>'
+        hintLabel.Text = '<font color="#FFFFFF">Presiona </font><font color="#00A2FF"><b>[ H ]</b></font><font color="#FFFFFF"> para mejorar</font>'
         hintLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
         hintLabel.TextScaled = true
         hintLabel.Font = Enum.Font.GothamBold
@@ -251,6 +251,7 @@ function BaseUpgradeManager.removeUpgradeButton(base)
 end
 
 return BaseUpgradeManager
+
 
 
 
