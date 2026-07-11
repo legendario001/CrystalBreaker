@@ -77,8 +77,8 @@ function BaseUpgradeManager.createUpgradeButton(base, player)
         -- Billboard con info
         local bb = Instance.new("BillboardGui")
         bb.Name = "UpgradeGui"
-        bb.Size = UDim2.new(13.5, 0, 6.75, 0)
-        bb.StudsOffset = Vector3.new(0, 7, 0)
+        bb.Size = UDim2.new(9.5, 0, 4.75, 0)
+        bb.StudsOffset = Vector3.new(0, 5, 0)
         bb.AlwaysOnTop = false
         bb.MaxDistance = 60
         bb.Parent = upgradeBtn
@@ -148,31 +148,17 @@ function BaseUpgradeManager.createUpgradeButton(base, player)
         hintLabel.Font = Enum.Font.GothamBold
         hintLabel.Parent = bg
 
-        -- Cuadro de tecla estilo Roblox (fondo gris claro, borde gris, esquinas redondeadas)
-        local keyBox = Instance.new("Frame")
-        keyBox.Name = "KeyBox"
-        keyBox.Size = UDim2.new(0.12, 0, 0.5, 0)
-        keyBox.Position = UDim2.new(0.36, 0, 0.72, 0)
-        keyBox.BackgroundColor3 = Color3.fromRGB(230, 230, 230)
-        keyBox.BorderSizePixel = 0
-        keyBox.Parent = bg
-        Instance.new("UICorner", keyBox).CornerRadius = UDim.new(0, 6)
+        -- Imagen de H estilo Roblox
+        local keyImage = Instance.new("ImageLabel")
+        keyImage.Name = "KeyImage"
+        keyImage.Size = UDim2.new(0.12, 0, 0.5, 0)
+        keyImage.Position = UDim2.new(0.36, 0, 0.72, 0)
+        keyImage.BackgroundTransparency = 1
+        keyImage.Image = "rbxassetid://125633453145365"
+        keyImage.ScaleType = Enum.ScaleType.Fit
+        keyImage.Parent = bg
 
-        local keyStroke = Instance.new("UIStroke")
-        keyStroke.Color = Color3.fromRGB(150, 150, 150)
-        keyStroke.Thickness = 1.5
-        keyStroke.Parent = keyBox
-
-        local keyText = Instance.new("TextLabel")
-        keyText.Size = UDim2.new(1, 0, 1, 0)
-        keyText.BackgroundTransparency = 1
-        keyText.Text = "H"
-        keyText.TextColor3 = Color3.fromRGB(40, 40, 40)
-        keyText.TextScaled = true
-        keyText.Font = Enum.Font.GothamBold
-        keyText.Parent = keyBox
-
-        -- Ocultar el texto del hintLabel "H" y dejar solo "Presiona ... para mejorar"
+        -- Texto sin la H (la H va en la imagen)
         hintLabel.Text = '<font color="#FFFFFF">Presiona </font><font color="#FFFFFF" transparency="1">H</font><font color="#FFFFFF"> para mejorar</font>'
 
         return upgradeBtn
@@ -278,6 +264,7 @@ function BaseUpgradeManager.removeUpgradeButton(base)
 end
 
 return BaseUpgradeManager
+
 
 
 
