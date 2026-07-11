@@ -363,23 +363,102 @@ local moneyStroke = Instance.new("UIStroke")
 moneyStroke.Color = MONEY_GREEN
 moneyStroke.Thickness = 2 moneyStroke.Transparency = 0.3 moneyStroke.Parent = moneyPanel
 
-local moneyIcon = Instance.new("TextLabel")
-moneyIcon.Size = UDim2.new(0.3,0,0.6,0)
-moneyIcon.Position = UDim2.new(0.05,0,0.2,0)
-moneyIcon.BackgroundTransparency = 1 moneyIcon.Text = "$"
-moneyIcon.TextColor3 = MONEY_GREEN_BRIGHT
-moneyIcon.TextScaled = true moneyIcon.Font = Enum.Font.GothamBlack
+local moneyIcon = Instance.new("ViewportFrame")
+moneyIcon.Name = "MoneyIcon"
+moneyIcon.Size = UDim2.new(0.28, 0, 0.85, 0)
+moneyIcon.Position = UDim2.new(0.03, 0, 0.075, 0)
+moneyIcon.BackgroundTransparency = 1
+moneyIcon.ImageTransparency = 0
+moneyIcon.ImageColor3 = Color3.fromRGB(255, 255, 255)
 moneyIcon.Parent = moneyPanel
+
+-- Mostrar el modelo de billete (BillModel) dentro del ViewportFrame como icono
+task.spawn(function()
+        local billModel = ReplicatedStorage:WaitForChild("BillModel", 10)
+        if billModel then
+                local icon = billModel:Clone()
+                -- Limpia scripts y animaciones para no consumir CPU
+                for _, child in ipairs(icon:GetDescendants()) do
+                        if child:IsA("Script") or child:IsA("LocalScript") or child:IsA("ModuleScript") then
+                                child:Destroy()
+                        end
+                end
+                icon.Parent = moneyIcon
+
+                -- Posicionar el modelo para que se vea centrado y de frente
+                local part = icon.PrimaryPart or icon:FindFirstChildWhichIsA("BasePart", true)
+                if part then
+                        -- Mover modelo al origen del viewport
+                        icon:PivotTo(CFrame.new(0, 0, 0))
+                        -- Camara del viewport mirando el modelo
+                        local cam = Instance.new("Camera")
+                        cam.CFrame = CFrame.new(Vector3.new(0, 1.5, 5), Vector3.new(0, 0, 0))
+                        moneyIcon.CurrentCamera = cam
+                        cam.Parent = moneyIcon
+                end
+        else
+                -- Fallback: si no hay BillModel, mostrar $ en texto
+                warn("[UI] No se encontro BillModel en ReplicatedStorage. Mostrando $ como fallback.")
+                moneyIcon:Destroy()
+                local fallback = Instance.new("TextLabel")
+                fallback.Size = UDim2.new(0.3, 0, 0.6, 0)
+                fallback.Position = UDim2.new(0.05, 0, 0.2, 0)
+                fallback.BackgroundTransparency = 1
+                fallback.Text = "$"
+                fallback.TextColor3 = MONEY_GREEN_BRIGHT
+                fallback.TextScaled = true
+                fallback.Font = Enum.Font.GothamBlack
+                fallback.Parent = moneyPanel
+        end
+end)
 
 local moneyLabel = Instance.new("TextLabel")
 moneyLabel.Name = "MoneyLabel"
-moneyLabel.Size = UDim2.new(0.6,0,0.6,0)
-moneyLabel.Position = UDim2.new(0.35,0,0.2,0)
+moneyLabel.Size = UDim2.new(0.62, 0, 0.6, 0)
+moneyLabel.Position = UDim2.new(0.35, 0, 0.2, 0)
 moneyLabel.BackgroundTransparency = 1 moneyLabel.Text = "0"
 moneyLabel.TextColor3 = MONEY_GREEN_BRIGHT
 moneyLabel.TextScaled = true moneyLabel.Font = Enum.Font.GothamBlack
 moneyLabel.TextXAlignment = Enum.TextXAlignment.Left
 moneyLabel.Parent = moneyPanel
+
+-- ============================================
+-- Formato de dinero en cliente (K, M, B, T, Q)
+-- ============================================
+local function formatMoneyClient(amount)
+        amount = amount or 0
+        if amount >= 1000000000000 then
+                local t = amount / 1000000000000
+                if t == math.floor(t) then
+                        return tostring(math.floor(t)) .. "T"
+                else
+                        return string.format("%.1fT", t)
+                end
+        elseif amount >= 1000000000 then
+                local b = amount / 1000000000
+                if b == math.floor(b) then
+                        return tostring(math.floor(b)) .. "B"
+                else
+                        return string.format("%.1fB", b)
+                end
+        elseif amount >= 1000000 then
+                local m = amount / 1000000
+                if m == math.floor(m) then
+                        return tostring(math.floor(m)) .. "M"
+                else
+                        return string.format("%.1fM", m)
+                end
+        elseif amount >= 10000 then
+                local k = amount / 1000
+                if k == math.floor(k) then
+                        return tostring(math.floor(k)) .. "K"
+                else
+                        return string.format("%.1fK", k)
+                end
+        else
+                return tostring(amount)
+        end
+end
 
 -- Upgrade hint
 local upgradeHint = Instance.new("Frame")
@@ -1284,7 +1363,7 @@ player.CharacterAdded:Connect(function()
 end)
 
 MoneyUpdateEvent.OnClientEvent:Connect(function(amount)
-        moneyLabel.Text = tostring(amount)
+        moneyLabel.Text = formatMoneyClient(amount)
 end)
 
 -- ============================================
