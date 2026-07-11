@@ -385,6 +385,17 @@ local function setupMoneyPileEvents(pedestal, moneyPile)
                         addMoney(player, amount)
                         -- Sonido de recoger dinero
                         playSoundForPlayer(SOUND_COLLECT_MONEY, player)
+                        -- Efecto visual de billete (solo visible para el dueño)
+                        local char = player.Character
+                        if char and char:FindFirstChild("HumanoidRootPart") then
+                                local pilePos = moneyPile.Position
+                                local playerPos = char.HumanoidRootPart.Position
+                                -- Mezclar 50/50: aparece entre la pila y el jugador
+                                local midPos = (pilePos + playerPos) * 0.5
+                                pcall(function()
+                                        Events.ShowBillEffect:FireClient(player, midPos, amount)
+                                end)
+                        end
                 end)
         end
 end
