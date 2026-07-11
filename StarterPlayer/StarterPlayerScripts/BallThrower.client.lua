@@ -838,11 +838,12 @@ end
 
 -- Funcion helper para crear un boton de interaccion con estilo: solo borde negro, sin relleno
 -- Soporta texto (emoji) o imagen (rbxassetid://)
-local function createMobileButton(name, icon)
+local function createMobileButton(name, icon, size)
+        size = size or 60 -- tamaño por defecto 60x60
         local btn = Instance.new("TextButton")
         btn.Name = name
-        btn.Size = UDim2.new(0, 60, 0, 60)
-        btn.Position = UDim2.new(0.5, -30, 0.7, 0)
+        btn.Size = UDim2.new(0, size, 0, size)
+        btn.Position = UDim2.new(0.5, -size/2, 0.7, 0)
         btn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
         btn.BackgroundTransparency = 0.85 -- casi transparente
         btn.BorderSizePixel = 0
@@ -888,9 +889,9 @@ local upgradeMobBtn = nil
 local baseUpgradeMobBtn = nil
 
 if isMobile then
-        interactBtn = createMobileButton("MobInteractBtn", "rbxassetid://18985225104")
-        upgradeMobBtn = createMobileButton("MobUpgradeBtn", "rbxassetid://90725732857650")
-        baseUpgradeMobBtn = createMobileButton("MobBaseUpgradeBtn", "🏰")
+        interactBtn = createMobileButton("MobInteractBtn", "rbxassetid://18985225104", 120) -- doble tamaño
+        upgradeMobBtn = createMobileButton("MobUpgradeBtn", "rbxassetid://90725732857650", 120) -- doble tamaño
+        baseUpgradeMobBtn = createMobileButton("MobBaseUpgradeBtn", "🏰") -- tamaño normal
 end
 
 local interactDebounce = false
@@ -1129,7 +1130,7 @@ if isMobile then
                         if interactBtn then
                                 if showInteract and interactScreenPos and interactScreenPos.Z > 0 then
                                         interactBtn.Visible = true
-                                        interactBtn.Position = UDim2.new(0, interactScreenPos.X - 30, 0, interactScreenPos.Y - 30)
+                                        interactBtn.Position = UDim2.new(0, interactScreenPos.X - 60, 0, interactScreenPos.Y - 60) -- centrado para 120x120
                                 else
                                         interactBtn.Visible = false
                                 end
@@ -1138,7 +1139,7 @@ if isMobile then
                         if upgradeMobBtn then
                                 if showUpgrade and upgradeScreenPos and upgradeScreenPos.Z > 0 then
                                         upgradeMobBtn.Visible = true
-                                        upgradeMobBtn.Position = UDim2.new(0, upgradeScreenPos.X - 30, 0, upgradeScreenPos.Y - 30)
+                                        upgradeMobBtn.Position = UDim2.new(0, upgradeScreenPos.X - 60, 0, upgradeScreenPos.Y - 60) -- centrado para 120x120
                                 else
                                         upgradeMobBtn.Visible = false
                                 end
