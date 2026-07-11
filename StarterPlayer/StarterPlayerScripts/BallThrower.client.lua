@@ -34,6 +34,113 @@ local FuseCharactersEvent = ReplicatedStorage:WaitForChild("FuseCharacters", 15)
 local DepositCharacterEvent = ReplicatedStorage:WaitForChild("DepositCharacter", 15)
 local RemoveFromFusionSlotEvent = ReplicatedStorage:WaitForChild("RemoveFromFusionSlot", 15)
 local EquipBallEvent = ReplicatedStorage:WaitForChild("EquipBall", 15)
+local ShowBillEffectEvent = ReplicatedStorage:WaitForChild("ShowBillEffect", 15)
+
+-- ============================================
+-- EFECTO DE BILLETE (solo visible para el dueño)
+-- ============================================
+-- Cuando el servidor dispara ShowBillEffect, el cliente clona el modelo BillModel
+-- de ReplicatedStorage y crea una pequeña lluvia de billetes en world-space.
+-- Como el billete se crea en el cliente (no en el servidor), los demas jugadores
+-- nunca lo reciben por red -> solo el dueño lo ve.
+local function spawnBillEffect(position, amount)
+        local billTemplate = ReplicatedStorage:FindFirstChild("BillModel")
+        if not billTemplate then
+                warn("[BillEffect] No se encontro BillModel en ReplicatedStorage. Sube el modelo y nombralo 'BillModel'.")
+                return
+        end
+
+        -- Cantidad de billetes segun el monto (3-8 billetes, nunca pasarse de 8)
+        local count = math.clamp(math.floor(amount / 5) + 3, 3, 8)
+
+        for i = 1, count do
+                task.spawn(function()
+                        local bill = billTemplate:Clone()
+                        bill.Parent = workspace
+
+                        -- Posicion inicial con pequena dispersion aleatoria
+                        local offset = Vector3.new(
+                                (math.random() - 0.5) * 4,
+                                0,
+                                (math.random() - 0.5) * 4
+                        )
+                        -- Si el modelo tiene PrimaryPart usarlo, sino buscar primera BasePart
+                        local part = bill.PrimaryPart or bill:FindFirstChildWhichIsA("BasePart", true)
+                        if part then
+                                bill:PivotTo(CFrame.new(position + offset + Vector3.new(0, 2, 0)))
+                        end
+
+                        -- Animacion: arco hacia arriba + rotacion + fade out
+                        local startTime = tick()
+                        local duration = 1.4
+                        local initialPos = position + offset + Vector3.new(0, 2, 0)
+                        local direction = Vector3.new(
+                                (math.random() - 0.5) * 6,
+                                8 + math.random() * 4, -- sube entre 8 y 12 studs
+                                (math.random() - 0.5) * 6
+                        )
+                        local spinSpeed = Vector3.new(
+                                math.random() * 6,
+                                math.random() * 6,
+                                math.random() * 6
+                        )
+
+                        -- Recolectar todas las partes del modelo para animar
+                        local parts = {}
+                        for _, p in ipairs(bill:GetDescendants()) do
+                                if p:IsA("BasePart") then
+                                        table.insert(parts, p)
+                                end
+                        end
+                        if part and #parts == 0 then table.insert(parts, part) end
+
+                        -- Guardar CFrames iniciales
+                        local initialCFrames = {}
+                        for _, p in ipairs(parts) do
+                                initialCFrames[p] = p.CFrame
+                        end
+
+                        while tick() - startTime < duration do
+                                local dt = task.wait()
+                                local elapsed = tick() - startTime
+                                local t = elapsed / duration
+                                -- Movimiento parabolico (sube y cae ligeramente)
+                                local yOffset = direction.Y * t - 12 * t * t
+                                local xOffset = direction.X * t
+                                local zOffset = direction.Z * t
+                                local basePos = initialPos + Vector3.new(xOffset, yOffset, zOffset)
+
+                                -- Aplicar a cada parte relativa a su CFrame inicial
+                                for _, p in ipairs(parts) do
+                                        if p and p.Parent then
+                                                local initCF = initialCFrames[p]
+                                                local spinCF = CFrame.Angles(spinSpeed.X * elapsed, spinSpeed.Y * elapsed, spinSpeed.Z * elapsed)
+                                                p.CFrame = CFrame.new(basePos) * spinCF * (initCF - initCF.Position)
+                                        end
+                                end
+
+                                -- Fade out en el ultimo 40%
+                                if t > 0.6 then
+                                        local fadeT = (t - 0.6) / 0.4
+                                        for _, p in ipairs(parts) do
+                                                if p and p.Parent then
+                                                        p.Transparency = fadeT
+                                                end
+                                        end
+                                end
+                        end
+
+                        -- Limpiar
+                        if bill and bill.Parent then
+                                bill:Destroy()
+                        end
+                end)
+        end
+end
+
+ShowBillEffectEvent.OnClientEvent:Connect(function(position, amount)
+        pcall(spawnBillEffect, position, amount)
+end)
 
 -- ============================================
 -- CONFIGURACION DE PELOTAS
