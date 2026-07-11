@@ -891,7 +891,7 @@ local baseUpgradeMobBtn = nil
 if isMobile then
         interactBtn = createMobileButton("MobInteractBtn", "rbxassetid://18985225104", 120) -- doble tamaño
         upgradeMobBtn = createMobileButton("MobUpgradeBtn", "rbxassetid://90725732857650", 120) -- doble tamaño
-        baseUpgradeMobBtn = createMobileButton("MobBaseUpgradeBtn", "🏰") -- tamaño normal
+        baseUpgradeMobBtn = createMobileButton("MobBaseUpgradeBtn", "rbxassetid://90725732857650") -- misma imagen que mejorar personaje, tamaño normal
 end
 
 local interactDebounce = false
