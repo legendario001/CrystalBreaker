@@ -135,18 +135,45 @@ function BaseUpgradeManager.createUpgradeButton(base, player)
         costLabel.Font = Enum.Font.GothamBold
         costLabel.Parent = bg
 
-        -- Hint de tecla
+        -- Hint de tecla (estilo Roblox: cuadro gris claro con letra oscura)
         local hintLabel = Instance.new("TextLabel")
         hintLabel.Name = "HintLabel"
         hintLabel.Size = UDim2.new(1, 0, 0.25, 0)
         hintLabel.Position = UDim2.new(0, 0, 0.7, 0)
         hintLabel.BackgroundTransparency = 1
         hintLabel.RichText = true
-        hintLabel.Text = '<font color="#FFFFFF">Presiona </font><font color="#00A2FF"><b>[ H ]</b></font><font color="#FFFFFF"> para mejorar</font>'
+        hintLabel.Text = '<font color="#FFFFFF">Presiona </font><font color="#E0E0E0"><b> H </b></font><font color="#FFFFFF"> para mejorar</font>'
         hintLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
         hintLabel.TextScaled = true
         hintLabel.Font = Enum.Font.GothamBold
         hintLabel.Parent = bg
+
+        -- Cuadro de tecla estilo Roblox (fondo gris claro, borde gris, esquinas redondeadas)
+        local keyBox = Instance.new("Frame")
+        keyBox.Name = "KeyBox"
+        keyBox.Size = UDim2.new(0.12, 0, 0.5, 0)
+        keyBox.Position = UDim2.new(0.36, 0, 0.72, 0)
+        keyBox.BackgroundColor3 = Color3.fromRGB(230, 230, 230)
+        keyBox.BorderSizePixel = 0
+        keyBox.Parent = bg
+        Instance.new("UICorner", keyBox).CornerRadius = UDim.new(0, 6)
+
+        local keyStroke = Instance.new("UIStroke")
+        keyStroke.Color = Color3.fromRGB(150, 150, 150)
+        keyStroke.Thickness = 1.5
+        keyStroke.Parent = keyBox
+
+        local keyText = Instance.new("TextLabel")
+        keyText.Size = UDim2.new(1, 0, 1, 0)
+        keyText.BackgroundTransparency = 1
+        keyText.Text = "H"
+        keyText.TextColor3 = Color3.fromRGB(40, 40, 40)
+        keyText.TextScaled = true
+        keyText.Font = Enum.Font.GothamBold
+        keyText.Parent = keyBox
+
+        -- Ocultar el texto del hintLabel "H" y dejar solo "Presiona ... para mejorar"
+        hintLabel.Text = '<font color="#FFFFFF">Presiona </font><font color="#FFFFFF" transparency="1">H</font><font color="#FFFFFF"> para mejorar</font>'
 
         return upgradeBtn
 end
@@ -251,6 +278,7 @@ function BaseUpgradeManager.removeUpgradeButton(base)
 end
 
 return BaseUpgradeManager
+
 
 
 
