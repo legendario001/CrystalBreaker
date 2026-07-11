@@ -135,14 +135,13 @@ function ModelManager.showEmptyLabel(pedestal)
         bb.MaxDistance = 30
         bb.Parent = platform
 
-        local lbl = Instance.new("TextLabel")
-        lbl.Size = UDim2.new(1, 0, 1, 0)
-        lbl.BackgroundTransparency = 1
-        lbl.Text = "E"
-        lbl.TextColor3 = Color3.fromRGB(160, 160, 160)
-        lbl.TextScaled = true
-        lbl.Font = Enum.Font.GothamBlack
-        lbl.Parent = bb
+        -- Imagen de E estilo Roblox
+        local imgLabel = Instance.new("ImageLabel")
+        imgLabel.Size = UDim2.new(1, 0, 1, 0)
+        imgLabel.BackgroundTransparency = 1
+        imgLabel.Image = "rbxassetid://120398859228995"
+        imgLabel.ScaleType = Enum.ScaleType.Fit
+        imgLabel.Parent = bb
 end
 
 function ModelManager.hideEmptyLabel(pedestal)
@@ -861,6 +860,7 @@ function ModelManager.clearPedestal(pedestal)
 end
 
 return ModelManager
+
 
 
 
