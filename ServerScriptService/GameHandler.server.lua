@@ -451,6 +451,12 @@ local function setupUpgradeButtonEvents(pedestal, upgradeBtn, charIdx)
                         print(player.Name.." mejoro "..charData.name.." a Lv."..charData.level.." (-$"..cost..")")
                         -- Sonido de mejora
                         playSoundForPlayer(SOUND_UPGRADE, player)
+                        -- Efecto visual de upgrade (solo visible para el dueño)
+                        if isValid(upgradeBtn) then
+                                pcall(function()
+                                        Events.ShowUpgradeEffect:FireClient(player, upgradeBtn.Position)
+                                end)
+                        end
                 end)
                 if not ok then warn("Error en upgrade btn: "..tostring(err)) end
         end)
@@ -924,6 +930,13 @@ Events.UpgradeCharacter.OnServerEvent:Connect(function(player)
                 print(player.Name.." mejoro "..charData.name.." a Lv."..charData.level.." (-$"..cost..")")
                 -- Sonido de mejora
                 playSoundForPlayer(SOUND_UPGRADE, player)
+                -- Efecto visual de upgrade (solo visible para el dueño)
+                local upgradeBtn = closestPedestal:FindFirstChild("UpgradeButton")
+                if isValid(upgradeBtn) then
+                        pcall(function()
+                                Events.ShowUpgradeEffect:FireClient(player, upgradeBtn.Position)
+                        end)
+                end
         end)
         if not ok then warn("Error UpgradeCharacter: "..tostring(err)) end
 end)
