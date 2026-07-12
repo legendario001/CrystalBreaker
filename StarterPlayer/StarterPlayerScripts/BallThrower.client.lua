@@ -35,6 +35,7 @@ local DepositCharacterEvent = ReplicatedStorage:WaitForChild("DepositCharacter",
 local RemoveFromFusionSlotEvent = ReplicatedStorage:WaitForChild("RemoveFromFusionSlot", 15)
 local EquipBallEvent = ReplicatedStorage:WaitForChild("EquipBall", 15)
 local ShowBillEffectEvent = ReplicatedStorage:WaitForChild("ShowBillEffect", 15)
+local ShowUpgradeEffectEvent = ReplicatedStorage:WaitForChild("ShowUpgradeEffect", 15)
 
 -- ============================================
 -- EFECTO DE BILLETE (solo visible para el dueño)
@@ -140,6 +141,79 @@ end
 
 ShowBillEffectEvent.OnClientEvent:Connect(function(position, amount)
         pcall(spawnBillEffect, position, amount)
+end)
+
+-- ============================================
+-- EFECTO DE UPGRADE (solo visible para el dueño)
+-- ============================================
+-- Cuando el servidor dispara ShowUpgradeEffect, el cliente crea UNA sola imagen
+-- de upgrade en world-space sobre el boton de mejora, con animacion de escala +
+-- ascenso + fade-out. Una sola imagen, no varias.
+local function spawnUpgradeEffect(position)
+        local UPGRADE_IMAGE = "rbxassetid://97532714186492"
+
+        -- Part invisible anclado para sostener el BillboardGui
+        local anchor = Instance.new("Part")
+        anchor.Name = "UpgradeEffectAnchor"
+        anchor.Anchored = true
+        anchor.CanCollide = false
+        anchor.CanQuery = false
+        anchor.CanTouch = false
+        anchor.Transparency = 1
+        anchor.Size = Vector3.new(0.1, 0.1, 0.1)
+        anchor.Position = position + Vector3.new(0, 2, 0)
+        anchor.Parent = workspace
+
+        -- BillboardGui para que la imagen siempre mire a la camara
+        local bb = Instance.new("BillboardGui")
+        bb.Name = "UpgradeEffectGui"
+        bb.Size = UDim2.new(0, 120, 0, 120)
+        bb.StudsOffset = Vector3.new(0, 0, 0)
+        bb.AlwaysOnTop = true
+        bb.LightInfluence = 0
+        bb.MaxDistance = 100 -- solo visible de cerca
+        bb.Parent = anchor
+
+        local img = Instance.new("ImageLabel")
+        img.Name = "UpgradeImage"
+        img.Size = UDim2.new(1, 0, 1, 0)
+        img.BackgroundTransparency = 1
+        img.Image = UPGRADE_IMAGE
+        img.ScaleType = Enum.ScaleType.Fit
+        img.ImageTransparency = 0
+        img.Parent = bb
+
+        -- Animacion: escalar de grande + subir + fade out (1.2s)
+        task.spawn(function()
+                local startTime = tick()
+                local duration = 1.2
+                local initialSize = 80
+                local maxSize = 240
+                local riseHeight = 4 -- studs que sube
+                while tick() - startTime < duration do
+                        local dt = task.wait()
+                        local elapsed = tick() - startTime
+                        local t = elapsed / duration
+                        -- Escala: ease out (crece rapido al inicio y se frena)
+                        local easedT = 1 - (1 - t) * (1 - t)
+                        local size = initialSize + (maxSize - initialSize) * easedT
+                        bb.Size = UDim2.new(0, size, 0, size)
+                        -- Sube gradualmente
+                        anchor.CFrame = CFrame.new(position + Vector3.new(0, 2 + riseHeight * t, 0))
+                        -- Fade out en el ultimo 50%
+                        if t > 0.5 then
+                                local fadeT = (t - 0.5) / 0.5
+                                img.ImageTransparency = fadeT
+                        end
+                end
+                if anchor and anchor.Parent then
+                        anchor:Destroy()
+                end
+        end)
+end
+
+ShowUpgradeEffectEvent.OnClientEvent:Connect(function(position)
+        pcall(spawnUpgradeEffect, position)
 end)
 
 -- ============================================
