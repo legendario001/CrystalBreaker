@@ -11,8 +11,8 @@
 | Campo | Valor |
 |-------|-------|
 | **Nombre del proyecto** | CrystalBreaker |
-| **Versión actual** | 1.9.0 |
-| **Última actualización** | 2026-07-10 |
+| **Versión actual** | 2.0.0 |
+| **Última actualización** | 2026-07-11 |
 | **Repositorio GitHub** | `legendario001/CrystalBreaker` |
 | **Plataforma** | Roblox (Luau) |
 | **Tipo de juego** | Tycoon / Colección de personajes |
@@ -326,8 +326,9 @@ BuildMap (Command Bar, una sola vez)
 - **G** = Soltar personaje
 - **F** = Mejorar personaje (cerca del botón de mejora)
 - **H** = Mejorar base (cerca del botón dorado)
-- **Mochila** = Click para abrir/cerrar panel de pelotas
-- **Móvil**: Botones táctiles 👆 ⬆️ 🏰 aparecen automáticamente
+- **Mochila** = Click para abrir/cerrar panel de pelotas (botón abajo izquierda)
+- **Música** = Click para abrir/cerrar panel de música (botón arriba de la mochila)
+- **Móvil**: Botones táctiles con imágenes aparecen automáticamente (interactuar, mejorar personaje, mejorar base)
 
 ### Reglas permanentes:
 
@@ -365,6 +366,31 @@ BuildMap (Command Bar, una sola vez)
 | Equipar pelota de fuego | `rbxassetid://129504465599355` | Al equipar/cambiar a pelota de fuego |
 | Lanzar pelota de fuego | `rbxassetid://130422645188028` | Al lanzar pelota de fuego |
 
+### Música de fondo
+| Nombre | ID | Estado |
+|--------|----|----|
+| Naturaleza | `rbxassetid://96749515704166` | Por defecto al entrar |
+| Mystical Harp | `rbxassetid://110289082772686` | Seleccionable en panel de música |
+| Tibetanos | `rbxassetid://94670025666551` | Seleccionable en panel de música |
+| Relaxing Game Loop | `rbxassetid://84498576072067` | Seleccionable en panel de música |
+
+> El sistema de música vive en `BallThrower.client.lua` (tabla `MUSIC_LIST`).
+> Para agregar más canciones, solo añadir entradas a esa tabla.
+> El panel detecta automáticamente todas las entradas.
+
+### Imágenes / Iconos
+| Uso | ID | Ubicación |
+|-----|----|----|
+| Icono de billete en UI de dinero | `rbxassetid://128422594736289` | `BallThrower.client.lua` (moneyIcon) |
+| Imagen de efecto al mejorar personaje | `rbxassetid://97532714186492` | `BallThrower.client.lua` (UPGRADE_IMAGE) |
+| Imagen de botón móvil interactuar (E) | `rbxassetid://18985225104` | `BallThrower.client.lua` (createMobileButton) |
+| Imagen de botón móvil mejorar personaje (F) | `rbxassetid://90725732857650` | `BallThrower.client.lua` (createMobileButton) |
+| Imagen de botón móvil mejorar base (H) | `rbxassetid://90725732857650` | `BallThrower.client.lua` (createMobileButton) |
+| Imagen de botón E en pedestal (interactuar) | `rbxassetid://120398859228995` | `ModelManager.lua` (createLabels) |
+| Imagen de botón H en base (mejorar base) | `rbxassetid://125633453145365` | `BaseUpgradeManager.lua` (createUpgradeButton) |
+| Icono de mochila | `rbxassetid://113160993563399` | `BallThrower.client.lua` (backpackIcon) |
+| Icono de música | `rbxassetid://980810848` | `BallThrower.client.lua` (MUSIC_ICON) |
+
 ### Animaciones
 | Animación | ID | Uso |
 |-----------|----|----|
@@ -374,6 +400,8 @@ BuildMap (Command Bar, una sola vez)
 - **Personajes**: En `ServerStorage/ModelosPj/{Morado,Rojo,Amarillo,Azul,Blanco}/`
 - **Cristales**: Generados dinámicamente por CrystalSpawner
 - **Cofres**: Generados dinámicamente por CrystalSpawner
+- **BillModel**: En `ReplicatedStorage` — modelo 3D de billete usado en efecto visual al recoger dinero (clonado localmente en el cliente, solo visible para el dueño)
+- **FireBallModel, EarthBallModel, AirBallModel, WaterBallModel**: En `ReplicatedStorage` — modelos 3D de pelotas con partículas
 
 ### Colores de Rareza
 | Rareza | Display | Color RGB | Rate base |
@@ -504,6 +532,22 @@ air = {
 - ✅ Fix: base ownership check en todas las interacciones
 - ✅ Fix: carry tool solo se destruye después de confirmar pedestal
 
+### Versión 2.0.0 (2026-07-11)
+- ✅ Efecto visual de billetes al recoger dinero (BillModel en ReplicatedStorage, solo visible para el dueño)
+- ✅ RemoteEvent `ShowBillEffect` para disparar efecto desde servidor al cliente
+- ✅ Icono de billete en UI de dinero (ImageLabel con rbxassetid://128422594736289)
+- ✅ Formato de dinero extendido: K, M, B, T (cliente y servidor)
+- ✅ Efecto visual al mejorar personaje (imagen rbxassetid://97532714186492 con escala+fade)
+- ✅ RemoteEvent `ShowUpgradeEffect` para disparar efecto desde servidor al cliente
+- ✅ Botones móviles con imágenes personalizadas (reemplazan emojis 👆 ⬆️ 🏰)
+- ✅ Botones móviles con tamaño doble (120x120) para interactuar y mejorar personaje
+- ✅ Botón de música (arriba de la mochila) con icono rbxassetid://980810848
+- ✅ Panel de música (mismo formato que la mochila) con 4 canciones
+- ✅ Sistema de mute/unmute con indicador visual (X roja)
+- ✅ Reproducción automática al entrar (Naturaleza por defecto)
+- ✅ Selección de canciones desde el panel (Naturaleza, Mystical Harp, Tibetanos, Relaxing Game Loop)
+- ✅ Música en loop con volumen 0.4
+
 ### Versión 1.9.0 (2026-07-10)
 - ✅ Pelota de Tierra integrada (daño 3, mismas físicas que básica, EarthBallModel)
 - ✅ Mochila con icono personalizado (rbxassetid://113160993563399)
@@ -602,13 +646,21 @@ air = {
 - ✅ Cristales y cofres
 - ✅ Personajes (5 rarezas)
 - ✅ Pedestales (funcionan en 5 pisos)
-- ✅ Economía (level² income, level³ cost, K/M/B format)
+- ✅ Economía (level² income, level³ cost, K/M/B/T format)
 - ✅ Mejora de personajes (nivel 1-100, tecla F)
 - ✅ Mejora de base (nivel 1-5, tecla H)
 - ✅ Carry tool
-- ✅ UI completa
-- ✅ Sonidos (3 efectos)
+- ✅ UI completa (dinero, mochila, música)
+- ✅ Sonidos (recoger dinero, mejorar, romper cristal, cofre, fusión, pelotas)
 - ✅ 5 pisos con estilo nube y escaleras verticales
+- ✅ Soporte móvil completo (touch throw, botones táctiles con imágenes, pinch-zoom block)
+- ✅ 5 pelotas (básica, fuego, tierra, aire, agua) con modelos 3D y sonidos
+- ✅ Sistema de fusión completo (máquina con slots A/B, multiplicador x3 por nivel)
+- ✅ Efecto visual de billetes al recoger dinero (solo visible para el dueño)
+- ✅ Efecto visual al mejorar personaje (solo visible para el dueño)
+- ✅ Sistema de música con 4 canciones, mute y selección
+- ✅ Icono de billete en UI de dinero (ImageLabel)
+- ✅ Botones móviles con imágenes personalizadas (interactuar, mejorar personaje, mejorar base)
 
 ### Sistemas faltantes (prioritarios):
 - ❌ Sistema de guardado (DataStore) — CRÍTICO
