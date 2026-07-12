@@ -2166,6 +2166,287 @@ updateButton()
 updateUI()
 print("BallThrower cargado!")
 
+-- ============================================
+-- SISTEMA DE MUSICA (boton + panel como la mochila)
+-- ============================================
+-- Lista de musicas disponibles. Para agregar mas en el futuro,
+-- solo agregar una entrada a esta tabla: { name = "...", soundId = "rbxassetid://..." }
+local MUSIC_LIST = {
+        { name = "Musica Principal", soundId = "rbxassetid://110289082772686" },
+        -- { name = "Musica 2", soundId = "rbxassetid://OTRO_ID" },
+}
+
+local MUSIC_ICON = "rbxassetid://97532714186492" -- reutilizamos la imagen de upgrade como icono de musica
+-- Si tienes un icono especifico de musica (notas musicales), cambia el ID arriba.
+
+-- Estado de musica
+local musicSound = Instance.new("Sound")
+musicSound.Name = "BackgroundMusic"
+musicSound.SoundId = MUSIC_LIST[1].soundId
+musicSound.Looped = true
+musicSound.Volume = 0.4
+musicSound.Parent = game:GetService("SoundService")
+
+local currentMusicIdx = 1
+local musicMuted = false
+
+-- Reproducir musica al entrar (con pequeno delay para asegurar carga)
+task.delay(1, function()
+        pcall(function()
+                musicSound:Play()
+        end)
+end)
+
+-- Boton de musica (arriba del boton de mochila)
+local musicBtn = Instance.new("TextButton")
+musicBtn.Name = "MusicBtn"
+musicBtn.Size = UDim2.new(0, 60, 0, 60)
+musicBtn.Position = UDim2.new(0, 20, 1, -270) -- 70px arriba del boton mochila (-200 - 70)
+musicBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+musicBtn.BorderSizePixel = 0
+musicBtn.Text = ""
+musicBtn.Parent = screenGui
+Instance.new("UICorner", musicBtn).CornerRadius = UDim.new(0, 12)
+
+-- Icono de musica (ImageLabel como el de la mochila)
+local musicIcon = Instance.new("ImageLabel")
+musicIcon.Name = "MusicIcon"
+musicIcon.Size = UDim2.new(0.8, 0, 0.8, 0)
+musicIcon.Position = UDim2.new(0.1, 0, 0.1, 0)
+musicIcon.BackgroundTransparency = 1
+musicIcon.Image = MUSIC_ICON
+musicIcon.ScaleType = Enum.ScaleType.Fit
+musicIcon.Parent = musicBtn
+
+local musicStroke = Instance.new("UIStroke")
+musicStroke.Color = Color3.fromRGB(80, 180, 255) -- azul para diferenciar de la mochila
+musicStroke.Thickness = 2
+musicStroke.Transparency = 0.3
+musicStroke.Parent = musicBtn
+
+-- Indicador visual de muteado (X roja encima del icono cuando esta muteado)
+local mutedIndicator = Instance.new("TextLabel")
+mutedIndicator.Name = "MutedIndicator"
+mutedIndicator.Size = UDim2.new(0.6, 0, 0.6, 0)
+mutedIndicator.Position = UDim2.new(0.2, 0, 0.2, 0)
+mutedIndicator.BackgroundTransparency = 1
+mutedIndicator.Text = "X"
+mutedIndicator.TextColor3 = Color3.fromRGB(255, 80, 80)
+mutedIndicator.TextScaled = true
+mutedIndicator.Font = Enum.Font.GothamBlack
+mutedIndicator.Visible = false
+mutedIndicator.ZIndex = 2
+mutedIndicator.Parent = musicBtn
+
+-- Panel de musica (mismo formato y posicion que la mochila)
+local musicPanel = Instance.new("Frame")
+musicPanel.Name = "MusicPanel"
+musicPanel.Size = UDim2.new(0, 400, 0, 350)
+musicPanel.Position = UDim2.new(0.5, -200, 1, -370) -- misma posicion que la mochila
+musicPanel.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+musicPanel.BackgroundTransparency = 0.05
+musicPanel.BorderSizePixel = 0
+musicPanel.Visible = false
+musicPanel.ZIndex = 50
+musicPanel.Parent = screenGui
+Instance.new("UICorner", musicPanel).CornerRadius = UDim.new(0, 16)
+
+-- Boton X para cerrar panel de musica
+local mpCloseBtn = Instance.new("TextButton")
+mpCloseBtn.Name = "MpCloseBtn"
+mpCloseBtn.Size = UDim2.new(0, 30, 0, 30)
+mpCloseBtn.Position = UDim2.new(1, -35, 0, 5)
+mpCloseBtn.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
+mpCloseBtn.BorderSizePixel = 0
+mpCloseBtn.Text = "X"
+mpCloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+mpCloseBtn.TextScaled = true
+mpCloseBtn.Font = Enum.Font.GothamBold
+mpCloseBtn.ZIndex = 52
+mpCloseBtn.Parent = musicPanel
+Instance.new("UICorner", mpCloseBtn).CornerRadius = UDim.new(0, 8)
+
+local mpStroke = Instance.new("UIStroke")
+mpStroke.Color = Color3.fromRGB(80, 180, 255)
+mpStroke.Thickness = 2
+mpStroke.Transparency = 0.2
+mpStroke.Parent = musicPanel
+
+-- Titulo del panel
+local mpTitle = Instance.new("TextLabel")
+mpTitle.Size = UDim2.new(1, 0, 0, 35)
+mpTitle.BackgroundTransparency = 1
+mpTitle.Text = "MUSICA"
+mpTitle.TextColor3 = Color3.fromRGB(80, 180, 255)
+mpTitle.TextScaled = true
+mpTitle.Font = Enum.Font.GothamBlack
+mpTitle.ZIndex = 51
+mpTitle.Parent = musicPanel
+
+-- Boton grande de MUTE/UNMUTE (arriba del scroll)
+local muteBtn = Instance.new("TextButton")
+muteBtn.Name = "MuteBtn"
+muteBtn.Size = UDim2.new(1, -20, 0, 50)
+muteBtn.Position = UDim2.new(0, 10, 0, 40)
+muteBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+muteBtn.BorderSizePixel = 0
+muteBtn.Text = "Silenciar"
+muteBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+muteBtn.TextScaled = true
+muteBtn.Font = Enum.Font.GothamBold
+muteBtn.ZIndex = 51
+muteBtn.Parent = musicPanel
+Instance.new("UICorner", muteBtn).CornerRadius = UDim.new(0, 10)
+
+local muteStroke = Instance.new("UIStroke")
+muteStroke.Color = Color3.fromRGB(255, 100, 100)
+muteStroke.Thickness = 2
+muteStroke.Transparency = 0.3
+muteStroke.Parent = muteBtn
+
+-- Contenedor de canciones (scrollable)
+local mpScroll = Instance.new("ScrollingFrame")
+mpScroll.Size = UDim2.new(1, -20, 1, -105)
+mpScroll.Position = UDim2.new(0, 10, 0, 100)
+mpScroll.BackgroundTransparency = 1
+mpScroll.ScrollBarThickness = 6
+mpScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+mpScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+mpScroll.ZIndex = 51
+mpScroll.Parent = musicPanel
+
+local mpListLayout = Instance.new("UIListLayout")
+mpListLayout.Padding = UDim.new(0, 8)
+mpListLayout.Parent = mpScroll
+
+-- Funcion para actualizar el panel de musica
+local function updateMusicUI()
+        -- Limpiar lista anterior
+        for _, child in ipairs(mpScroll:GetChildren()) do
+                if child:IsA("Frame") then child:Destroy() end
+        end
+
+        -- Crear card por cada cancion
+        for idx, song in ipairs(MUSIC_LIST) do
+                local card = Instance.new("Frame")
+                card.Name = "SongCard_" .. idx
+                card.Size = UDim2.new(1, -10, 0, 60)
+                card.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+                card.BorderSizePixel = 0
+                card.ZIndex = 52
+                card.Parent = mpScroll
+                Instance.new("UICorner", card).CornerRadius = UDim.new(0, 10)
+
+                -- Borde: verde si es la cancion actual, azul si no
+                local cardStroke = Instance.new("UIStroke")
+                if idx == currentMusicIdx then
+                        cardStroke.Color = Color3.fromRGB(80, 220, 80) -- verde = sonando
+                        cardStroke.Thickness = 3
+                else
+                        cardStroke.Color = Color3.fromRGB(80, 180, 255) -- azul
+                        cardStroke.Thickness = 2
+                end
+                cardStroke.Transparency = 0.2
+                cardStroke.Parent = card
+
+                -- Nombre de la cancion
+                local nameLabel = Instance.new("TextLabel")
+                nameLabel.Size = UDim2.new(0.7, 0, 1, 0)
+                nameLabel.Position = UDim2.new(0, 10, 0, 0)
+                nameLabel.BackgroundTransparency = 1
+                nameLabel.Text = song.name
+                nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+                nameLabel.TextScaled = true
+                nameLabel.Font = Enum.Font.GothamBold
+                nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+                nameLabel.ZIndex = 53
+                nameLabel.Parent = card
+
+                -- Indicador "SONANDO" si es la actual
+                if idx == currentMusicIdx then
+                        local playingLabel = Instance.new("TextLabel")
+                        playingLabel.Size = UDim2.new(0.3, -5, 0.5, 0)
+                        playingLabel.Position = UDim2.new(0.7, 5, 0.25, 0)
+                        playingLabel.BackgroundTransparency = 1
+                        playingLabel.Text = "SONANDO"
+                        playingLabel.TextColor3 = Color3.fromRGB(80, 220, 80)
+                        playingLabel.TextScaled = true
+                        playingLabel.Font = Enum.Font.GothamBold
+                        playingLabel.ZIndex = 53
+                        playingLabel.Parent = card
+                else
+                        -- Boton "Reproducir" si no es la actual
+                        local playBtn = Instance.new("TextButton")
+                        playBtn.Size = UDim2.new(0.3, -5, 0.6, 0)
+                        playBtn.Position = UDim2.new(0.7, 5, 0.2, 0)
+                        playBtn.BackgroundColor3 = Color3.fromRGB(80, 180, 255)
+                        playBtn.BorderSizePixel = 0
+                        playBtn.Text = ">"
+                        playBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+                        playBtn.TextScaled = true
+                        playBtn.Font = Enum.Font.GothamBold
+                        playBtn.ZIndex = 53
+                        playBtn.Parent = card
+                        Instance.new("UICorner", playBtn).CornerRadius = UDim.new(0, 6)
+
+                        playBtn.MouseButton1Click:Connect(function()
+                                currentMusicIdx = idx
+                                musicSound:Stop()
+                                musicSound.SoundId = song.soundId
+                                musicSound:Play()
+                                -- Si estaba muteado, desmutear al cambiar de cancion
+                                if musicMuted then
+                                        musicMuted = false
+                                        mutedIndicator.Visible = false
+                                        muteBtn.Text = "Silenciar"
+                                        muteBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+                                end
+                                updateMusicUI()
+                        end)
+                end
+        end
+end
+
+-- Toggle panel de musica
+musicBtn.MouseButton1Click:Connect(function()
+        musicPanel.Visible = not musicPanel.Visible
+        if musicPanel.Visible then
+                -- Si se abre el panel de musica, cerrar la mochila para que no se solapen
+                backpackPanel.Visible = false
+                updateMusicUI()
+        end
+end)
+
+-- Boton X para cerrar panel de musica
+mpCloseBtn.MouseButton1Click:Connect(function()
+        musicPanel.Visible = false
+end)
+
+-- Cuando se abre la mochila, cerrar panel de musica (no se solapen)
+backpackBtn.MouseButton1Click:Connect(function()
+        if backpackPanel.Visible then
+                musicPanel.Visible = false
+        end
+end)
+
+-- Accion del boton MUTE
+muteBtn.MouseButton1Click:Connect(function()
+        musicMuted = not musicMuted
+        if musicMuted then
+                musicSound:Pause()
+                mutedIndicator.Visible = true
+                muteBtn.Text = "Activar Sonido"
+                muteBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+        else
+                musicSound:Resume()
+                mutedIndicator.Visible = false
+                muteBtn.Text = "Silenciar"
+                muteBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+        end
+end)
+
+print("Sistema de musica cargado!")
+
 
 
 
