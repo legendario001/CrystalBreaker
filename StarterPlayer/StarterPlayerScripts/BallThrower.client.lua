@@ -2177,7 +2177,7 @@ local MUSIC_LIST = {
         { name = "Tibetanos",      soundId = "rbxassetid://94670025666551" },
 }
 
-local MUSIC_ICON = "rbxassetid://299432407"
+local MUSIC_ICON = "rbxassetid://980810848"
 
 -- Estado de musica
 local musicSound = Instance.new("Sound")
