@@ -237,6 +237,7 @@ local BALL_TYPES = {
         fire = {
                 name = "Fuego",
                 icon = "🔥",
+                iconImage = "rbxassetid://14373611462",
                 color = Color3.fromRGB(255, 100, 30),
                 material = Enum.Material.Neon,
                 damage = 2,
@@ -254,6 +255,7 @@ local BALL_TYPES = {
         earth = {
                 name = "Tierra",
                 icon = "🟤",
+                iconImage = "rbxassetid://104704077581701",
                 color = Color3.fromRGB(140, 90, 50),
                 material = Enum.Material.Slate,
                 damage = 3,
@@ -271,6 +273,7 @@ local BALL_TYPES = {
         air = {
                 name = "Aire",
                 icon = "💨",
+                iconImage = "rbxassetid://129908338697871",
                 color = Color3.fromRGB(240, 250, 255),
                 material = Enum.Material.Glass,
                 damage = 1,
@@ -288,6 +291,7 @@ local BALL_TYPES = {
         water = {
                 name = "Agua",
                 icon = "💧",
+                iconImage = "rbxassetid://111743315105905",
                 color = Color3.fromRGB(80, 150, 220),
                 material = Enum.Material.Glass,
                 damage = 2,
@@ -2055,15 +2059,26 @@ local function updateBackpackUI()
                 cardStroke.Transparency = 0.2
                 cardStroke.Parent = card
 
-                -- Icono de la pelota
-                local iconLabel = Instance.new("TextLabel")
-                iconLabel.Size = UDim2.new(0, 50, 1, -10)
-                iconLabel.Position = UDim2.new(0, 5, 0, 5)
-                iconLabel.BackgroundTransparency = 1
-                iconLabel.Text = ballConfig.icon
-                iconLabel.TextScaled = true
-                iconLabel.ZIndex = 53
-                iconLabel.Parent = card
+                -- Icono de la pelota (ImageLabel si tiene iconImage, sino TextLabel con emoji)
+                if ballConfig.iconImage then
+                        local iconImg = Instance.new("ImageLabel")
+                        iconImg.Size = UDim2.new(0, 50, 1, -10)
+                        iconImg.Position = UDim2.new(0, 5, 0, 5)
+                        iconImg.BackgroundTransparency = 1
+                        iconImg.Image = ballConfig.iconImage
+                        iconImg.ScaleType = Enum.ScaleType.Fit
+                        iconImg.ZIndex = 53
+                        iconImg.Parent = card
+                else
+                        local iconLabel = Instance.new("TextLabel")
+                        iconLabel.Size = UDim2.new(0, 50, 1, -10)
+                        iconLabel.Position = UDim2.new(0, 5, 0, 5)
+                        iconLabel.BackgroundTransparency = 1
+                        iconLabel.Text = ballConfig.icon
+                        iconLabel.TextScaled = true
+                        iconLabel.ZIndex = 53
+                        iconLabel.Parent = card
+                end
 
                 -- Info de la pelota
                 local infoLabel = Instance.new("TextLabel")
