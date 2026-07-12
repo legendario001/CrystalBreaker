@@ -2172,12 +2172,12 @@ print("BallThrower cargado!")
 -- Lista de musicas disponibles. Para agregar mas en el futuro,
 -- solo agregar una entrada a esta tabla: { name = "...", soundId = "rbxassetid://..." }
 local MUSIC_LIST = {
-        { name = "Musica Principal", soundId = "rbxassetid://110289082772686" },
-        -- { name = "Musica 2", soundId = "rbxassetid://OTRO_ID" },
+        { name = "Naturaleza",     soundId = "rbxassetid://96749515704166" },
+        { name = "Mystical Harp",  soundId = "rbxassetid://110289082772686" },
+        { name = "Tibetanos",      soundId = "rbxassetid://94670025666551" },
 }
 
-local MUSIC_ICON = "rbxassetid://97532714186492" -- reutilizamos la imagen de upgrade como icono de musica
--- Si tienes un icono especifico de musica (notas musicales), cambia el ID arriba.
+local MUSIC_ICON = "rbxassetid://299432407"
 
 -- Estado de musica
 local musicSound = Instance.new("Sound")
