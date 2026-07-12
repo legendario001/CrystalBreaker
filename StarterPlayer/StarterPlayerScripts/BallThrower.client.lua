@@ -368,6 +368,32 @@ ballIcon.Position = UDim2.new(0.2,0,0.1,0)
 ballIcon.BackgroundTransparency = 1 ballIcon.Text = "⚽"
 ballIcon.TextScaled = true ballIcon.Parent = ballButton
 
+-- ImageLabel para iconos de pelota con imagen (se alterna con ballIcon)
+local ballIconImg = Instance.new("ImageLabel")
+ballIconImg.Name = "BallIconImg"
+ballIconImg.Size = UDim2.new(0.7, 0, 0.7, 0)
+ballIconImg.Position = UDim2.new(0.15, 0, 0.05, 0)
+ballIconImg.BackgroundTransparency = 1
+ballIconImg.ScaleType = Enum.ScaleType.Fit
+ballIconImg.Visible = false
+ballIconImg.ZIndex = 2
+ballIconImg.Parent = ballButton
+
+-- Funcion para actualizar el icono de la pelota equipada (imagen o emoji)
+local function updateBallIcon()
+        local config = BALL_TYPES[selectedBallType]
+        if not config then return end
+        if config.iconImage then
+                ballIconImg.Image = config.iconImage
+                ballIconImg.Visible = true
+                ballIcon.Visible = false
+        else
+                ballIcon.Text = config.icon or "?"
+                ballIcon.Visible = true
+                ballIconImg.Visible = false
+        end
+end
+
 local keyLabel = Instance.new("TextLabel")
 keyLabel.Size = UDim2.new(0.3,0,0.3,0)
 keyLabel.Position = UDim2.new(0.65,0,0.6,0)
@@ -2135,6 +2161,7 @@ local function updateBackpackUI()
                                 if ballConfig.soundEquip then
                                         playClientSound(ballConfig.soundEquip, 0.6)
                                 end
+                                updateBallIcon()
                                 updateBackpackUI()
                         end)
                 else
@@ -2157,6 +2184,7 @@ local function updateBackpackUI()
                                 if ballConfig.soundEquip then
                                         playClientSound(ballConfig.soundEquip, 0.6)
                                 end
+                                updateBallIcon()
                                 updateBackpackUI()
                                 print("Pelota de " .. ballConfig.name .. " desbloqueada y seleccionada")
                         end)
@@ -2178,6 +2206,7 @@ bpCloseBtn.MouseButton1Click:Connect(function()
 end)
 
 updateButton()
+updateBallIcon()
 updateUI()
 print("BallThrower cargado!")
 
