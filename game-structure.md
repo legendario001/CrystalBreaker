@@ -241,6 +241,7 @@ CrystalBreaker/
 | **FuseCharacters** | RemoteEvent | `ReplicatedStorage` | BallThrower → GameHandler | Fusionar 2 personajes idénticos |
 | **EquipBall** | RemoteEvent | `ReplicatedStorage` | BallThrower → GameHandler | Equipar/desequipar pelota (servidor crea pelota visible para todos) |
 | **ShowBillEffect** | RemoteEvent | `ReplicatedStorage` | GameHandler → BallThrower | Servidor avisa al cliente para spawnear billete visual al recoger dinero (solo dueño lo ve) |
+| **ShowUpgradeEffect** | RemoteEvent | `ReplicatedStorage` | GameHandler → BallThrower | Servidor avisa al cliente para mostrar imagen de upgrade al mejorar personaje (solo dueño lo ve) |
 
 ---
 
