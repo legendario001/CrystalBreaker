@@ -2172,9 +2172,10 @@ print("BallThrower cargado!")
 -- Lista de musicas disponibles. Para agregar mas en el futuro,
 -- solo agregar una entrada a esta tabla: { name = "...", soundId = "rbxassetid://..." }
 local MUSIC_LIST = {
-        { name = "Naturaleza",     soundId = "rbxassetid://96749515704166" },
-        { name = "Mystical Harp",  soundId = "rbxassetid://110289082772686" },
-        { name = "Tibetanos",      soundId = "rbxassetid://94670025666551" },
+        { name = "Naturaleza",          soundId = "rbxassetid://96749515704166" },
+        { name = "Mystical Harp",       soundId = "rbxassetid://110289082772686" },
+        { name = "Tibetanos",           soundId = "rbxassetid://94670025666551" },
+        { name = "Relaxing Game Loop",  soundId = "rbxassetid://84498576072067" },
 }
 
 local MUSIC_ICON = "rbxassetid://980810848"
