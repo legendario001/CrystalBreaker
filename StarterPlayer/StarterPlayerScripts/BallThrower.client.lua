@@ -2596,7 +2596,23 @@ local function updateGhostBlock()
 
         local mouseTarget = mouse.Target
         local mousePos = mouse.Hit.Position
-        local hitNormal = mouse.Hit.Normal
+        -- mouse.TargetSurface devuelve el Enum.NormalId de la cara apuntada
+        -- Lo convertimos a Vector3 normal para calcular la posicion adyacente
+        local targetSurface = mouse.TargetSurface
+        local normalVec = Vector3.new(0, 0, 0)
+        if targetSurface == Enum.NormalId.Top then
+                normalVec = Vector3.new(0, 1, 0)
+        elseif targetSurface == Enum.NormalId.Bottom then
+                normalVec = Vector3.new(0, -1, 0)
+        elseif targetSurface == Enum.NormalId.Front then
+                normalVec = Vector3.new(0, 0, -1)
+        elseif targetSurface == Enum.NormalId.Back then
+                normalVec = Vector3.new(0, 0, 1)
+        elseif targetSurface == Enum.NormalId.Left then
+                normalVec = Vector3.new(-1, 0, 0)
+        elseif targetSurface == Enum.NormalId.Right then
+                normalVec = Vector3.new(1, 0, 0)
+        end
 
         -- Calcular posicion snapped segun el target:
         -- - Si apunta a un bloque colocado (nombre "Block_*"): colocar adyacente (target + normal * BLOCK_SIZE)
@@ -2605,7 +2621,7 @@ local function updateGhostBlock()
         if mouseTarget and string.sub(mouseTarget.Name, 1, 6) == "Block_" then
                 -- Apuntando a un bloque existente: colocar adyacente segun la cara apuntada (normal)
                 local targetPos = mouseTarget.Position
-                local adjacentPos = targetPos + hitNormal * BLOCK_SIZE_BUILD
+                local adjacentPos = targetPos + normalVec * BLOCK_SIZE_BUILD
                 -- Snap X y Z al grid de la parcela (la Y ya viene correcta del target + normal)
                 snappedPos = snapToGrid(adjacentPos, parcel.Position)
         else
