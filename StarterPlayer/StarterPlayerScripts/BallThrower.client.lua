@@ -38,6 +38,8 @@ local ShowBillEffectEvent = ReplicatedStorage:WaitForChild("ShowBillEffect", 15)
 local ShowUpgradeEffectEvent = ReplicatedStorage:WaitForChild("ShowUpgradeEffect", 15)
 local PlaceBlockEvent = ReplicatedStorage:WaitForChild("PlaceBlock", 15)
 local RemoveBlockEvent = ReplicatedStorage:WaitForChild("RemoveBlock", 15)
+local BuyBlockEvent = ReplicatedStorage:WaitForChild("BuyBlock", 15)
+local UpdateInventoryEvent = ReplicatedStorage:WaitForChild("UpdateInventory", 15)
 
 -- ============================================
 -- EFECTO DE BILLETE (solo visible para el dueño)
@@ -2497,11 +2499,13 @@ print("Sistema de musica cargado!")
 -- ============================================
 -- SISTEMA DE CONSTRUCCION (modo build)
 -- ============================================
--- Boton "Construir" + tecla B para activar modo construccion
--- Click izquierdo: coloca bloque seleccionado
--- Click derecho: quita bloque apuntado
--- Grid visual cuando el modo esta activo
--- Bloque fantasma (preview) sigue al mouse
+-- Flujo:
+-- 1. Click en boton hammer (o tecla B) -> abre panel con 3 pestañas
+-- 2. Pestaña Materiales: comprar bloques con dinero (van al inventario)
+-- 3. Pestaña Inventario: ver bloques comprados, equipar uno
+-- 4. Pestaña Modo Construccion: cierra el panel y muestra hotbar inferior
+--    con el bloque equipado. Click izquierdo coloca, click derecho quita.
+-- El panel se puede reabrir con B o click en hammer.
 
 -- Lista local de bloques (debe coincidir con BuildManager.lua del servidor)
 local BLOCK_TYPES_BUILD = {
@@ -2515,24 +2519,32 @@ local BLOCK_TYPES_BUILD = {
         { id = "galaxia",   name = "Galaxia",   color = Color3.fromRGB(75, 0, 130),    material = Enum.Material.Neon,       cost = 500 },
 }
 
+-- Mapa rapido: id -> config
+local BLOCK_MAP_BUILD = {}
+for _, b in ipairs(BLOCK_TYPES_BUILD) do
+        BLOCK_MAP_BUILD[b.id] = b
+end
+
 local BLOCK_SIZE_BUILD = 4 -- debe coincidir con ParcelManager.BLOCK_SIZE
 local PARCEL_HEIGHT_BUILD = 36 -- debe coincidir con ParcelManager.PARCEL_HEIGHT
 local PARCEL_SIZE_X_BUILD = 36
 local PARCEL_SIZE_Z_BUILD = 56
 
 -- Estado del modo construccion
-local buildMode = false
-local selectedBlockIdx = 1 -- bloque seleccionado del inventario
-local ghostBlock = nil -- Part preview que sigue al mouse
-local gridVisual = nil -- Folder con las lineas del grid
-local canPlace = false -- true si se puede colocar en la posicion actual del ghost (en bounds + sin overlap)
+local buildMode = false          -- true si el modo construccion esta activo (panel abierto o hotbar visible)
+local buildPanelOpen = false     -- true si el panel de pestañas esta abierto
+local buildModeActive = false    -- true si el modo construccion esta activo (hotbar visible, panel cerrado)
+local equippedBlockId = nil      -- id del bloque equipado para colocar (del inventario)
+local blockInventory = {}        -- { [blockId] = count } - espejo del inventario del servidor
+local ghostBlock = nil           -- Part preview que sigue al mouse
+local gridVisual = nil           -- Folder con las lineas del grid
+local canPlace = false           -- true si se puede colocar en la posicion actual del ghost
+local currentTab = 1             -- 1=Materiales, 2=Inventario, 3=Modo Construccion
 
 -- Funcion para obtener la parcela del jugador (busca en Workspace/Parcelas)
 local function findPlayerParcel()
         local parcelas = Workspace:FindFirstChild("Parcelas")
         if not parcelas then return nil end
-        -- El cliente no sabe cual es "su" parcela, pero el servidor si.
-        -- Para el grid y el ghost, mostramos solo en la parcela que esta cerca del jugador.
         local char = player.Character
         if not char then return nil end
         local root = char:FindFirstChild("HumanoidRootPart")
@@ -2549,17 +2561,14 @@ local function findPlayerParcel()
                         end
                 end
         end
-        -- Solo devolver si esta suficientemente cerca (50 studs)
         if closestDist < 50 then return closest end
         return nil
 end
 
 -- Snap de posicion a la cuadricula de 4 studs
 local function snapToGrid(position, parcelCenter)
-        -- Calcula offset desde el centro de la parcela, hace snap, y vuelve a world coords
         local offsetX = position.X - parcelCenter.X
         local offsetZ = position.Z - parcelCenter.Z
-        -- Snap: redondear al multiplo de BLOCK_SIZE mas cercano
         local snappedX = math.round(offsetX / BLOCK_SIZE_BUILD) * BLOCK_SIZE_BUILD
         local snappedZ = math.round(offsetZ / BLOCK_SIZE_BUILD) * BLOCK_SIZE_BUILD
         return Vector3.new(
@@ -2569,16 +2578,48 @@ local function snapToGrid(position, parcelCenter)
         )
 end
 
+-- Forward declarations para variables que se usan antes de definirse (UI creada mas abajo)
+local hotbarSlot
+local hotbarPreview
+local hotbarNameLabel
+local hotbarCountLabel
+
+-- Actualizar el hotbar inferior (slot con el bloque equipado + count)
+local function updateHotbar()
+        if not buildModeActive then
+                if hotbarSlot then hotbarSlot.Visible = false end
+                return
+        end
+        if not equippedBlockId or not blockInventory[equippedBlockId] or blockInventory[equippedBlockId] <= 0 then
+                -- No hay bloque equipado o se acabo
+                if hotbarSlot then hotbarSlot.Visible = false end
+                return
+        end
+        local config = BLOCK_MAP_BUILD[equippedBlockId]
+        if not config then
+                if hotbarSlot then hotbarSlot.Visible = false end
+                return
+        end
+        hotbarPreview.BackgroundColor3 = config.color
+        hotbarNameLabel.Text = config.name
+        hotbarCountLabel.Text = "x" .. tostring(blockInventory[equippedBlockId])
+        hotbarSlot.Visible = true
+end
+
 -- Crear/actualizar el bloque fantasma (preview)
--- IMPORTANTE: Cuando se apunta a un bloque existente, el nuevo bloque se coloca ADYACENTE
--- (en la direccion de la normal del hit) - esto garantiza alineacion perfecta al grid.
--- Cuando se apunta al suelo de la parcela, se coloca al ras del piso (1ra capa).
 local function updateGhostBlock()
-        if not buildMode then
+        if not buildModeActive then
                 if ghostBlock then
                         ghostBlock:Destroy()
                         ghostBlock = nil
                 end
+                canPlace = false
+                return
+        end
+
+        -- Si no hay bloque equipado o count 0, no mostrar ghost
+        if not equippedBlockId or not blockInventory[equippedBlockId] or blockInventory[equippedBlockId] <= 0 then
+                if ghostBlock then ghostBlock.LocalTransparencyModifier = 1 end
                 canPlace = false
                 return
         end
@@ -2590,46 +2631,30 @@ local function updateGhostBlock()
                 return
         end
 
-        -- Top real de la parcela (centro + mitad de su altura)
         local parcelSizeY = parcel.Size and parcel.Size.Y or 1
         local parcelTopY = parcel.Position.Y + (parcelSizeY / 2)
 
         local mouseTarget = mouse.Target
         local mousePos = mouse.Hit.Position
-        -- mouse.TargetSurface devuelve el Enum.NormalId de la cara apuntada
-        -- Lo convertimos a Vector3 normal para calcular la posicion adyacente
         local targetSurface = mouse.TargetSurface
         local normalVec = Vector3.new(0, 0, 0)
-        if targetSurface == Enum.NormalId.Top then
-                normalVec = Vector3.new(0, 1, 0)
-        elseif targetSurface == Enum.NormalId.Bottom then
-                normalVec = Vector3.new(0, -1, 0)
-        elseif targetSurface == Enum.NormalId.Front then
-                normalVec = Vector3.new(0, 0, -1)
-        elseif targetSurface == Enum.NormalId.Back then
-                normalVec = Vector3.new(0, 0, 1)
-        elseif targetSurface == Enum.NormalId.Left then
-                normalVec = Vector3.new(-1, 0, 0)
-        elseif targetSurface == Enum.NormalId.Right then
-                normalVec = Vector3.new(1, 0, 0)
+        if targetSurface == Enum.NormalId.Top then normalVec = Vector3.new(0, 1, 0)
+        elseif targetSurface == Enum.NormalId.Bottom then normalVec = Vector3.new(0, -1, 0)
+        elseif targetSurface == Enum.NormalId.Front then normalVec = Vector3.new(0, 0, -1)
+        elseif targetSurface == Enum.NormalId.Back then normalVec = Vector3.new(0, 0, 1)
+        elseif targetSurface == Enum.NormalId.Left then normalVec = Vector3.new(-1, 0, 0)
+        elseif targetSurface == Enum.NormalId.Right then normalVec = Vector3.new(1, 0, 0)
         end
 
-        -- Calcular posicion snapped segun el target:
-        -- - Si apunta a un bloque colocado (nombre "Block_*"): colocar adyacente (target + normal * BLOCK_SIZE)
-        -- - Si apunta al suelo u otra cosa: colocar al ras del piso (1ra capa)
         local snappedPos
         if mouseTarget and string.sub(mouseTarget.Name, 1, 6) == "Block_" then
-                -- Apuntando a un bloque existente: colocar adyacente segun la cara apuntada (normal)
                 local targetPos = mouseTarget.Position
                 local adjacentPos = targetPos + normalVec * BLOCK_SIZE_BUILD
-                -- Snap X y Z al grid de la parcela (la Y ya viene correcta del target + normal)
                 snappedPos = snapToGrid(adjacentPos, parcel.Position)
         else
-                -- Apuntando al suelo de la parcela (o ningun target valido): 1ra capa al ras del piso
                 snappedPos = snapToGrid(Vector3.new(mousePos.X, parcelTopY + BLOCK_SIZE_BUILD/2, mousePos.Z), parcel.Position)
         end
 
-        -- Calcular bounds de la parcela
         local halfX = PARCEL_SIZE_X_BUILD / 2
         local halfZ = PARCEL_SIZE_Z_BUILD / 2
         local maxY = parcelTopY + PARCEL_HEIGHT_BUILD
@@ -2641,7 +2666,6 @@ local function updateGhostBlock()
                 snappedPos.Y + BLOCK_SIZE_BUILD/2 <= maxY + 0.01 and
                 snappedPos.Y - BLOCK_SIZE_BUILD/2 >= parcelTopY - 0.01
 
-        -- Verificar overlap: si ya hay un bloque en esa posicion exacta, no se puede colocar
         local occupied = false
         local blocksFolder = parcel:FindFirstChild("Blocks_" .. player.UserId)
         if blocksFolder then
@@ -2655,7 +2679,6 @@ local function updateGhostBlock()
 
         canPlace = inBounds and not occupied
 
-        -- Crear ghost block si no existe
         if not ghostBlock then
                 ghostBlock = Instance.new("Part")
                 ghostBlock.Name = "GhostBlock"
@@ -2666,14 +2689,13 @@ local function updateGhostBlock()
                 ghostBlock.CanTouch = false
                 ghostBlock.Material = Enum.Material.ForceField
                 ghostBlock.Transparency = 0.5
-                ghostBlock.LocalTransparencyModifier = 1 -- oculto por defecto
+                ghostBlock.LocalTransparencyModifier = 1
                 ghostBlock.Parent = Workspace
         end
 
-        local config = BLOCK_TYPES_BUILD[selectedBlockIdx]
+        local config = BLOCK_MAP_BUILD[equippedBlockId]
         ghostBlock.Position = snappedPos
-        ghostBlock.LocalTransparencyModifier = 0.5 -- semi-transparente
-        -- Color: color del bloque si se puede colocar, rojo si no
+        ghostBlock.LocalTransparencyModifier = 0.5
         if canPlace then
                 ghostBlock.Color = config.color
         else
@@ -2681,7 +2703,7 @@ local function updateGhostBlock()
         end
 end
 
--- Crear el grid visual (lineas que muestran la cuadricula de la parcela)
+-- Crear el grid visual
 local function createGridVisual(parcel)
         if gridVisual then
                 gridVisual:Destroy()
@@ -2696,9 +2718,8 @@ local function createGridVisual(parcel)
         local halfX = PARCEL_SIZE_X_BUILD / 2
         local halfZ = PARCEL_SIZE_Z_BUILD / 2
         local center = parcel.Position
-        local topY = center.Y + 0.1 -- ligeramente encima de la parcela para evitar z-fighting
+        local topY = center.Y + 0.1
 
-        -- Lineas horizontales (a lo largo de Z, desplazadas en X)
         for i = -halfX, halfX, BLOCK_SIZE_BUILD do
                 local line = Instance.new("Part")
                 line.Name = "GridLine_H_" .. i
@@ -2713,7 +2734,6 @@ local function createGridVisual(parcel)
                 line.Transparency = 0.7
                 line.Parent = gridVisual
         end
-        -- Lineas verticales (a lo largo de X, desplazadas en Z)
         for i = -halfZ, halfZ, BLOCK_SIZE_BUILD do
                 local line = Instance.new("Part")
                 line.Name = "GridLine_V_" .. i
@@ -2737,18 +2757,19 @@ local function removeGridVisual()
         end
 end
 
--- Boton "Construir" (arriba del boton de musica)
+-- ============================================
+-- UI: Boton hammer (abre/cierra panel)
+-- ============================================
 local buildBtn = Instance.new("TextButton")
 buildBtn.Name = "BuildBtn"
 buildBtn.Size = UDim2.new(0, 60, 0, 60)
-buildBtn.Position = UDim2.new(0, 20, 1, -340) -- 70px arriba del boton de musica (-270 - 70)
+buildBtn.Position = UDim2.new(0, 20, 1, -340)
 buildBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
 buildBtn.BorderSizePixel = 0
 buildBtn.Text = ""
 buildBtn.Parent = screenGui
 Instance.new("UICorner", buildBtn).CornerRadius = UDim.new(0, 12)
 
--- Icono del boton construir (emoji temporal - se puede reemplazar por imagen)
 local buildIcon = Instance.new("TextLabel")
 buildIcon.Size = UDim2.new(0.8, 0, 0.8, 0)
 buildIcon.Position = UDim2.new(0.1, 0, 0.1, 0)
@@ -2758,12 +2779,11 @@ buildIcon.TextScaled = true
 buildIcon.Parent = buildBtn
 
 local buildStroke = Instance.new("UIStroke")
-buildStroke.Color = Color3.fromRGB(255, 180, 80) -- naranja para diferenciar
+buildStroke.Color = Color3.fromRGB(255, 180, 80)
 buildStroke.Thickness = 2
 buildStroke.Transparency = 0.3
 buildStroke.Parent = buildBtn
 
--- Tooltip del boton (texto B)
 local buildKeyLabel = Instance.new("TextLabel")
 buildKeyLabel.Size = UDim2.new(0.3, 0, 0.3, 0)
 buildKeyLabel.Position = UDim2.new(0.65, 0, 0.6, 0)
@@ -2777,11 +2797,13 @@ buildKeyLabel.ZIndex = 2
 buildKeyLabel.Parent = buildBtn
 Instance.new("UICorner", buildKeyLabel).CornerRadius = UDim.new(0, 4)
 
--- Panel de bloques (mismo formato que mochila y musica)
+-- ============================================
+-- UI: Panel con 3 pestañas
+-- ============================================
 local buildPanel = Instance.new("Frame")
 buildPanel.Name = "BuildPanel"
-buildPanel.Size = UDim2.new(0, 400, 0, 350)
-buildPanel.Position = UDim2.new(0.5, -200, 1, -370)
+buildPanel.Size = UDim2.new(0, 400, 0, 380)
+buildPanel.Position = UDim2.new(0.5, -200, 1, -400)
 buildPanel.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
 buildPanel.BackgroundTransparency = 0.05
 buildPanel.BorderSizePixel = 0
@@ -2790,6 +2812,13 @@ buildPanel.ZIndex = 50
 buildPanel.Parent = screenGui
 Instance.new("UICorner", buildPanel).CornerRadius = UDim.new(0, 16)
 
+local bpBuildStroke = Instance.new("UIStroke")
+bpBuildStroke.Color = Color3.fromRGB(255, 180, 80)
+bpBuildStroke.Thickness = 2
+bpBuildStroke.Transparency = 0.2
+bpBuildStroke.Parent = buildPanel
+
+-- Boton X para cerrar
 local bpBuildCloseBtn = Instance.new("TextButton")
 bpBuildCloseBtn.Name = "BpBuildCloseBtn"
 bpBuildCloseBtn.Size = UDim2.new(0, 30, 0, 30)
@@ -2804,66 +2833,217 @@ bpBuildCloseBtn.ZIndex = 52
 bpBuildCloseBtn.Parent = buildPanel
 Instance.new("UICorner", bpBuildCloseBtn).CornerRadius = UDim.new(0, 8)
 
-local bpBuildStroke = Instance.new("UIStroke")
-bpBuildStroke.Color = Color3.fromRGB(255, 180, 80)
-bpBuildStroke.Thickness = 2
-bpBuildStroke.Transparency = 0.2
-bpBuildStroke.Parent = buildPanel
+-- ============================================
+-- Pestañas (3 botones arriba del panel)
+-- ============================================
+local tabContainer = Instance.new("Frame")
+tabContainer.Name = "TabContainer"
+tabContainer.Size = UDim2.new(1, -20, 0, 35)
+tabContainer.Position = UDim2.new(0, 10, 0, 5)
+tabContainer.BackgroundTransparency = 1
+tabContainer.ZIndex = 51
+tabContainer.Parent = buildPanel
 
-local bpBuildTitle = Instance.new("TextLabel")
-bpBuildTitle.Size = UDim2.new(1, 0, 0, 35)
-bpBuildTitle.BackgroundTransparency = 1
-bpBuildTitle.Text = "BLOQUES"
-bpBuildTitle.TextColor3 = Color3.fromRGB(255, 180, 80)
-bpBuildTitle.TextScaled = true
-bpBuildTitle.Font = Enum.Font.GothamBlack
-bpBuildTitle.ZIndex = 51
-bpBuildTitle.Parent = buildPanel
+local tabButtons = {}
+local tabLabels = { "Materiales", "Inventario", "Modo Construccion" }
+for i, label in ipairs(tabLabels) do
+        local tabBtn = Instance.new("TextButton")
+        tabBtn.Name = "Tab" .. i
+        tabBtn.Size = UDim2.new(0.33, -3, 1, 0)
+        tabBtn.Position = UDim2.new((i-1) * 0.33, 0, 0, 0)
+        tabBtn.BackgroundColor3 = (i == 1) and Color3.fromRGB(60, 60, 80) or Color3.fromRGB(35, 35, 45)
+        tabBtn.BorderSizePixel = 0
+        tabBtn.Text = label
+        tabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        tabBtn.TextScaled = true
+        tabBtn.Font = Enum.Font.GothamBold
+        tabBtn.ZIndex = 51
+        tabBtn.Parent = tabContainer
+        Instance.new("UICorner", tabBtn).CornerRadius = UDim.new(0, 8)
+        tabButtons[i] = tabBtn
+end
 
--- Scroll con los bloques
-local bpBuildScroll = Instance.new("ScrollingFrame")
-bpBuildScroll.Size = UDim2.new(1, -20, 1, -45)
-bpBuildScroll.Position = UDim2.new(0, 10, 0, 40)
-bpBuildScroll.BackgroundTransparency = 1
-bpBuildScroll.ScrollBarThickness = 6
-bpBuildScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-bpBuildScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-bpBuildScroll.ZIndex = 51
-bpBuildScroll.Parent = buildPanel
+-- ============================================
+-- Contenido de las pestañas (3 frames, solo 1 visible a la vez)
+-- ============================================
+-- Tab 1: Materiales (comprar)
+local tabMateriales = Instance.new("ScrollingFrame")
+tabMateriales.Name = "TabMateriales"
+tabMateriales.Size = UDim2.new(1, -20, 1, -50)
+tabMateriales.Position = UDim2.new(0, 10, 0, 45)
+tabMateriales.BackgroundTransparency = 1
+tabMateriales.ScrollBarThickness = 6
+tabMateriales.CanvasSize = UDim2.new(0, 0, 0, 0)
+tabMateriales.AutomaticCanvasSize = Enum.AutomaticSize.Y
+tabMateriales.ZIndex = 51
+tabMateriales.Visible = true
+tabMateriales.Parent = buildPanel
+local tabMatLayout = Instance.new("UIListLayout")
+tabMatLayout.Padding = UDim.new(0, 8)
+tabMatLayout.Parent = tabMateriales
 
-local bpBuildListLayout = Instance.new("UIListLayout")
-bpBuildListLayout.Padding = UDim.new(0, 8)
-bpBuildListLayout.Parent = bpBuildScroll
+-- Tab 2: Inventario (equipar)
+local tabInventario = Instance.new("ScrollingFrame")
+tabInventario.Name = "TabInventario"
+tabInventario.Size = UDim2.new(1, -20, 1, -50)
+tabInventario.Position = UDim2.new(0, 10, 0, 45)
+tabInventario.BackgroundTransparency = 1
+tabInventario.ScrollBarThickness = 6
+tabInventario.CanvasSize = UDim2.new(0, 0, 0, 0)
+tabInventario.AutomaticCanvasSize = Enum.AutomaticSize.Y
+tabInventario.ZIndex = 51
+tabInventario.Visible = false
+tabInventario.Parent = buildPanel
+local tabInvLayout = Instance.new("UIListLayout")
+tabInvLayout.Padding = UDim.new(0, 8)
+tabInvLayout.Parent = tabInventario
 
--- Funcion para actualizar el panel de bloques
-local function updateBuildUI()
-        -- Limpiar
-        for _, child in ipairs(bpBuildScroll:GetChildren()) do
+-- Tab 3: Modo Construccion (boton grande que activa el modo y cierra el panel)
+local tabModoConstruccion = Instance.new("Frame")
+tabModoConstruccion.Name = "TabModoConstruccion"
+tabModoConstruccion.Size = UDim2.new(1, -20, 1, -50)
+tabModoConstruccion.Position = UDim2.new(0, 10, 0, 45)
+tabModoConstruccion.BackgroundTransparency = 1
+tabModoConstruccion.ZIndex = 51
+tabModoConstruccion.Visible = false
+tabModoConstruccion.Parent = buildPanel
+
+local modoConstrucionInfo = Instance.new("TextLabel")
+modoConstrucionInfo.Size = UDim2.new(1, 0, 0, 80)
+modoConstrucionInfo.Position = UDim2.new(0, 0, 0, 20)
+modoConstrucionInfo.BackgroundTransparency = 1
+modoConstrucionInfo.Text = "Al activar el modo construccion, se cerrara este panel y aparecerá un hotbar abajo con el bloque equipado.\n\nClick izquierdo: colocar bloque\nClick derecho: quitar bloque"
+modoConstrucionInfo.TextColor3 = Color3.fromRGB(200, 200, 200)
+modoConstrucionInfo.TextScaled = true
+modoConstrucionInfo.Font = Enum.Font.Gotham
+modoConstrucionInfo.TextWrapped = true
+modoConstrucionInfo.ZIndex = 52
+modoConstrucionInfo.Parent = tabModoConstruccion
+
+local activarModoBtn = Instance.new("TextButton")
+activarModoBtn.Name = "ActivarModoBtn"
+activarModoBtn.Size = UDim2.new(1, 0, 0, 60)
+activarModoBtn.Position = UDim2.new(0, 0, 0, 130)
+activarModoBtn.BackgroundColor3 = Color3.fromRGB(80, 220, 100)
+activarModoBtn.BorderSizePixel = 0
+activarModoBtn.Text = "ACTIVAR MODO CONSTRUCCION"
+activarModoBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
+activarModoBtn.TextScaled = true
+activarModoBtn.Font = Enum.Font.GothamBold
+activarModoBtn.ZIndex = 52
+activarModoBtn.Parent = tabModoConstruccion
+Instance.new("UICorner", activarModoBtn).CornerRadius = UDim.new(0, 10)
+
+-- Advertencia si no hay bloque equipado
+local noEquipWarning = Instance.new("TextLabel")
+noEquipWarning.Size = UDim2.new(1, 0, 0, 40)
+noEquipWarning.Position = UDim2.new(0, 0, 0, 210)
+noEquipWarning.BackgroundTransparency = 1
+noEquipWarning.Text = "⚠ No tienes bloque equipado. Ve a Inventario y equipa uno."
+noEquipWarning.TextColor3 = Color3.fromRGB(255, 180, 80)
+noEquipWarning.TextScaled = true
+noEquipWarning.Font = Enum.Font.GothamBold
+noEquipWarning.Visible = false
+noEquipWarning.ZIndex = 52
+noEquipWarning.Parent = tabModoConstruccion
+
+-- ============================================
+-- Hotbar inferior (slot con bloque equipado)
+-- ============================================
+hotbarSlot = Instance.new("Frame")
+hotbarSlot.Name = "HotbarSlot"
+hotbarSlot.Size = UDim2.new(0, 100, 0, 100)
+hotbarSlot.Position = UDim2.new(0.5, -50, 1, -120)
+hotbarSlot.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+hotbarSlot.BackgroundTransparency = 0.1
+hotbarSlot.BorderSizePixel = 0
+hotbarSlot.Visible = false
+hotbarSlot.ZIndex = 50
+hotbarSlot.Parent = screenGui
+Instance.new("UICorner", hotbarSlot).CornerRadius = UDim.new(0, 12)
+
+local hotbarStroke = Instance.new("UIStroke")
+hotbarStroke.Color = Color3.fromRGB(255, 180, 80)
+hotbarStroke.Thickness = 2
+hotbarStroke.Transparency = 0.2
+hotbarStroke.Parent = hotbarSlot
+
+-- Preview del bloque (cuadro de color)
+hotbarPreview = Instance.new("Frame")
+hotbarPreview.Name = "Preview"
+hotbarPreview.Size = UDim2.new(0.7, 0, 0.5, 0)
+hotbarPreview.Position = UDim2.new(0.15, 0, 0.1, 0)
+hotbarPreview.BackgroundColor3 = Color3.fromRGB(160, 100, 50)
+hotbarPreview.BorderSizePixel = 0
+hotbarPreview.ZIndex = 51
+hotbarPreview.Parent = hotbarSlot
+Instance.new("UICorner", hotbarPreview).CornerRadius = UDim.new(0, 6)
+
+-- Nombre del bloque
+hotbarNameLabel = Instance.new("TextLabel")
+hotbarNameLabel.Size = UDim2.new(1, 0, 0.2, 0)
+hotbarNameLabel.Position = UDim2.new(0, 0, 0.65, 0)
+hotbarNameLabel.BackgroundTransparency = 1
+hotbarNameLabel.Text = "Madera"
+hotbarNameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+hotbarNameLabel.TextScaled = true
+hotbarNameLabel.Font = Enum.Font.GothamBold
+hotbarNameLabel.ZIndex = 51
+hotbarNameLabel.Parent = hotbarSlot
+
+-- Count
+hotbarCountLabel = Instance.new("TextLabel")
+hotbarCountLabel.Size = UDim2.new(0.4, 0, 0.3, 0)
+hotbarCountLabel.Position = UDim2.new(0.55, 0, 0.05, 0)
+hotbarCountLabel.BackgroundColor3 = Color3.fromRGB(80, 220, 100)
+hotbarCountLabel.BorderSizePixel = 0
+hotbarCountLabel.Text = "x1"
+hotbarCountLabel.TextColor3 = Color3.fromRGB(0, 0, 0)
+hotbarCountLabel.TextScaled = true
+hotbarCountLabel.Font = Enum.Font.GothamBold
+hotbarCountLabel.ZIndex = 52
+hotbarCountLabel.Parent = hotbarSlot
+Instance.new("UICorner", hotbarCountLabel).CornerRadius = UDim.new(0, 6)
+
+-- ============================================
+-- Funciones de UI
+-- ============================================
+
+-- Actualizar la tab seleccionada visualmente
+local function selectTab(idx)
+        currentTab = idx
+        for i, btn in ipairs(tabButtons) do
+                btn.BackgroundColor3 = (i == idx) and Color3.fromRGB(60, 60, 80) or Color3.fromRGB(35, 35, 45)
+        end
+        tabMateriales.Visible = (idx == 1)
+        tabInventario.Visible = (idx == 2)
+        tabModoConstruccion.Visible = (idx == 3)
+        -- Mostrar advertencia si no hay bloque equipado
+        noEquipWarning.Visible = (idx == 3 and not equippedBlockId)
+end
+
+-- Llenar la tab de Materiales (comprar)
+local function updateMaterialesTab()
+        for _, child in ipairs(tabMateriales:GetChildren()) do
                 if child:IsA("Frame") then child:Destroy() end
         end
-        -- Crear card por bloque
-        for idx, block in ipairs(BLOCK_TYPES_BUILD) do
+        for _, block in ipairs(BLOCK_TYPES_BUILD) do
                 local card = Instance.new("Frame")
-                card.Name = "BlockCard_" .. idx
+                card.Name = "BuyCard_" .. block.id
                 card.Size = UDim2.new(1, -10, 0, 60)
                 card.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
                 card.BorderSizePixel = 0
                 card.ZIndex = 52
-                card.Parent = bpBuildScroll
+                card.Parent = tabMateriales
                 Instance.new("UICorner", card).CornerRadius = UDim.new(0, 10)
 
                 local cardStroke = Instance.new("UIStroke")
-                if idx == selectedBlockIdx then
-                        cardStroke.Color = Color3.fromRGB(80, 220, 80)
-                        cardStroke.Thickness = 3
-                else
-                        cardStroke.Color = Color3.fromRGB(255, 180, 80)
-                        cardStroke.Thickness = 2
-                end
+                cardStroke.Color = Color3.fromRGB(255, 180, 80)
+                cardStroke.Thickness = 2
                 cardStroke.Transparency = 0.2
                 cardStroke.Parent = card
 
-                -- Preview del bloque (Part color como indicador)
+                -- Preview del bloque (color)
                 local preview = Instance.new("Frame")
                 preview.Size = UDim2.new(0, 50, 1, -10)
                 preview.Position = UDim2.new(0, 5, 0, 5)
@@ -2873,7 +3053,7 @@ local function updateBuildUI()
                 preview.Parent = card
                 Instance.new("UICorner", preview).CornerRadius = UDim.new(0, 6)
 
-                -- Info del bloque
+                -- Info (nombre + precio)
                 local infoLabel = Instance.new("TextLabel")
                 infoLabel.Size = UDim2.new(0.55, 0, 1, -10)
                 infoLabel.Position = UDim2.new(0, 60, 0, 5)
@@ -2887,135 +3067,293 @@ local function updateBuildUI()
                 infoLabel.ZIndex = 53
                 infoLabel.Parent = card
 
-                -- Boton Seleccionar
-                local selBtn = Instance.new("TextButton")
-                selBtn.Size = UDim2.new(0.3, -5, 0.6, 0)
-                selBtn.Position = UDim2.new(0.7, 5, 0.2, 0)
-                selBtn.BackgroundColor3 = (idx == selectedBlockIdx) and Color3.fromRGB(80, 220, 80) or Color3.fromRGB(255, 180, 80)
-                selBtn.BorderSizePixel = 0
-                selBtn.Text = (idx == selectedBlockIdx) and "✓" or "Sel"
-                selBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
-                selBtn.TextScaled = true
-                selBtn.Font = Enum.Font.GothamBold
-                selBtn.ZIndex = 53
-                selBtn.Parent = card
-                Instance.new("UICorner", selBtn).CornerRadius = UDim.new(0, 6)
+                -- Boton Comprar
+                local buyBtn = Instance.new("TextButton")
+                buyBtn.Size = UDim2.new(0.3, -5, 0.6, 0)
+                buyBtn.Position = UDim2.new(0.7, 5, 0.2, 0)
+                buyBtn.BackgroundColor3 = Color3.fromRGB(255, 180, 80)
+                buyBtn.BorderSizePixel = 0
+                buyBtn.Text = "Comprar"
+                buyBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
+                buyBtn.TextScaled = true
+                buyBtn.Font = Enum.Font.GothamBold
+                buyBtn.ZIndex = 53
+                buyBtn.Parent = card
+                Instance.new("UICorner", buyBtn).CornerRadius = UDim.new(0, 6)
 
-                selBtn.MouseButton1Click:Connect(function()
-                        selectedBlockIdx = idx
-                        updateBuildUI()
-                        print("[Build] Bloque seleccionado: " .. block.name .. " ($" .. block.cost .. ")")
+                buyBtn.MouseButton1Click:Connect(function()
+                        BuyBlockEvent:FireServer(block.id)
                 end)
         end
 end
 
--- Forward declaration para que las closures puedan referenciarla
-local toggleBuildMode
+-- Llenar la tab de Inventario (equipar)
+local function updateInventarioTab()
+        for _, child in ipairs(tabInventario:GetChildren()) do
+                if child:IsA("Frame") then child:Destroy() end
+        end
+        local hasAny = false
+        for _, block in ipairs(BLOCK_TYPES_BUILD) do
+                local count = blockInventory[block.id] or 0
+                if count > 0 then
+                        hasAny = true
+                        local card = Instance.new("Frame")
+                        card.Name = "InvCard_" .. block.id
+                        card.Size = UDim2.new(1, -10, 0, 60)
+                        card.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+                        card.BorderSizePixel = 0
+                        card.ZIndex = 52
+                        card.Parent = tabInventario
+                        Instance.new("UICorner", card).CornerRadius = UDim.new(0, 10)
 
--- Toggle panel de bloques
+                        local cardStroke = Instance.new("UIStroke")
+                        if equippedBlockId == block.id then
+                                cardStroke.Color = Color3.fromRGB(80, 220, 80)
+                                cardStroke.Thickness = 3
+                        else
+                                cardStroke.Color = Color3.fromRGB(255, 180, 80)
+                                cardStroke.Thickness = 2
+                        end
+                        cardStroke.Transparency = 0.2
+                        cardStroke.Parent = card
+
+                        local preview = Instance.new("Frame")
+                        preview.Size = UDim2.new(0, 50, 1, -10)
+                        preview.Position = UDim2.new(0, 5, 0, 5)
+                        preview.BackgroundColor3 = block.color
+                        preview.BorderSizePixel = 0
+                        preview.ZIndex = 53
+                        preview.Parent = card
+                        Instance.new("UICorner", preview).CornerRadius = UDim.new(0, 6)
+
+                        local infoLabel = Instance.new("TextLabel")
+                        infoLabel.Size = UDim2.new(0.55, 0, 1, -10)
+                        infoLabel.Position = UDim2.new(0, 60, 0, 5)
+                        infoLabel.BackgroundTransparency = 1
+                        infoLabel.Text = '<font color="#FFFFFF">' .. block.name .. '</font>\n<font color="#80C8FF">x' .. count .. '</font>'
+                        infoLabel.RichText = true
+                        infoLabel.TextXAlignment = Enum.TextXAlignment.Left
+                        infoLabel.TextYAlignment = Enum.TextYAlignment.Center
+                        infoLabel.TextScaled = true
+                        infoLabel.Font = Enum.Font.GothamBold
+                        infoLabel.ZIndex = 53
+                        infoLabel.Parent = card
+
+                        local equipBtn = Instance.new("TextButton")
+                        equipBtn.Size = UDim2.new(0.3, -5, 0.6, 0)
+                        equipBtn.Position = UDim2.new(0.7, 5, 0.2, 0)
+                        if equippedBlockId == block.id then
+                                equipBtn.BackgroundColor3 = Color3.fromRGB(80, 220, 80)
+                                equipBtn.Text = "✓ Equipado"
+                        else
+                                equipBtn.BackgroundColor3 = Color3.fromRGB(255, 180, 80)
+                                equipBtn.Text = "Equipar"
+                        end
+                        equipBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
+                        equipBtn.TextScaled = true
+                        equipBtn.Font = Enum.Font.GothamBold
+                        equipBtn.ZIndex = 53
+                        equipBtn.Parent = card
+                        Instance.new("UICorner", equipBtn).CornerRadius = UDim.new(0, 6)
+
+                        equipBtn.MouseButton1Click:Connect(function()
+                                equippedBlockId = block.id
+                                updateInventarioTab()
+                                updateHotbar()
+                                selectTab(3) -- saltar a la tab de modo construccion
+                                print("[Build] Bloque equipado: " .. block.name)
+                        end)
+                end
+        end
+        if not hasAny then
+                local empty = Instance.new("TextLabel")
+                empty.Size = UDim2.new(1, -10, 0, 60)
+                empty.BackgroundTransparency = 1
+                empty.Text = "No tienes bloques. Ve a Materiales y compra algunos."
+                empty.TextColor3 = Color3.fromRGB(180, 180, 180)
+                empty.TextScaled = true
+                empty.Font = Enum.Font.Gotham
+                empty.ZIndex = 52
+                empty.Parent = tabInventario
+        end
+end
+
+-- Activar modo construccion (cierra panel, muestra hotbar y grid)
+local function activateBuildMode()
+        if not equippedBlockId or not blockInventory[equippedBlockId] or blockInventory[equippedBlockId] <= 0 then
+                warn("[Build] No hay bloque equipado para activar modo construccion")
+                return
+        end
+        buildPanelOpen = false
+        buildPanel.Visible = false
+        buildModeActive = true
+        buildBtn.BackgroundColor3 = Color3.fromRGB(80, 220, 100)
+        -- Crear grid
+        local parcel = findPlayerParcel()
+        createGridVisual(parcel)
+        -- Desactivar pelota si esta equipada
+        if ballEquipped then
+                unequipBall()
+        end
+        -- Cerrar mochila y musica
+        backpackPanel.Visible = false
+        musicPanel.Visible = false
+        updateHotbar()
+        print("[Build] Modo construccion ACTIVADO (con hotbar)")
+end
+
+-- Desactivar modo construccion (cierra hotbar y grid)
+local function deactivateBuildMode()
+        buildModeActive = false
+        buildPanelOpen = false
+        buildPanel.Visible = false
+        removeGridVisual()
+        if ghostBlock then
+                ghostBlock:Destroy()
+                ghostBlock = nil
+        end
+        buildBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+        updateHotbar()
+        print("[Build] Modo construccion DESACTIVADO")
+end
+
+-- Abrir panel de construccion
+local function openBuildPanel()
+        if buildModeActive then
+                -- Si el modo construccion esta activo, desactivarlo primero
+                deactivateBuildMode()
+        end
+        buildPanelOpen = true
+        buildPanel.Visible = true
+        buildBtn.BackgroundColor3 = Color3.fromRGB(80, 220, 100)
+        selectTab(1) -- abrir siempre en Materiales
+        updateMaterialesTab()
+        updateInventarioTab()
+        -- Desactivar pelota si esta equipada
+        if ballEquipped then
+                unequipBall()
+        end
+        -- Cerrar mochila y musica
+        backpackPanel.Visible = false
+        musicPanel.Visible = false
+end
+
+-- Cerrar panel de construccion
+local function closeBuildPanel()
+        buildPanelOpen = false
+        buildPanel.Visible = false
+        buildBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+end
+
+-- Toggle: si panel abierto -> cerrar. Si modo activo -> desactivar. Si nada -> abrir panel.
+local function toggleBuild()
+        if buildPanelOpen then
+                closeBuildPanel()
+        elseif buildModeActive then
+                deactivateBuildMode()
+        else
+                openBuildPanel()
+        end
+end
+
+-- ============================================
+-- Conexiones de UI
+-- ============================================
+
+-- Boton hammer
 buildBtn.MouseButton1Click:Connect(function()
-        toggleBuildMode()
+        toggleBuild()
 end)
 
+-- Boton X del panel
 bpBuildCloseBtn.MouseButton1Click:Connect(function()
-        if buildMode then toggleBuildMode() end
+        closeBuildPanel()
 end)
 
--- Cuando se abre mochila o musica, cerrar panel de bloques (no se solapen)
+-- Pestañas
+for i, btn in ipairs(tabButtons) do
+        btn.MouseButton1Click:Connect(function()
+                selectTab(i)
+                if i == 1 then updateMaterialesTab()
+                elseif i == 2 then updateInventarioTab() end
+        end)
+end
+
+-- Boton ACTIVAR MODO CONSTRUCCION (tab 3)
+activarModoBtn.MouseButton1Click:Connect(function()
+        activateBuildMode()
+end)
+
+-- Cuando se abre mochila o musica, cerrar todo de build
 backpackBtn.MouseButton1Click:Connect(function()
-        if backpackPanel.Visible and buildMode then
-                toggleBuildMode()
+        if backpackPanel.Visible then
+                if buildPanelOpen then closeBuildPanel() end
+                if buildModeActive then deactivateBuildMode() end
         end
 end)
 musicBtn.MouseButton1Click:Connect(function()
-        if musicPanel.Visible and buildMode then
-                toggleBuildMode()
+        if musicPanel.Visible then
+                if buildPanelOpen then closeBuildPanel() end
+                if buildModeActive then deactivateBuildMode() end
         end
 end)
 
--- Tecla B para abrir/cerrar modo construccion
+-- Tecla B para toggle
 UserInputService.InputBegan:Connect(function(input, processed)
         if processed then return end
         if input.KeyCode == Enum.KeyCode.B then
-                toggleBuildMode()
+                toggleBuild()
         end
 end)
 
--- Click izquierdo: colocar bloque / Click derecho: quitar bloque (solo en modo build)
+-- Click izquierdo: colocar / Click derecho: quitar (solo en modo construccion activo)
 UserInputService.InputBegan:Connect(function(input, processed)
-        if not buildMode then return end
+        if not buildModeActive then return end
         if processed then return end
-        -- Solo procesar si no es UI
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                -- Click izquierdo: colocar bloque
-                -- (Part no tiene Visible, usamos LocalTransparencyModifier para saber si esta visible)
-                if ghostBlock and ghostBlock.LocalTransparencyModifier < 1 and canPlace then
-                        local config = BLOCK_TYPES_BUILD[selectedBlockIdx]
-                        PlaceBlockEvent:FireServer(config.id, ghostBlock.Position, nil)
+                if ghostBlock and ghostBlock.LocalTransparencyModifier < 1 and canPlace and equippedBlockId then
+                        PlaceBlockEvent:FireServer(equippedBlockId, ghostBlock.Position, nil)
                 end
         elseif input.UserInputType == Enum.UserInputType.MouseButton2 then
-                -- Click derecho: quitar bloque apuntado
-                -- Raycast desde la camara para encontrar el bloque
                 local mouseTarget = mouse.Target
-                if mouseTarget and mouseTarget.Name and string.sub(mouseTarget.Name, 1, 6) == "Block_" then
-                        -- Verificar que tenga tag Owner (el servidor validara que sea del jugador)
+                if mouseTarget and string.sub(mouseTarget.Name, 1, 6) == "Block_" then
                         RemoveBlockEvent:FireServer(mouseTarget)
                 end
         end
 end)
 
--- Touch para mobile (tocar = colocar, mantener + tocar = quitar)
+-- Touch para mobile
 UserInputService.InputBegan:Connect(function(input, processed)
-        if not buildMode then return end
+        if not buildModeActive then return end
         if processed then return end
         if input.UserInputType == Enum.UserInputType.Touch then
-                -- En mobile, un toque = colocar bloque
-                if ghostBlock and ghostBlock.LocalTransparencyModifier < 1 and canPlace then
-                        local config = BLOCK_TYPES_BUILD[selectedBlockIdx]
-                        PlaceBlockEvent:FireServer(config.id, ghostBlock.Position, nil)
+                if ghostBlock and ghostBlock.LocalTransparencyModifier < 1 and canPlace and equippedBlockId then
+                        PlaceBlockEvent:FireServer(equippedBlockId, ghostBlock.Position, nil)
                 end
         end
 end)
 
--- Loop para actualizar el ghost block en cada frame
+-- Loop para actualizar ghost block
 RunService.RenderStepped:Connect(function()
-        if buildMode then
+        if buildModeActive then
                 updateGhostBlock()
         end
 end)
 
--- Definicion real de toggleBuildMode (al final para que vea todas las variables locales)
-function toggleBuildMode()
-        buildMode = not buildMode
-        if buildMode then
-                -- Activar
-                local parcel = findPlayerParcel()
-                createGridVisual(parcel)
-                -- Desactivar pelota si esta equipada (para no conflictos)
-                if ballEquipped then
-                        unequipBall()
+-- Recibir inventario actualizado del servidor
+UpdateInventoryEvent.OnClientEvent:Connect(function(inventoryData)
+        blockInventory = inventoryData or {}
+        updateInventarioTab()
+        updateHotbar()
+        -- Si el bloque equipado se acabo, deseleccionar
+        if equippedBlockId and (not blockInventory[equippedBlockId] or blockInventory[equippedBlockId] <= 0) then
+                equippedBlockId = nil
+                -- Si estamos en modo construccion activo, desactivarlo
+                if buildModeActive then
+                        deactivateBuildMode()
                 end
-                -- Cerrar mochila y panel de musica si estan abiertos
-                backpackPanel.Visible = false
-                musicPanel.Visible = false
-                -- Mostrar panel de bloques
-                buildPanel.Visible = true
-                updateBuildUI()
-                -- Cambiar color del boton para indicar que esta activo
-                buildBtn.BackgroundColor3 = Color3.fromRGB(80, 220, 100)
-                print("[Build] Modo construccion ACTIVADO")
-        else
-                -- Desactivar
-                removeGridVisual()
-                if ghostBlock then
-                        ghostBlock:Destroy()
-                        ghostBlock = nil
-                end
-                buildPanel.Visible = false
-                buildBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-                print("[Build] Modo construccion DESACTIVADO")
         end
-end
+end)
 
 print("Sistema de construccion cargado!")
 
