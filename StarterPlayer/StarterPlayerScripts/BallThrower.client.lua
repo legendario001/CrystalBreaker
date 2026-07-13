@@ -2499,6 +2499,10 @@ print("Sistema de musica cargado!")
 -- ============================================
 -- SISTEMA DE CONSTRUCCION (modo build)
 -- ============================================
+-- Envuelto en do ... end para evitar superar el limite de 200 local registers
+-- del scope principal (Luau limit). Todas las variables locales de este bloque
+-- viven en su propio scope y no afectan al scope global del script.
+do
 -- Flujo:
 -- 1. Click en boton hammer (o tecla B) -> abre panel con 3 pestañas
 -- 2. Pestaña Materiales: comprar bloques con dinero (van al inventario)
@@ -3455,6 +3459,7 @@ UpdateInventoryEvent.OnClientEvent:Connect(function(inventoryData)
 end)
 
 print("Sistema de construccion cargado!")
+end -- fin del do del sistema de construccion
 
 
 
