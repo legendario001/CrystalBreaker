@@ -24,7 +24,10 @@ local eventNames = {
         "FuseCharacters",
         "EquipBall",
         "ShowBillEffect",
-        "ShowUpgradeEffect"
+        "ShowUpgradeEffect",
+        "PlaceBlock",
+        "RemoveBlock",
+        "OpenBuildMenu"
 }
 
 for _, name in ipairs(eventNames) do
