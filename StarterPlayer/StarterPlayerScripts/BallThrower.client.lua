@@ -2590,9 +2590,20 @@ local function updateHotbar()
                 if hotbarSlot then hotbarSlot.Visible = false end
                 return
         end
+        -- Siempre mostrar el slot cuando el modo esta activo (aunque este vacio)
         if not equippedBlockId or not blockInventory[equippedBlockId] or blockInventory[equippedBlockId] <= 0 then
-                -- No hay bloque equipado o se acabo
-                if hotbarSlot then hotbarSlot.Visible = false end
+                -- Slot vacio: gris, sin bloque equipado
+                if hotbarPreview then
+                        hotbarPreview.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+                end
+                if hotbarNameLabel then
+                        hotbarNameLabel.Text = "Sin bloque"
+                end
+                if hotbarCountLabel then
+                        hotbarCountLabel.Text = "x0"
+                        hotbarCountLabel.BackgroundColor3 = Color3.fromRGB(120, 60, 60)
+                end
+                if hotbarSlot then hotbarSlot.Visible = true end
                 return
         end
         local config = BLOCK_MAP_BUILD[equippedBlockId]
@@ -2603,6 +2614,7 @@ local function updateHotbar()
         hotbarPreview.BackgroundColor3 = config.color
         hotbarNameLabel.Text = config.name
         hotbarCountLabel.Text = "x" .. tostring(blockInventory[equippedBlockId])
+        hotbarCountLabel.BackgroundColor3 = Color3.fromRGB(80, 220, 100)
         hotbarSlot.Visible = true
 end
 
@@ -2688,14 +2700,14 @@ local function updateGhostBlock()
                 ghostBlock.CanQuery = false
                 ghostBlock.CanTouch = false
                 ghostBlock.Material = Enum.Material.ForceField
-                ghostBlock.Transparency = 0.5
+                ghostBlock.Transparency = 0.3
                 ghostBlock.LocalTransparencyModifier = 1
                 ghostBlock.Parent = Workspace
         end
 
         local config = BLOCK_MAP_BUILD[equippedBlockId]
         ghostBlock.Position = snappedPos
-        ghostBlock.LocalTransparencyModifier = 0.5
+        ghostBlock.LocalTransparencyModifier = 0.3 -- mas visible (antes 0.5)
         if canPlace then
                 ghostBlock.Color = config.color
         else
@@ -2846,20 +2858,35 @@ tabContainer.Parent = buildPanel
 
 local tabButtons = {}
 local tabLabels = { "Materiales", "Inventario", "Modo Construccion" }
+-- Colores por tab para que se distingan visualmente
+local TAB_COLORS = {
+        { bg = Color3.fromRGB(180, 120, 60), text = Color3.fromRGB(255, 255, 255) }, -- Materiales (naranja)
+        { bg = Color3.fromRGB(80, 160, 220), text = Color3.fromRGB(255, 255, 255) }, -- Inventario (azul)
+        { bg = Color3.fromRGB(80, 200, 100), text = Color3.fromRGB(0, 0, 0) },       -- Modo Construccion (verde)
+}
 for i, label in ipairs(tabLabels) do
         local tabBtn = Instance.new("TextButton")
         tabBtn.Name = "Tab" .. i
         tabBtn.Size = UDim2.new(0.33, -3, 1, 0)
         tabBtn.Position = UDim2.new((i-1) * 0.33, 0, 0, 0)
-        tabBtn.BackgroundColor3 = (i == 1) and Color3.fromRGB(60, 60, 80) or Color3.fromRGB(35, 35, 45)
+        -- Color base mas oscuro (inactivo), se reemplaza por selectTab
+        tabBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
         tabBtn.BorderSizePixel = 0
         tabBtn.Text = label
-        tabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        tabBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
         tabBtn.TextScaled = true
         tabBtn.Font = Enum.Font.GothamBold
         tabBtn.ZIndex = 51
         tabBtn.Parent = tabContainer
         Instance.new("UICorner", tabBtn).CornerRadius = UDim.new(0, 8)
+        -- Borde para que se note mas que es boton
+        local tabStroke = Instance.new("UIStroke")
+        tabStroke.Color = TAB_COLORS[i].bg
+        tabStroke.Thickness = 2
+        tabStroke.Transparency = 0.4
+        tabStroke.Parent = tabBtn
+        -- AutoButtonColor para feedback al hover
+        tabBtn.AutoButtonColor = true
         tabButtons[i] = tabBtn
 end
 
@@ -3013,13 +3040,30 @@ Instance.new("UICorner", hotbarCountLabel).CornerRadius = UDim.new(0, 6)
 local function selectTab(idx)
         currentTab = idx
         for i, btn in ipairs(tabButtons) do
-                btn.BackgroundColor3 = (i == idx) and Color3.fromRGB(60, 60, 80) or Color3.fromRGB(35, 35, 45)
+                local stroke = btn:FindFirstChildWhichIsA("UIStroke")
+                if i == idx then
+                        -- Tab activa: fondo con su color vibrante, texto blanco/negro segun el color
+                        btn.BackgroundColor3 = TAB_COLORS[i].bg
+                        btn.TextColor3 = TAB_COLORS[i].text
+                        btn.AutoButtonColor = false
+                        if stroke then
+                                stroke.Thickness = 3
+                                stroke.Transparency = 0
+                        end
+                else
+                        -- Tab inactiva: fondo oscuro, texto gris, borde de su color
+                        btn.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+                        btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+                        btn.AutoButtonColor = true
+                        if stroke then
+                                stroke.Thickness = 2
+                                stroke.Transparency = 0.4
+                        end
+                end
         end
         tabMateriales.Visible = (idx == 1)
         tabInventario.Visible = (idx == 2)
         tabModoConstruccion.Visible = (idx == 3)
-        -- Mostrar advertencia si no hay bloque equipado
-        noEquipWarning.Visible = (idx == 3 and not equippedBlockId)
 end
 
 -- Llenar la tab de Materiales (comprar)
@@ -3180,10 +3224,9 @@ end
 
 -- Activar modo construccion (cierra panel, muestra hotbar y grid)
 local function activateBuildMode()
-        if not equippedBlockId or not blockInventory[equippedBlockId] or blockInventory[equippedBlockId] <= 0 then
-                warn("[Build] No hay bloque equipado para activar modo construccion")
-                return
-        end
+        -- Permitir activar modo construccion aunque no haya bloques equipados.
+        -- Si no hay bloque equipado, el hotbar aparecera vacio y al intentar colocar
+        -- se le avisara al jugador que compre/equipe bloques.
         buildPanelOpen = false
         buildPanel.Visible = false
         buildModeActive = true
@@ -3306,13 +3349,68 @@ UserInputService.InputBegan:Connect(function(input, processed)
         end
 end)
 
+-- Aviso flotante (notificacion temporal en pantalla)
+local function showBuildNotice(text, color)
+        color = color or Color3.fromRGB(255, 180, 80)
+        local notice = Instance.new("TextLabel")
+        notice.Name = "BuildNotice"
+        notice.Size = UDim2.new(0, 400, 0, 50)
+        notice.Position = UDim2.new(0.5, -200, 0.3, 0)
+        notice.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+        notice.BackgroundTransparency = 0.1
+        notice.BorderSizePixel = 0
+        notice.Text = text
+        notice.TextColor3 = color
+        notice.TextScaled = true
+        notice.Font = Enum.Font.GothamBold
+        notice.ZIndex = 200
+        notice.Parent = screenGui
+        Instance.new("UICorner", notice).CornerRadius = UDim.new(0, 12)
+        local stroke = Instance.new("UIStroke")
+        stroke.Color = color
+        stroke.Thickness = 2
+        stroke.Transparency = 0.2
+        stroke.Parent = notice
+        -- Animar: aparece, espera 2s, desaparece con fade
+        task.spawn(function()
+                notice.TextTransparency = 1
+                notice.BackgroundTransparency = 1
+                stroke.Transparency = 1
+                -- Fade in
+                for i = 1, 10 do
+                        notice.TextTransparency = 1 - (i * 0.1)
+                        notice.BackgroundTransparency = 1 - (i * 0.1) * 0.9
+                        stroke.Transparency = 1 - (i * 0.1) * 0.8
+                        task.wait(0.02)
+                end
+                task.wait(2)
+                -- Fade out
+                for i = 1, 10 do
+                        notice.TextTransparency = i * 0.1
+                        notice.BackgroundTransparency = 1 - (1 - i * 0.1) * 0.9
+                        stroke.Transparency = 1 - (1 - i * 0.1) * 0.8
+                        task.wait(0.02)
+                end
+                if notice and notice.Parent then
+                        notice:Destroy()
+                end
+        end)
+end
+
 -- Click izquierdo: colocar / Click derecho: quitar (solo en modo construccion activo)
 UserInputService.InputBegan:Connect(function(input, processed)
         if not buildModeActive then return end
         if processed then return end
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                if ghostBlock and ghostBlock.LocalTransparencyModifier < 1 and canPlace and equippedBlockId then
+                -- Verificar si hay bloque equipado
+                if not equippedBlockId or not blockInventory[equippedBlockId] or blockInventory[equippedBlockId] <= 0 then
+                        showBuildNotice("⚠ No tienes bloques equipados. Compra en Materiales y equipa en Inventario.", Color3.fromRGB(255, 100, 100))
+                        return
+                end
+                if ghostBlock and ghostBlock.LocalTransparencyModifier < 1 and canPlace then
                         PlaceBlockEvent:FireServer(equippedBlockId, ghostBlock.Position, nil)
+                elseif ghostBlock and ghostBlock.LocalTransparencyModifier < 1 and not canPlace then
+                        showBuildNotice("⚠ No puedes colocar aqui (fuera de parcela o posicion ocupada)", Color3.fromRGB(255, 100, 100))
                 end
         elseif input.UserInputType == Enum.UserInputType.MouseButton2 then
                 local mouseTarget = mouse.Target
@@ -3327,7 +3425,12 @@ UserInputService.InputBegan:Connect(function(input, processed)
         if not buildModeActive then return end
         if processed then return end
         if input.UserInputType == Enum.UserInputType.Touch then
-                if ghostBlock and ghostBlock.LocalTransparencyModifier < 1 and canPlace and equippedBlockId then
+                -- Verificar si hay bloque equipado
+                if not equippedBlockId or not blockInventory[equippedBlockId] or blockInventory[equippedBlockId] <= 0 then
+                        showBuildNotice("⚠ No tienes bloques equipados. Compra en Materiales y equipa en Inventario.", Color3.fromRGB(255, 100, 100))
+                        return
+                end
+                if ghostBlock and ghostBlock.LocalTransparencyModifier < 1 and canPlace then
                         PlaceBlockEvent:FireServer(equippedBlockId, ghostBlock.Position, nil)
                 end
         end
@@ -3345,14 +3448,10 @@ UpdateInventoryEvent.OnClientEvent:Connect(function(inventoryData)
         blockInventory = inventoryData or {}
         updateInventarioTab()
         updateHotbar()
-        -- Si el bloque equipado se acabo, deseleccionar
-        if equippedBlockId and (not blockInventory[equippedBlockId] or blockInventory[equippedBlockId] <= 0) then
-                equippedBlockId = nil
-                -- Si estamos en modo construccion activo, desactivarlo
-                if buildModeActive then
-                        deactivateBuildMode()
-                end
-        end
+        -- Si el bloque equipado se acabo, NO desactivar el modo construccion.
+        -- El jugador puede seguir en modo construccion; el hotbar mostrara "Sin bloque"
+        -- y al intentar colocar se le avisara que compre/equipe bloques.
+        -- Solo actualizamos el hotbar para que refleje el count actualizado.
 end)
 
 print("Sistema de construccion cargado!")
