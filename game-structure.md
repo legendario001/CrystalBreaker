@@ -11,8 +11,8 @@
 | Campo | Valor |
 |-------|-------|
 | **Nombre del proyecto** | CrystalBreaker |
-| **Versión actual** | 2.1.0 |
-| **Última actualización** | 2026-07-12 |
+| **Versión actual** | 2.0.0 |
+| **Última actualización** | 2026-07-11 |
 | **Repositorio GitHub** | `legendario001/CrystalBreaker` |
 | **Plataforma** | Roblox (Luau) |
 | **Tipo de juego** | Tycoon / Colección de personajes |
@@ -218,8 +218,6 @@ CrystalBreaker/
 | **CharacterManager** | `ServerStorage/ServerModules/` | Modelos de personajes por rareza | ServerStorage/ModelosPj | GameHandler |
 | **CrystalSpawner** | `ServerStorage/ServerModules/` | Generación de cristales y cofres | Workspace | GameHandler |
 | **ModelManager** | `ServerStorage/ServerModules/` | Colocación, labels, dinero, mejoras, formato K/M/B | - | GameHandler, BaseUpgradeManager |
-| **ParcelManager** | `ServerStorage/ServerModules/` | Asignación de parcelas de construcción según base | Workspace/Parcelas | GameHandler, BuildManager |
-| **BuildManager** | `ServerStorage/ServerModules/` | Colocación/quita de bloques, validación de parcela y dinero | ParcelManager | GameHandler |
 
 ---
 
@@ -244,9 +242,6 @@ CrystalBreaker/
 | **EquipBall** | RemoteEvent | `ReplicatedStorage` | BallThrower → GameHandler | Equipar/desequipar pelota (servidor crea pelota visible para todos) |
 | **ShowBillEffect** | RemoteEvent | `ReplicatedStorage` | GameHandler → BallThrower | Servidor avisa al cliente para spawnear billete visual al recoger dinero (solo dueño lo ve) |
 | **ShowUpgradeEffect** | RemoteEvent | `ReplicatedStorage` | GameHandler → BallThrower | Servidor avisa al cliente para mostrar imagen de upgrade al mejorar personaje (solo dueño lo ve) |
-| **PlaceBlock** | RemoteEvent | `ReplicatedStorage` | BallThrower → GameHandler | Cliente pide colocar bloque en posición (servidor valida parcela y dinero) |
-| **RemoveBlock** | RemoteEvent | `ReplicatedStorage` | BallThrower → GameHandler | Cliente pide quitar bloque apuntado (servidor valida dueño) |
-| **OpenBuildMenu** | RemoteEvent | `ReplicatedStorage` | BallThrower → GameHandler | (Reservado) Abrir menú de construcción desde el servidor |
 
 ---
 
@@ -333,7 +328,6 @@ BuildMap (Command Bar, una sola vez)
 - **H** = Mejorar base (cerca del botón dorado)
 - **Mochila** = Click para abrir/cerrar panel de pelotas (botón abajo izquierda)
 - **Música** = Click para abrir/cerrar panel de música (botón arriba de la mochila)
-- **Construir** = Botón o tecla B para activar modo construcción (click izq coloca, click der quita)
 - **Móvil**: Botones táctiles con imágenes aparecen automáticamente (interactuar, mejorar personaje, mejorar base)
 
 ### Reglas permanentes:
@@ -537,24 +531,6 @@ air = {
 - ✅ Fix: cristales dejan de funcionar (nearest.Color después de Destroy)
 - ✅ Fix: base ownership check en todas las interacciones
 - ✅ Fix: carry tool solo se destruye después de confirmar pedestal
-
-### Versión 2.1.0 (2026-07-12)
-- ✅ Sistema de construcción MVP (modo build con tecla B o botón 🔨)
-- ✅ ParcelManager: asigna parcela según base (Base1→Parcela 1, etc.)
-- ✅ BuildManager: 8 bloques test (madera, tierra, piedra, ladrillo, mármol, oro, diamante, galaxia) con precios extremadamente baratos para test
-- ✅ Grid visual al activar modo construcción (líneas cian sobre la parcela cercana)
-- ✅ Bloque fantasma (preview) que sigue al mouse con snap a cuadrícula de 4 studs
-- ✅ Click izquierdo coloca bloque, click derecho quita bloque apuntado
-- ✅ Validación de parcela (no se puede construir fuera de tu parcela)
-- ✅ Validación de dinero (no se puede colocar si no hay suficiente)
-- ✅ Bloques sólidos (CanCollide=true) para construir pisos y paredes
-- ✅ Quitar bloques es gratis (decisión del usuario)
-- ✅ Cooldown de 0.05s en colocación/quita (anti-spam, max 20 bloques/seg)
-- ✅ Limpieza automática al salir el jugador (folder Blocks_<userId> se destruye)
-- ✅ Soporte móvil: tocar pantalla para colocar bloque
-- ✅ RemoteEvents PlaceBlock, RemoveBlock, OpenBuildMenu
-- ✅ Parcela: 9 bloques ancho × 14 bloques largo × 9 bloques alto (36×56×36 studs)
-- ✅ Carpetas necesarias: `Workspace/Parcelas/` con 5 Parts (Parcela 1..5)
 
 ### Versión 2.0.0 (2026-07-11)
 - ✅ Efecto visual de billetes al recoger dinero (BillModel en ReplicatedStorage, solo visible para el dueño)
