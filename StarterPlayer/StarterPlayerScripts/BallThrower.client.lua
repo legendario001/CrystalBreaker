@@ -2580,7 +2580,7 @@ local function updateGhostBlock()
 
         local parcel = findPlayerParcel()
         if not parcel then
-                if ghostBlock then ghostBlock.Visible = false end
+                if ghostBlock then ghostBlock.LocalTransparencyModifier = 1 end -- ocultar (Part no tiene Visible)
                 return
         end
 
@@ -2619,12 +2619,13 @@ local function updateGhostBlock()
                 ghostBlock.CanTouch = false
                 ghostBlock.Material = Enum.Material.ForceField
                 ghostBlock.Transparency = 0.5
+                ghostBlock.LocalTransparencyModifier = 1 -- oculto por defecto (hasta que se actualice la posicion)
                 ghostBlock.Parent = Workspace
         end
 
         local config = BLOCK_TYPES_BUILD[selectedBlockIdx]
         ghostBlock.Position = snappedPos
-        ghostBlock.Visible = true
+        ghostBlock.LocalTransparencyModifier = 0.5 -- semi-transparente (Visible no existe en Part)
         -- Color del bloque si esta en bounds, rojo si no
         if inBounds then
                 ghostBlock.Color = config.color
@@ -2900,7 +2901,8 @@ UserInputService.InputBegan:Connect(function(input, processed)
         -- Solo procesar si no es UI
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
                 -- Click izquierdo: colocar bloque
-                if ghostBlock and ghostBlock.Visible then
+                -- (Part no tiene Visible, usamos LocalTransparencyModifier para saber si esta visible)
+                if ghostBlock and ghostBlock.LocalTransparencyModifier < 1 then
                         local config = BLOCK_TYPES_BUILD[selectedBlockIdx]
                         PlaceBlockEvent:FireServer(config.id, ghostBlock.Position, nil)
                 end
@@ -2921,7 +2923,7 @@ UserInputService.InputBegan:Connect(function(input, processed)
         if processed then return end
         if input.UserInputType == Enum.UserInputType.Touch then
                 -- En mobile, un toque = colocar bloque
-                if ghostBlock and ghostBlock.Visible then
+                if ghostBlock and ghostBlock.LocalTransparencyModifier < 1 then
                         local config = BLOCK_TYPES_BUILD[selectedBlockIdx]
                         PlaceBlockEvent:FireServer(config.id, ghostBlock.Position, nil)
                 end
