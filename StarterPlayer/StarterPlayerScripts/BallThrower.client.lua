@@ -2525,6 +2525,7 @@ local buildMode = false
 local selectedBlockIdx = 1 -- bloque seleccionado del inventario
 local ghostBlock = nil -- Part preview que sigue al mouse
 local gridVisual = nil -- Folder con las lineas del grid
+local canPlace = false -- true si se puede colocar en la posicion actual del ghost (en bounds + sin overlap)
 
 -- Funcion para obtener la parcela del jugador (busca en Workspace/Parcelas)
 local function findPlayerParcel()
@@ -2569,46 +2570,76 @@ local function snapToGrid(position, parcelCenter)
 end
 
 -- Crear/actualizar el bloque fantasma (preview)
+-- IMPORTANTE: Cuando se apunta a un bloque existente, el nuevo bloque se coloca ADYACENTE
+-- (en la direccion de la normal del hit) - esto garantiza alineacion perfecta al grid.
+-- Cuando se apunta al suelo de la parcela, se coloca al ras del piso (1ra capa).
 local function updateGhostBlock()
         if not buildMode then
                 if ghostBlock then
                         ghostBlock:Destroy()
                         ghostBlock = nil
                 end
+                canPlace = false
                 return
         end
 
         local parcel = findPlayerParcel()
         if not parcel then
-                if ghostBlock then ghostBlock.LocalTransparencyModifier = 1 end -- ocultar (Part no tiene Visible)
+                if ghostBlock then ghostBlock.LocalTransparencyModifier = 1 end
+                canPlace = false
                 return
         end
 
-        -- Raycast desde la camara hacia el mouse
-        local mousePos = mouse.Hit.Position
-        -- El bloque se coloca encima de la superficie apuntada
-        local placeY = mousePos.Y + BLOCK_SIZE_BUILD / 2
+        -- Top real de la parcela (centro + mitad de su altura)
+        local parcelSizeY = parcel.Size and parcel.Size.Y or 1
+        local parcelTopY = parcel.Position.Y + (parcelSizeY / 2)
 
-        -- Para colocar al ras del suelo de la parcela:
-        -- Si la Y del bloque seria menor que la Y de la parcela + BLOCK_SIZE/2, ajustar
-        local parcelTopY = parcel.Position.Y
-        if placeY < parcelTopY + BLOCK_SIZE_BUILD / 2 then
-                placeY = parcelTopY + BLOCK_SIZE_BUILD / 2
+        local mouseTarget = mouse.Target
+        local mousePos = mouse.Hit.Position
+        local hitNormal = mouse.Hit.Normal
+
+        -- Calcular posicion snapped segun el target:
+        -- - Si apunta a un bloque colocado (nombre "Block_*"): colocar adyacente (target + normal * BLOCK_SIZE)
+        -- - Si apunta al suelo u otra cosa: colocar al ras del piso (1ra capa)
+        local snappedPos
+        if mouseTarget and string.sub(mouseTarget.Name, 1, 6) == "Block_" then
+                -- Apuntando a un bloque existente: colocar adyacente segun la cara apuntada (normal)
+                local targetPos = mouseTarget.Position
+                local adjacentPos = targetPos + hitNormal * BLOCK_SIZE_BUILD
+                -- Snap X y Z al grid de la parcela (la Y ya viene correcta del target + normal)
+                snappedPos = snapToGrid(adjacentPos, parcel.Position)
+        else
+                -- Apuntando al suelo de la parcela (o ningun target valido): 1ra capa al ras del piso
+                snappedPos = snapToGrid(Vector3.new(mousePos.X, parcelTopY + BLOCK_SIZE_BUILD/2, mousePos.Z), parcel.Position)
         end
 
-        local snappedPos = snapToGrid(Vector3.new(mousePos.X, placeY, mousePos.Z), parcel.Position)
-
-        -- Calcular bounds de la parcela para verificar que el ghost este dentro
+        -- Calcular bounds de la parcela
         local halfX = PARCEL_SIZE_X_BUILD / 2
         local halfZ = PARCEL_SIZE_Z_BUILD / 2
         local maxY = parcelTopY + PARCEL_HEIGHT_BUILD
 
-        local inBounds =  snappedPos.X - BLOCK_SIZE_BUILD/2 >= parcel.Position.X - halfX and
-                snappedPos.X + BLOCK_SIZE_BUILD/2 <= parcel.Position.X + halfX and
-                snappedPos.Z - BLOCK_SIZE_BUILD/2 >= parcel.Position.Z - halfZ and
-                snappedPos.Z + BLOCK_SIZE_BUILD/2 <= parcel.Position.Z + halfZ and
-                snappedPos.Y + BLOCK_SIZE_BUILD/2 <= maxY
+        local inBounds =  snappedPos.X - BLOCK_SIZE_BUILD/2 >= parcel.Position.X - halfX - 0.01 and
+                snappedPos.X + BLOCK_SIZE_BUILD/2 <= parcel.Position.X + halfX + 0.01 and
+                snappedPos.Z - BLOCK_SIZE_BUILD/2 >= parcel.Position.Z - halfZ - 0.01 and
+                snappedPos.Z + BLOCK_SIZE_BUILD/2 <= parcel.Position.Z + halfZ + 0.01 and
+                snappedPos.Y + BLOCK_SIZE_BUILD/2 <= maxY + 0.01 and
+                snappedPos.Y - BLOCK_SIZE_BUILD/2 >= parcelTopY - 0.01
 
+        -- Verificar overlap: si ya hay un bloque en esa posicion exacta, no se puede colocar
+        local occupied = false
+        local blocksFolder = parcel:FindFirstChild("Blocks_" .. player.UserId)
+        if blocksFolder then
+                for _, b in ipairs(blocksFolder:GetChildren()) do
+                        if b:IsA("BasePart") and (b.Position - snappedPos).Magnitude < 1 then
+                                occupied = true
+                                break
+                        end
+                end
+        end
+
+        canPlace = inBounds and not occupied
+
+        -- Crear ghost block si no existe
         if not ghostBlock then
                 ghostBlock = Instance.new("Part")
                 ghostBlock.Name = "GhostBlock"
@@ -2619,15 +2650,15 @@ local function updateGhostBlock()
                 ghostBlock.CanTouch = false
                 ghostBlock.Material = Enum.Material.ForceField
                 ghostBlock.Transparency = 0.5
-                ghostBlock.LocalTransparencyModifier = 1 -- oculto por defecto (hasta que se actualice la posicion)
+                ghostBlock.LocalTransparencyModifier = 1 -- oculto por defecto
                 ghostBlock.Parent = Workspace
         end
 
         local config = BLOCK_TYPES_BUILD[selectedBlockIdx]
         ghostBlock.Position = snappedPos
-        ghostBlock.LocalTransparencyModifier = 0.5 -- semi-transparente (Visible no existe en Part)
-        -- Color del bloque si esta en bounds, rojo si no
-        if inBounds then
+        ghostBlock.LocalTransparencyModifier = 0.5 -- semi-transparente
+        -- Color: color del bloque si se puede colocar, rojo si no
+        if canPlace then
                 ghostBlock.Color = config.color
         else
                 ghostBlock.Color = Color3.fromRGB(255, 80, 80)
@@ -2902,7 +2933,7 @@ UserInputService.InputBegan:Connect(function(input, processed)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
                 -- Click izquierdo: colocar bloque
                 -- (Part no tiene Visible, usamos LocalTransparencyModifier para saber si esta visible)
-                if ghostBlock and ghostBlock.LocalTransparencyModifier < 1 then
+                if ghostBlock and ghostBlock.LocalTransparencyModifier < 1 and canPlace then
                         local config = BLOCK_TYPES_BUILD[selectedBlockIdx]
                         PlaceBlockEvent:FireServer(config.id, ghostBlock.Position, nil)
                 end
@@ -2923,7 +2954,7 @@ UserInputService.InputBegan:Connect(function(input, processed)
         if processed then return end
         if input.UserInputType == Enum.UserInputType.Touch then
                 -- En mobile, un toque = colocar bloque
-                if ghostBlock and ghostBlock.LocalTransparencyModifier < 1 then
+                if ghostBlock and ghostBlock.LocalTransparencyModifier < 1 and canPlace then
                         local config = BLOCK_TYPES_BUILD[selectedBlockIdx]
                         PlaceBlockEvent:FireServer(config.id, ghostBlock.Position, nil)
                 end
