@@ -36,6 +36,8 @@ local RemoveFromFusionSlotEvent = ReplicatedStorage:WaitForChild("RemoveFromFusi
 local EquipBallEvent = ReplicatedStorage:WaitForChild("EquipBall", 15)
 local ShowBillEffectEvent = ReplicatedStorage:WaitForChild("ShowBillEffect", 15)
 local ShowUpgradeEffectEvent = ReplicatedStorage:WaitForChild("ShowUpgradeEffect", 15)
+local PlaceBlockEvent = ReplicatedStorage:WaitForChild("PlaceBlock", 15)
+local RemoveBlockEvent = ReplicatedStorage:WaitForChild("RemoveBlock", 15)
 
 -- ============================================
 -- EFECTO DE BILLETE (solo visible para el dueño)
@@ -2491,6 +2493,482 @@ muteBtn.MouseButton1Click:Connect(function()
 end)
 
 print("Sistema de musica cargado!")
+
+-- ============================================
+-- SISTEMA DE CONSTRUCCION (modo build)
+-- ============================================
+-- Boton "Construir" + tecla B para activar modo construccion
+-- Click izquierdo: coloca bloque seleccionado
+-- Click derecho: quita bloque apuntado
+-- Grid visual cuando el modo esta activo
+-- Bloque fantasma (preview) sigue al mouse
+
+-- Lista local de bloques (debe coincidir con BuildManager.lua del servidor)
+local BLOCK_TYPES_BUILD = {
+        { id = "madera",    name = "Madera",    color = Color3.fromRGB(160, 100, 50),  material = Enum.Material.Wood,        cost = 1 },
+        { id = "tierra",    name = "Tierra",    color = Color3.fromRGB(130, 90, 60),   material = Enum.Material.Grass,      cost = 1 },
+        { id = "piedra",    name = "Piedra",    color = Color3.fromRGB(130, 130, 130), material = Enum.Material.Slate,      cost = 2 },
+        { id = "ladrillo",  name = "Ladrillo",  color = Color3.fromRGB(180, 80, 60),   material = Enum.Material.Brick,      cost = 5 },
+        { id = "marmol",    name = "Marmol",    color = Color3.fromRGB(240, 240, 240), material = Enum.Material.Marble,     cost = 10 },
+        { id = "oro",       name = "Oro",       color = Color3.fromRGB(255, 215, 0),   material = Enum.Material.Foil,       cost = 50 },
+        { id = "diamante",  name = "Diamante",  color = Color3.fromRGB(135, 230, 255), material = Enum.Material.Glass,      cost = 100 },
+        { id = "galaxia",   name = "Galaxia",   color = Color3.fromRGB(75, 0, 130),    material = Enum.Material.Neon,       cost = 500 },
+}
+
+local BLOCK_SIZE_BUILD = 4 -- debe coincidir con ParcelManager.BLOCK_SIZE
+local PARCEL_HEIGHT_BUILD = 36 -- debe coincidir con ParcelManager.PARCEL_HEIGHT
+local PARCEL_SIZE_X_BUILD = 36
+local PARCEL_SIZE_Z_BUILD = 56
+
+-- Estado del modo construccion
+local buildMode = false
+local selectedBlockIdx = 1 -- bloque seleccionado del inventario
+local ghostBlock = nil -- Part preview que sigue al mouse
+local gridVisual = nil -- Folder con las lineas del grid
+
+-- Funcion para obtener la parcela del jugador (busca en Workspace/Parcelas)
+local function findPlayerParcel()
+        local parcelas = Workspace:FindFirstChild("Parcelas")
+        if not parcelas then return nil end
+        -- El cliente no sabe cual es "su" parcela, pero el servidor si.
+        -- Para el grid y el ghost, mostramos solo en la parcela que esta cerca del jugador.
+        local char = player.Character
+        if not char then return nil end
+        local root = char:FindFirstChild("HumanoidRootPart")
+        if not root then return nil end
+
+        local closest = nil
+        local closestDist = math.huge
+        for _, p in ipairs(parcelas:GetChildren()) do
+                if p:IsA("BasePart") then
+                        local dist = (p.Position - root.Position).Magnitude
+                        if dist < closestDist then
+                                closestDist = dist
+                                closest = p
+                        end
+                end
+        end
+        -- Solo devolver si esta suficientemente cerca (50 studs)
+        if closestDist < 50 then return closest end
+        return nil
+end
+
+-- Snap de posicion a la cuadricula de 4 studs
+local function snapToGrid(position, parcelCenter)
+        -- Calcula offset desde el centro de la parcela, hace snap, y vuelve a world coords
+        local offsetX = position.X - parcelCenter.X
+        local offsetZ = position.Z - parcelCenter.Z
+        -- Snap: redondear al multiplo de BLOCK_SIZE mas cercano
+        local snappedX = math.round(offsetX / BLOCK_SIZE_BUILD) * BLOCK_SIZE_BUILD
+        local snappedZ = math.round(offsetZ / BLOCK_SIZE_BUILD) * BLOCK_SIZE_BUILD
+        return Vector3.new(
+                parcelCenter.X + snappedX,
+                position.Y,
+                parcelCenter.Z + snappedZ
+        )
+end
+
+-- Crear/actualizar el bloque fantasma (preview)
+local function updateGhostBlock()
+        if not buildMode then
+                if ghostBlock then
+                        ghostBlock:Destroy()
+                        ghostBlock = nil
+                end
+                return
+        end
+
+        local parcel = findPlayerParcel()
+        if not parcel then
+                if ghostBlock then ghostBlock.Visible = false end
+                return
+        end
+
+        -- Raycast desde la camara hacia el mouse
+        local mousePos = mouse.Hit.Position
+        -- El bloque se coloca encima de la superficie apuntada
+        local placeY = mousePos.Y + BLOCK_SIZE_BUILD / 2
+
+        -- Para colocar al ras del suelo de la parcela:
+        -- Si la Y del bloque seria menor que la Y de la parcela + BLOCK_SIZE/2, ajustar
+        local parcelTopY = parcel.Position.Y
+        if placeY < parcelTopY + BLOCK_SIZE_BUILD / 2 then
+                placeY = parcelTopY + BLOCK_SIZE_BUILD / 2
+        end
+
+        local snappedPos = snapToGrid(Vector3.new(mousePos.X, placeY, mousePos.Z), parcel.Position)
+
+        -- Calcular bounds de la parcela para verificar que el ghost este dentro
+        local halfX = PARCEL_SIZE_X_BUILD / 2
+        local halfZ = PARCEL_SIZE_Z_BUILD / 2
+        local maxY = parcelTopY + PARCEL_HEIGHT_BUILD
+
+        local inBounds =  snappedPos.X - BLOCK_SIZE_BUILD/2 >= parcel.Position.X - halfX and
+                snappedPos.X + BLOCK_SIZE_BUILD/2 <= parcel.Position.X + halfX and
+                snappedPos.Z - BLOCK_SIZE_BUILD/2 >= parcel.Position.Z - halfZ and
+                snappedPos.Z + BLOCK_SIZE_BUILD/2 <= parcel.Position.Z + halfZ and
+                snappedPos.Y + BLOCK_SIZE_BUILD/2 <= maxY
+
+        if not ghostBlock then
+                ghostBlock = Instance.new("Part")
+                ghostBlock.Name = "GhostBlock"
+                ghostBlock.Size = Vector3.new(BLOCK_SIZE_BUILD, BLOCK_SIZE_BUILD, BLOCK_SIZE_BUILD)
+                ghostBlock.Anchored = true
+                ghostBlock.CanCollide = false
+                ghostBlock.CanQuery = false
+                ghostBlock.CanTouch = false
+                ghostBlock.Material = Enum.Material.ForceField
+                ghostBlock.Transparency = 0.5
+                ghostBlock.Parent = Workspace
+        end
+
+        local config = BLOCK_TYPES_BUILD[selectedBlockIdx]
+        ghostBlock.Position = snappedPos
+        ghostBlock.Visible = true
+        -- Color del bloque si esta en bounds, rojo si no
+        if inBounds then
+                ghostBlock.Color = config.color
+        else
+                ghostBlock.Color = Color3.fromRGB(255, 80, 80)
+        end
+end
+
+-- Crear el grid visual (lineas que muestran la cuadricula de la parcela)
+local function createGridVisual(parcel)
+        if gridVisual then
+                gridVisual:Destroy()
+                gridVisual = nil
+        end
+        if not parcel then return end
+
+        gridVisual = Instance.new("Folder")
+        gridVisual.Name = "GridVisual"
+        gridVisual.Parent = Workspace
+
+        local halfX = PARCEL_SIZE_X_BUILD / 2
+        local halfZ = PARCEL_SIZE_Z_BUILD / 2
+        local center = parcel.Position
+        local topY = center.Y + 0.1 -- ligeramente encima de la parcela para evitar z-fighting
+
+        -- Lineas horizontales (a lo largo de Z, desplazadas en X)
+        for i = -halfX, halfX, BLOCK_SIZE_BUILD do
+                local line = Instance.new("Part")
+                line.Name = "GridLine_H_" .. i
+                line.Size = Vector3.new(0.1, 0.05, PARCEL_SIZE_Z_BUILD)
+                line.Position = Vector3.new(center.X + i, topY, center.Z)
+                line.Anchored = true
+                line.CanCollide = false
+                line.CanQuery = false
+                line.CanTouch = false
+                line.Material = Enum.Material.Neon
+                line.Color = Color3.fromRGB(100, 200, 255)
+                line.Transparency = 0.7
+                line.Parent = gridVisual
+        end
+        -- Lineas verticales (a lo largo de X, desplazadas en Z)
+        for i = -halfZ, halfZ, BLOCK_SIZE_BUILD do
+                local line = Instance.new("Part")
+                line.Name = "GridLine_V_" .. i
+                line.Size = Vector3.new(PARCEL_SIZE_X_BUILD, 0.05, 0.1)
+                line.Position = Vector3.new(center.X, topY, center.Z + i)
+                line.Anchored = true
+                line.CanCollide = false
+                line.CanQuery = false
+                line.CanTouch = false
+                line.Material = Enum.Material.Neon
+                line.Color = Color3.fromRGB(100, 200, 255)
+                line.Transparency = 0.7
+                line.Parent = gridVisual
+        end
+end
+
+local function removeGridVisual()
+        if gridVisual then
+                gridVisual:Destroy()
+                gridVisual = nil
+        end
+end
+
+-- Boton "Construir" (arriba del boton de musica)
+local buildBtn = Instance.new("TextButton")
+buildBtn.Name = "BuildBtn"
+buildBtn.Size = UDim2.new(0, 60, 0, 60)
+buildBtn.Position = UDim2.new(0, 20, 1, -340) -- 70px arriba del boton de musica (-270 - 70)
+buildBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+buildBtn.BorderSizePixel = 0
+buildBtn.Text = ""
+buildBtn.Parent = screenGui
+Instance.new("UICorner", buildBtn).CornerRadius = UDim.new(0, 12)
+
+-- Icono del boton construir (emoji temporal - se puede reemplazar por imagen)
+local buildIcon = Instance.new("TextLabel")
+buildIcon.Size = UDim2.new(0.8, 0, 0.8, 0)
+buildIcon.Position = UDim2.new(0.1, 0, 0.1, 0)
+buildIcon.BackgroundTransparency = 1
+buildIcon.Text = "🔨"
+buildIcon.TextScaled = true
+buildIcon.Parent = buildBtn
+
+local buildStroke = Instance.new("UIStroke")
+buildStroke.Color = Color3.fromRGB(255, 180, 80) -- naranja para diferenciar
+buildStroke.Thickness = 2
+buildStroke.Transparency = 0.3
+buildStroke.Parent = buildBtn
+
+-- Tooltip del boton (texto B)
+local buildKeyLabel = Instance.new("TextLabel")
+buildKeyLabel.Size = UDim2.new(0.3, 0, 0.3, 0)
+buildKeyLabel.Position = UDim2.new(0.65, 0, 0.6, 0)
+buildKeyLabel.BackgroundColor3 = Color3.fromRGB(255, 180, 80)
+buildKeyLabel.BorderSizePixel = 0
+buildKeyLabel.Text = "B"
+buildKeyLabel.TextColor3 = Color3.fromRGB(0, 0, 0)
+buildKeyLabel.TextScaled = true
+buildKeyLabel.Font = Enum.Font.GothamBold
+buildKeyLabel.ZIndex = 2
+buildKeyLabel.Parent = buildBtn
+Instance.new("UICorner", buildKeyLabel).CornerRadius = UDim.new(0, 4)
+
+-- Panel de bloques (mismo formato que mochila y musica)
+local buildPanel = Instance.new("Frame")
+buildPanel.Name = "BuildPanel"
+buildPanel.Size = UDim2.new(0, 400, 0, 350)
+buildPanel.Position = UDim2.new(0.5, -200, 1, -370)
+buildPanel.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+buildPanel.BackgroundTransparency = 0.05
+buildPanel.BorderSizePixel = 0
+buildPanel.Visible = false
+buildPanel.ZIndex = 50
+buildPanel.Parent = screenGui
+Instance.new("UICorner", buildPanel).CornerRadius = UDim.new(0, 16)
+
+local bpBuildCloseBtn = Instance.new("TextButton")
+bpBuildCloseBtn.Name = "BpBuildCloseBtn"
+bpBuildCloseBtn.Size = UDim2.new(0, 30, 0, 30)
+bpBuildCloseBtn.Position = UDim2.new(1, -35, 0, 5)
+bpBuildCloseBtn.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
+bpBuildCloseBtn.BorderSizePixel = 0
+bpBuildCloseBtn.Text = "X"
+bpBuildCloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+bpBuildCloseBtn.TextScaled = true
+bpBuildCloseBtn.Font = Enum.Font.GothamBold
+bpBuildCloseBtn.ZIndex = 52
+bpBuildCloseBtn.Parent = buildPanel
+Instance.new("UICorner", bpBuildCloseBtn).CornerRadius = UDim.new(0, 8)
+
+local bpBuildStroke = Instance.new("UIStroke")
+bpBuildStroke.Color = Color3.fromRGB(255, 180, 80)
+bpBuildStroke.Thickness = 2
+bpBuildStroke.Transparency = 0.2
+bpBuildStroke.Parent = buildPanel
+
+local bpBuildTitle = Instance.new("TextLabel")
+bpBuildTitle.Size = UDim2.new(1, 0, 0, 35)
+bpBuildTitle.BackgroundTransparency = 1
+bpBuildTitle.Text = "BLOQUES"
+bpBuildTitle.TextColor3 = Color3.fromRGB(255, 180, 80)
+bpBuildTitle.TextScaled = true
+bpBuildTitle.Font = Enum.Font.GothamBlack
+bpBuildTitle.ZIndex = 51
+bpBuildTitle.Parent = buildPanel
+
+-- Scroll con los bloques
+local bpBuildScroll = Instance.new("ScrollingFrame")
+bpBuildScroll.Size = UDim2.new(1, -20, 1, -45)
+bpBuildScroll.Position = UDim2.new(0, 10, 0, 40)
+bpBuildScroll.BackgroundTransparency = 1
+bpBuildScroll.ScrollBarThickness = 6
+bpBuildScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+bpBuildScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+bpBuildScroll.ZIndex = 51
+bpBuildScroll.Parent = buildPanel
+
+local bpBuildListLayout = Instance.new("UIListLayout")
+bpBuildListLayout.Padding = UDim.new(0, 8)
+bpBuildListLayout.Parent = bpBuildScroll
+
+-- Funcion para actualizar el panel de bloques
+local function updateBuildUI()
+        -- Limpiar
+        for _, child in ipairs(bpBuildScroll:GetChildren()) do
+                if child:IsA("Frame") then child:Destroy() end
+        end
+        -- Crear card por bloque
+        for idx, block in ipairs(BLOCK_TYPES_BUILD) do
+                local card = Instance.new("Frame")
+                card.Name = "BlockCard_" .. idx
+                card.Size = UDim2.new(1, -10, 0, 60)
+                card.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+                card.BorderSizePixel = 0
+                card.ZIndex = 52
+                card.Parent = bpBuildScroll
+                Instance.new("UICorner", card).CornerRadius = UDim.new(0, 10)
+
+                local cardStroke = Instance.new("UIStroke")
+                if idx == selectedBlockIdx then
+                        cardStroke.Color = Color3.fromRGB(80, 220, 80)
+                        cardStroke.Thickness = 3
+                else
+                        cardStroke.Color = Color3.fromRGB(255, 180, 80)
+                        cardStroke.Thickness = 2
+                end
+                cardStroke.Transparency = 0.2
+                cardStroke.Parent = card
+
+                -- Preview del bloque (Part color como indicador)
+                local preview = Instance.new("Frame")
+                preview.Size = UDim2.new(0, 50, 1, -10)
+                preview.Position = UDim2.new(0, 5, 0, 5)
+                preview.BackgroundColor3 = block.color
+                preview.BorderSizePixel = 0
+                preview.ZIndex = 53
+                preview.Parent = card
+                Instance.new("UICorner", preview).CornerRadius = UDim.new(0, 6)
+
+                -- Info del bloque
+                local infoLabel = Instance.new("TextLabel")
+                infoLabel.Size = UDim2.new(0.55, 0, 1, -10)
+                infoLabel.Position = UDim2.new(0, 60, 0, 5)
+                infoLabel.BackgroundTransparency = 1
+                infoLabel.Text = '<font color="#FFFFFF">' .. block.name .. '</font>\n<font color="#80C8FF">$' .. block.cost .. '</font>'
+                infoLabel.RichText = true
+                infoLabel.TextXAlignment = Enum.TextXAlignment.Left
+                infoLabel.TextYAlignment = Enum.TextYAlignment.Center
+                infoLabel.TextScaled = true
+                infoLabel.Font = Enum.Font.GothamBold
+                infoLabel.ZIndex = 53
+                infoLabel.Parent = card
+
+                -- Boton Seleccionar
+                local selBtn = Instance.new("TextButton")
+                selBtn.Size = UDim2.new(0.3, -5, 0.6, 0)
+                selBtn.Position = UDim2.new(0.7, 5, 0.2, 0)
+                selBtn.BackgroundColor3 = (idx == selectedBlockIdx) and Color3.fromRGB(80, 220, 80) or Color3.fromRGB(255, 180, 80)
+                selBtn.BorderSizePixel = 0
+                selBtn.Text = (idx == selectedBlockIdx) and "✓" or "Sel"
+                selBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
+                selBtn.TextScaled = true
+                selBtn.Font = Enum.Font.GothamBold
+                selBtn.ZIndex = 53
+                selBtn.Parent = card
+                Instance.new("UICorner", selBtn).CornerRadius = UDim.new(0, 6)
+
+                selBtn.MouseButton1Click:Connect(function()
+                        selectedBlockIdx = idx
+                        updateBuildUI()
+                        print("[Build] Bloque seleccionado: " .. block.name .. " ($" .. block.cost .. ")")
+                end)
+        end
+end
+
+-- Forward declaration para que las closures puedan referenciarla
+local toggleBuildMode
+
+-- Toggle panel de bloques
+buildBtn.MouseButton1Click:Connect(function()
+        toggleBuildMode()
+end)
+
+bpBuildCloseBtn.MouseButton1Click:Connect(function()
+        if buildMode then toggleBuildMode() end
+end)
+
+-- Cuando se abre mochila o musica, cerrar panel de bloques (no se solapen)
+backpackBtn.MouseButton1Click:Connect(function()
+        if backpackPanel.Visible and buildMode then
+                toggleBuildMode()
+        end
+end)
+musicBtn.MouseButton1Click:Connect(function()
+        if musicPanel.Visible and buildMode then
+                toggleBuildMode()
+        end
+end)
+
+-- Tecla B para abrir/cerrar modo construccion
+UserInputService.InputBegan:Connect(function(input, processed)
+        if processed then return end
+        if input.KeyCode == Enum.KeyCode.B then
+                toggleBuildMode()
+        end
+end)
+
+-- Click izquierdo: colocar bloque / Click derecho: quitar bloque (solo en modo build)
+UserInputService.InputBegan:Connect(function(input, processed)
+        if not buildMode then return end
+        if processed then return end
+        -- Solo procesar si no es UI
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                -- Click izquierdo: colocar bloque
+                if ghostBlock and ghostBlock.Visible then
+                        local config = BLOCK_TYPES_BUILD[selectedBlockIdx]
+                        PlaceBlockEvent:FireServer(config.id, ghostBlock.Position, nil)
+                end
+        elseif input.UserInputType == Enum.UserInputType.MouseButton2 then
+                -- Click derecho: quitar bloque apuntado
+                -- Raycast desde la camara para encontrar el bloque
+                local mouseTarget = mouse.Target
+                if mouseTarget and mouseTarget.Name and string.sub(mouseTarget.Name, 1, 6) == "Block_" then
+                        -- Verificar que tenga tag Owner (el servidor validara que sea del jugador)
+                        RemoveBlockEvent:FireServer(mouseTarget)
+                end
+        end
+end)
+
+-- Touch para mobile (tocar = colocar, mantener + tocar = quitar)
+UserInputService.InputBegan:Connect(function(input, processed)
+        if not buildMode then return end
+        if processed then return end
+        if input.UserInputType == Enum.UserInputType.Touch then
+                -- En mobile, un toque = colocar bloque
+                if ghostBlock and ghostBlock.Visible then
+                        local config = BLOCK_TYPES_BUILD[selectedBlockIdx]
+                        PlaceBlockEvent:FireServer(config.id, ghostBlock.Position, nil)
+                end
+        end
+end)
+
+-- Loop para actualizar el ghost block en cada frame
+RunService.RenderStepped:Connect(function()
+        if buildMode then
+                updateGhostBlock()
+        end
+end)
+
+-- Definicion real de toggleBuildMode (al final para que vea todas las variables locales)
+function toggleBuildMode()
+        buildMode = not buildMode
+        if buildMode then
+                -- Activar
+                local parcel = findPlayerParcel()
+                createGridVisual(parcel)
+                -- Desactivar pelota si esta equipada (para no conflictos)
+                if ballEquipped then
+                        unequipBall()
+                end
+                -- Cerrar mochila y panel de musica si estan abiertos
+                backpackPanel.Visible = false
+                musicPanel.Visible = false
+                -- Mostrar panel de bloques
+                buildPanel.Visible = true
+                updateBuildUI()
+                -- Cambiar color del boton para indicar que esta activo
+                buildBtn.BackgroundColor3 = Color3.fromRGB(80, 220, 100)
+                print("[Build] Modo construccion ACTIVADO")
+        else
+                -- Desactivar
+                removeGridVisual()
+                if ghostBlock then
+                        ghostBlock:Destroy()
+                        ghostBlock = nil
+                end
+                buildPanel.Visible = false
+                buildBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+                print("[Build] Modo construccion DESACTIVADO")
+        end
+end
+
+print("Sistema de construccion cargado!")
 
 
 
