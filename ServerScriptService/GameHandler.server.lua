@@ -34,6 +34,39 @@ else
 end
 local CharacterManager = require(ServerStorage.ServerModules.CharacterManager)
 local ModelManager = require(ServerStorage.ServerModules.ModelManager)
+-- ParcelManager + BuildManager para sistema de construccion
+local ParcelManager
+local ok_pm, err_pm = pcall(function()
+        ParcelManager = require(ServerStorage.ServerModules.ParcelManager)
+end)
+if not ok_pm or not ParcelManager then
+        warn("[CRITICAL] ParcelManager no se pudo cargar: " .. tostring(err_pm))
+        ParcelManager = {
+                assignByBaseName = function() return nil end,
+                getParcel = function() return nil end,
+                release = function() end,
+                isParcelOwnedByPlayer = function() return false end,
+                isPositionInParcel = function() return false end,
+        }
+else
+        print("[OK] ParcelManager cargado correctamente")
+end
+
+local BuildManager
+local ok_bld, err_bld = pcall(function()
+        BuildManager = require(ServerStorage.ServerModules.BuildManager)
+end)
+if not ok_bld or not BuildManager then
+        warn("[CRITICAL] BuildManager no se pudo cargar: " .. tostring(err_bld))
+        BuildManager = {
+                getBlocksList = function() return {} end,
+                getBlockConfig = function() return nil end,
+                placeBlock = function() return false, "BuildManager no cargo" end,
+                removeBlock = function() return false, "BuildManager no cargo" end,
+        }
+else
+        print("[OK] BuildManager cargado correctamente")
+end
 -- BaseUpgradeManager es opcional - si falla, el juego sigue sin mejora de base
 local BaseUpgradeManager
 local ok_bum, err_bum = pcall(function()
@@ -1151,6 +1184,10 @@ Players.PlayerAdded:Connect(function(player)
                         if BaseUpgradeManager then
                                 BaseUpgradeManager.createUpgradeButton(base, player)
                         end
+                        -- Asignar parcela de construccion segun la base (Base1 -> Parcela 1, etc.)
+                        if ParcelManager then
+                                ParcelManager.assignByBaseName(player, base.Name)
+                        end
                 else
                         task.delay(5, function()
                                 if not isPlayerValid(player) then return end
@@ -1159,6 +1196,10 @@ Players.PlayerAdded:Connect(function(player)
                                         showEmptyLabels(base)
                                         if BaseUpgradeManager then
                                                 BaseUpgradeManager.createUpgradeButton(base, player)
+                                        end
+                                        -- Asignar parcela tambien en el reintento
+                                        if ParcelManager then
+                                                ParcelManager.assignByBaseName(player, base.Name)
                                         end
                                 end
                         end)
@@ -1236,6 +1277,10 @@ Players.PlayerRemoving:Connect(function(player)
         end
 
         BaseManager.release(userId)
+        -- Liberar parcela de construccion del jugador
+        if ParcelManager then
+                ParcelManager.release(userId)
+        end
 end)
 
 -- ============================================
@@ -1664,6 +1709,74 @@ end)
 
 task.delay(3, function()
         CrystalSpawner.spawnAll()
+end)
+
+-- ============================================
+-- SISTEMA DE CONSTRUCCION (PlaceBlock / RemoveBlock)
+-- ============================================
+
+-- Cooldowns para evitar spam de bloques (0.05s = 20 bloques/seg max)
+local placeBlockCooldowns = {}
+local removeBlockCooldowns = {}
+
+Events.PlaceBlock.OnServerEvent:Connect(function(player, blockId, position, rotation)
+        local ok, err = pcall(function()
+                if not isPlayerValid(player) then return end
+                -- Cooldown
+                if placeBlockCooldowns[player.UserId] then return end
+                placeBlockCooldowns[player.UserId] = true
+                task.delay(0.05, function() placeBlockCooldowns[player.UserId] = nil end)
+
+                local data = playerData[player.UserId]
+                if not data then return end
+
+                -- Validar bloque
+                local config = BuildManager.getBlockConfig(blockId)
+                if not config then
+                        warn("[Build] Bloque invalido: " .. tostring(blockId))
+                        return
+                end
+
+                -- Validar dinero
+                if (data.money or 0) < config.cost then
+                        warn("[Build] " .. player.Name .. " no tiene dinero para " .. config.name .. " ($" .. config.cost .. ")")
+                        return
+                end
+
+                -- Colocar bloque
+                local success, result = BuildManager.placeBlock(player, blockId, position, rotation)
+                if not success then
+                        warn("[Build] No se pudo colocar bloque: " .. tostring(result))
+                        return
+                end
+
+                -- Descontar dinero
+                data.money = data.money - config.cost
+                local leaderstats = player:FindFirstChild("leaderstats")
+                if leaderstats then
+                        local coins = leaderstats:FindFirstChild("Coins")
+                        if coins then coins.Value = data.money end
+                end
+                Events.MoneyUpdate:FireClient(player, data.money)
+        end)
+        if not ok then warn("Error PlaceBlock: "..tostring(err)) end
+end)
+
+Events.RemoveBlock.OnServerEvent:Connect(function(player, block)
+        local ok, err = pcall(function()
+                if not isPlayerValid(player) then return end
+                -- Cooldown
+                if removeBlockCooldowns[player.UserId] then return end
+                removeBlockCooldowns[player.UserId] = true
+                task.delay(0.05, function() removeBlockCooldowns[player.UserId] = nil end)
+
+                -- Quitar bloque (no devuelve dinero segun decision del usuario)
+                local success, msg = BuildManager.removeBlock(player, block)
+                if not success then
+                        warn("[Build] No se pudo quitar bloque: " .. tostring(msg))
+                end
+        end)
+        if not ok then warn("Error RemoveBlock: "..tostring(err)) end
 end)
 
 print("=== GameHandler iniciado ===")
