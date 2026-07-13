@@ -1281,6 +1281,10 @@ Players.PlayerRemoving:Connect(function(player)
         if ParcelManager then
                 ParcelManager.release(userId)
         end
+        -- Limpiar inventario de bloques del jugador
+        if BuildManager then
+                BuildManager.cleanupPlayer(userId)
+        end
 end)
 
 -- ============================================
@@ -1712,20 +1716,38 @@ task.delay(3, function()
 end)
 
 -- ============================================
--- SISTEMA DE CONSTRUCCION (PlaceBlock / RemoveBlock)
+-- SISTEMA DE CONSTRUCCION (BuyBlock / PlaceBlock / RemoveBlock)
+-- Flujo: BuyBlock (con dinero) -> inventario -> PlaceBlock (usa inventario, no dinero)
+-- Al quitar un bloque, se devuelve al inventario del jugador
 -- ============================================
 
 -- Cooldowns para evitar spam de bloques (0.05s = 20 bloques/seg max)
 local placeBlockCooldowns = {}
 local removeBlockCooldowns = {}
+local buyBlockCooldowns = {}
 
-Events.PlaceBlock.OnServerEvent:Connect(function(player, blockId, position, rotation)
+-- Helper: enviar inventario actualizado al cliente
+local function sendInventoryUpdate(player)
+        if not isPlayerValid(player) then return end
+        local inv = BuildManager.getInventory(player.UserId)
+        -- Convertir a tabla serializable (id -> count)
+        local data = {}
+        for id, count in pairs(inv) do
+                data[id] = count
+        end
+        pcall(function()
+                Events.UpdateInventory:FireClient(player, data)
+        end)
+end
+
+-- BUY BLOCK: compra un bloque con dinero, lo agrega al inventario
+Events.BuyBlock.OnServerEvent:Connect(function(player, blockId)
         local ok, err = pcall(function()
                 if not isPlayerValid(player) then return end
                 -- Cooldown
-                if placeBlockCooldowns[player.UserId] then return end
-                placeBlockCooldowns[player.UserId] = true
-                task.delay(0.05, function() placeBlockCooldowns[player.UserId] = nil end)
+                if buyBlockCooldowns[player.UserId] then return end
+                buyBlockCooldowns[player.UserId] = true
+                task.delay(0.1, function() buyBlockCooldowns[player.UserId] = nil end)
 
                 local data = playerData[player.UserId]
                 if not data then return end
@@ -1743,10 +1765,10 @@ Events.PlaceBlock.OnServerEvent:Connect(function(player, blockId, position, rota
                         return
                 end
 
-                -- Colocar bloque
-                local success, result = BuildManager.placeBlock(player, blockId, position, rotation)
+                -- Comprar bloque (agrega al inventario)
+                local success, result = BuildManager.buyBlock(player, blockId)
                 if not success then
-                        warn("[Build] No se pudo colocar bloque: " .. tostring(result))
+                        warn("[Build] No se pudo comprar bloque: " .. tostring(result))
                         return
                 end
 
@@ -1758,10 +1780,36 @@ Events.PlaceBlock.OnServerEvent:Connect(function(player, blockId, position, rota
                         if coins then coins.Value = data.money end
                 end
                 Events.MoneyUpdate:FireClient(player, data.money)
+
+                -- Enviar inventario actualizado al cliente
+                sendInventoryUpdate(player)
+        end)
+        if not ok then warn("Error BuyBlock: "..tostring(err)) end
+end)
+
+-- PLACE BLOCK: coloca un bloque del inventario (no gasta dinero)
+Events.PlaceBlock.OnServerEvent:Connect(function(player, blockId, position, rotation)
+        local ok, err = pcall(function()
+                if not isPlayerValid(player) then return end
+                -- Cooldown
+                if placeBlockCooldowns[player.UserId] then return end
+                placeBlockCooldowns[player.UserId] = true
+                task.delay(0.05, function() placeBlockCooldowns[player.UserId] = nil end)
+
+                -- Colocar bloque (validacion de inventario dentro de BuildManager)
+                local success, result = BuildManager.placeBlock(player, blockId, position, rotation)
+                if not success then
+                        warn("[Build] No se pudo colocar bloque: " .. tostring(result))
+                        return
+                end
+
+                -- Enviar inventario actualizado al cliente (count bajo)
+                sendInventoryUpdate(player)
         end)
         if not ok then warn("Error PlaceBlock: "..tostring(err)) end
 end)
 
+-- REMOVE BLOCK: quita un bloque y lo devuelve al inventario
 Events.RemoveBlock.OnServerEvent:Connect(function(player, block)
         local ok, err = pcall(function()
                 if not isPlayerValid(player) then return end
@@ -1770,11 +1818,15 @@ Events.RemoveBlock.OnServerEvent:Connect(function(player, block)
                 removeBlockCooldowns[player.UserId] = true
                 task.delay(0.05, function() removeBlockCooldowns[player.UserId] = nil end)
 
-                -- Quitar bloque (no devuelve dinero segun decision del usuario)
-                local success, msg = BuildManager.removeBlock(player, block)
+                -- Quitar bloque y devolverlo al inventario (returnToInventory = true)
+                local success, msg = BuildManager.removeBlock(player, block, true)
                 if not success then
                         warn("[Build] No se pudo quitar bloque: " .. tostring(msg))
+                        return
                 end
+
+                -- Enviar inventario actualizado al cliente (count subio)
+                sendInventoryUpdate(player)
         end)
         if not ok then warn("Error RemoveBlock: "..tostring(err)) end
 end)
