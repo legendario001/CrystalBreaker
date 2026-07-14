@@ -44,6 +44,23 @@ for _, name in ipairs(eventNames) do
         end
 end
 
+-- RemoteFunctions (para consultas cliente -> servidor que necesitan respuesta)
+local functionNames = {
+        "GetPlayerParcel", -- cliente pide su parcela asignada, servidor responde con la Instance
+}
+
+for _, name in ipairs(functionNames) do
+        local existing = ReplicatedStorage:FindFirstChild(name)
+        if existing then
+                events[name] = existing
+        else
+                local rf = Instance.new("RemoteFunction")
+                rf.Name = name
+                rf.Parent = ReplicatedStorage
+                events[name] = rf
+        end
+end
+
 return events
 
 
