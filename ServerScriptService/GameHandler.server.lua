@@ -1831,6 +1831,18 @@ Events.RemoveBlock.OnServerEvent:Connect(function(player, block)
         if not ok then warn("Error RemoveBlock: "..tostring(err)) end
 end)
 
+-- ============================================
+-- RemoteFunction: GetPlayerParcel
+-- Cliente pide su parcela asignada, servidor responde con la Instance
+-- Usado por el Beam guia para apuntar a la parcela correcta (no la mas cercana)
+-- ============================================
+Events.GetPlayerParcel.OnServerInvoke = function(player)
+        if not isPlayerValid(player) then return nil end
+        if not ParcelManager then return nil end
+        local parcel = ParcelManager.getParcel(player.UserId)
+        return parcel
+end
+
 print("=== GameHandler iniciado ===")
 
 
