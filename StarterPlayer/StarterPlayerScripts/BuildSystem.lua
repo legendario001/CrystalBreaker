@@ -296,15 +296,16 @@ local function updateGhostBlock()
                 ghostBlock.CanCollide = false
                 ghostBlock.CanQuery = false
                 ghostBlock.CanTouch = false
-                ghostBlock.Material = Enum.Material.ForceField
-                ghostBlock.Transparency = 0.3
+                ghostBlock.Material = Enum.Material.SmoothPlastic -- mas solido que ForceField
+                ghostBlock.Transparency = 0.15 -- muy poco transparente (antes 0.3)
+                ghostBlock.Reflectance = 0
                 ghostBlock.LocalTransparencyModifier = 1
                 ghostBlock.Parent = Workspace
         end
 
         local config = BLOCK_MAP_BUILD[equippedBlockId]
         ghostBlock.Position = snappedPos
-        ghostBlock.LocalTransparencyModifier = 0.3 -- mas visible (antes 0.5)
+        ghostBlock.LocalTransparencyModifier = 0.15 -- muy visible (antes 0.3)
         if canPlace then
                 ghostBlock.Color = config.color
         else
@@ -864,6 +865,66 @@ local function updateInventarioTab()
 end
 
 -- Activar modo construccion (cierra panel, muestra hotbar y grid)
+-- Texto de ayuda movil: aparece 1 vez al activar modo construccion (solo movil)
+local function showMobileBuildHint()
+        if not isMobileBuild then return end
+        -- Crear texto grande en el centro de la pantalla
+        local hint = Instance.new("TextLabel")
+        hint.Name = "MobileBuildHint"
+        hint.Size = UDim2.new(0, 500, 0, 120)
+        hint.Position = UDim2.new(0.5, -250, 0.15, 0) -- arriba centro
+        hint.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+        hint.BackgroundTransparency = 0.1
+        hint.BorderSizePixel = 0
+        hint.Text = "👆 Arrastra el dedo por la pantalla para mover la mira y señalar donde quieres colocar o quitar bloques"
+        hint.TextColor3 = Color3.fromRGB(255, 220, 100)
+        hint.TextScaled = true
+        hint.Font = Enum.Font.GothamBold
+        hint.TextWrapped = true
+        hint.ZIndex = 200
+        hint.Parent = screenGui
+        Instance.new("UICorner", hint).CornerRadius = UDim.new(0, 12)
+        local hintStroke = Instance.new("UIStroke")
+        hintStroke.Color = Color3.fromRGB(255, 220, 100)
+        hintStroke.Thickness = 2
+        hintStroke.Transparency = 0.2
+        hintStroke.Parent = hint
+
+        -- Padding interno
+        local padding = Instance.new("UIPadding")
+        padding.PaddingLeft = UDim.new(0, 15)
+        padding.PaddingRight = UDim.new(0, 15)
+        padding.PaddingTop = UDim.new(0, 10)
+        padding.PaddingBottom = UDim.new(0, 10)
+        padding.Parent = hint
+
+        -- Animacion: fade in, esperar 4s, fade out
+        task.spawn(function()
+                hint.TextTransparency = 1
+                hint.BackgroundTransparency = 1
+                hintStroke.Transparency = 1
+                -- Fade in
+                for i = 1, 10 do
+                        hint.TextTransparency = 1 - (i * 0.1)
+                        hint.BackgroundTransparency = 1 - (i * 0.1) * 0.9
+                        hintStroke.Transparency = 1 - (i * 0.1) * 0.8
+                        task.wait(0.03)
+                end
+                -- Mantener 4 segundos
+                task.wait(4)
+                -- Fade out
+                for i = 1, 10 do
+                        hint.TextTransparency = i * 0.1
+                        hint.BackgroundTransparency = 1 - (1 - i * 0.1) * 0.9
+                        hintStroke.Transparency = 1 - (1 - i * 0.1) * 0.8
+                        task.wait(0.03)
+                end
+                if hint and hint.Parent then
+                        hint:Destroy()
+                end
+        end)
+end
+
 local function activateBuildMode()
         -- Permitir activar modo construccion aunque no haya bloques equipados.
         -- Si no hay bloque equipado, el hotbar aparecera vacio y al intentar colocar
@@ -884,6 +945,8 @@ local function activateBuildMode()
         musicPanel.Visible = false
         updateHotbar()
         if updateMobileBuildUI then updateMobileBuildUI() end
+        -- Mostrar texto de ayuda 1 vez al activar modo construccion (solo movil)
+        showMobileBuildHint()
         print("[Build] Modo construccion ACTIVADO (con hotbar)")
 end
 
