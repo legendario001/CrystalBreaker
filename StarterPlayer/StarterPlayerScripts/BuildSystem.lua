@@ -10,32 +10,32 @@ local BuildSystem = {}
 local deps
 
 function BuildSystem.init(dependencies)
-	deps = dependencies
+        deps = dependencies
 
-	-- Desempaquetar dependencias para uso local
-	local player = deps.player
-	local screenGui = deps.screenGui
-	local mouse = deps.mouse
-	local UserInputService = deps.UserInputService
-	local RunService = deps.RunService
-	local Workspace = deps.Workspace
-	local ReplicatedStorage = deps.ReplicatedStorage
+        -- Desempaquetar dependencias para uso local
+        local player = deps.player
+        local screenGui = deps.screenGui
+        local mouse = deps.mouse
+        local UserInputService = deps.UserInputService
+        local RunService = deps.RunService
+        local Workspace = deps.Workspace
+        local ReplicatedStorage = deps.ReplicatedStorage
 
-	-- Eventos
-	local PlaceBlockEvent = deps.PlaceBlockEvent
-	local RemoveBlockEvent = deps.RemoveBlockEvent
-	local BuyBlockEvent = deps.BuyBlockEvent
-	local UpdateInventoryEvent = deps.UpdateInventoryEvent
+        -- Eventos
+        local PlaceBlockEvent = deps.PlaceBlockEvent
+        local RemoveBlockEvent = deps.RemoveBlockEvent
+        local BuyBlockEvent = deps.BuyBlockEvent
+        local UpdateInventoryEvent = deps.UpdateInventoryEvent
 
-	-- UI externa (para cerrar al activar build)
-	local backpackPanel = deps.backpackPanel
-	local musicPanel = deps.musicPanel
-	local backpackBtn = deps.backpackBtn
-	local musicBtn = deps.musicBtn
+        -- UI externa (para cerrar al activar build)
+        local backpackPanel = deps.backpackPanel
+        local musicPanel = deps.musicPanel
+        local backpackBtn = deps.backpackBtn
+        local musicBtn = deps.musicBtn
 
-	-- Estado externo (pelota)
-	local ballEquippedRef = deps.ballEquippedRef
-	local unequipBall = deps.unequipBall
+        -- Estado externo (pelota)
+        local ballEquippedRef = deps.ballEquippedRef
+        local unequipBall = deps.unequipBall
 
 -- Flujo:
 -- 1. Click en boton hammer (o tecla B) -> abre panel con 3 pestañas
@@ -121,13 +121,17 @@ local hotbarSlot
 local hotbarPreview
 local hotbarNameLabel
 local hotbarCountLabel
+local invBtn
 
 -- Actualizar el hotbar inferior (slot con el bloque equipado + count)
 local function updateHotbar()
         if not buildModeActive then
                 if hotbarSlot then hotbarSlot.Visible = false end
+                if invBtn then invBtn.Visible = false end
                 return
         end
+        -- Mostrar siempre el boton inventario cuando el modo esta activo
+        if invBtn then invBtn.Visible = true end
         -- Siempre mostrar el slot cuando el modo esta activo (aunque este vacio)
         if not equippedBlockId or not blockInventory[equippedBlockId] or blockInventory[equippedBlockId] <= 0 then
                 -- Slot vacio: gris, sin bloque equipado
@@ -527,6 +531,50 @@ hotbarSlot.ZIndex = 50
 hotbarSlot.Parent = screenGui
 Instance.new("UICorner", hotbarSlot).CornerRadius = UDim.new(0, 12)
 
+-- ============================================
+-- Boton Inventario (al lado izquierdo del hotbar, visible solo en modo construccion)
+-- ============================================
+invBtn = Instance.new("TextButton")
+invBtn.Name = "InvBtn"
+invBtn.Size = UDim2.new(0, 100, 0, 100)
+invBtn.Position = UDim2.new(0.5, -160, 1, -120) -- 110px a la izquierda del hotbar (50 + 100 + 10)
+invBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+invBtn.BackgroundTransparency = 0.1
+invBtn.BorderSizePixel = 0
+invBtn.Text = ""
+invBtn.Visible = false
+invBtn.ZIndex = 50
+invBtn.Parent = screenGui
+Instance.new("UICorner", invBtn).CornerRadius = UDim.new(0, 12)
+
+local invBtnStroke = Instance.new("UIStroke")
+invBtnStroke.Color = Color3.fromRGB(80, 160, 220) -- azul (mismo color que tab Inventario)
+invBtnStroke.Thickness = 2
+invBtnStroke.Transparency = 0.2
+invBtnStroke.Parent = invBtn
+
+-- Icono del boton inventario (mochila emoji temporal)
+local invBtnIcon = Instance.new("TextLabel")
+invBtnIcon.Size = UDim2.new(0.6, 0, 0.5, 0)
+invBtnIcon.Position = UDim2.new(0.2, 0, 0.1, 0)
+invBtnIcon.BackgroundTransparency = 1
+invBtnIcon.Text = "🎒"
+invBtnIcon.TextScaled = true
+invBtnIcon.ZIndex = 51
+invBtnIcon.Parent = invBtn
+
+-- Texto "Inventario" debajo del icono
+local invBtnLabel = Instance.new("TextLabel")
+invBtnLabel.Size = UDim2.new(1, 0, 0.25, 0)
+invBtnLabel.Position = UDim2.new(0, 0, 0.65, 0)
+invBtnLabel.BackgroundTransparency = 1
+invBtnLabel.Text = "Inventario"
+invBtnLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+invBtnLabel.TextScaled = true
+invBtnLabel.Font = Enum.Font.GothamBold
+invBtnLabel.ZIndex = 51
+invBtnLabel.Parent = invBtn
+
 local hotbarStroke = Instance.new("UIStroke")
 hotbarStroke.Color = Color3.fromRGB(255, 180, 80)
 hotbarStroke.Thickness = 2
@@ -823,7 +871,12 @@ end
 local function closeBuildPanel()
         buildPanelOpen = false
         buildPanel.Visible = false
-        buildBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+        -- El color del boton hammer depende de si el modo construccion sigue activo
+        if buildModeActive then
+                buildBtn.BackgroundColor3 = Color3.fromRGB(80, 220, 100) -- verde (modo activo)
+        else
+                buildBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 40) -- oscuro (nada activo)
+        end
 end
 
 -- Toggle: si panel abierto -> cerrar. Si modo activo -> desactivar. Si nada -> abrir panel.
@@ -863,6 +916,18 @@ end
 -- Boton ACTIVAR MODO CONSTRUCCION (tab 3)
 activarModoBtn.MouseButton1Click:Connect(function()
         activateBuildMode()
+end)
+
+-- Boton INVENTARIO (al lado del hotbar, en modo construccion activo)
+-- Abre la pestaña Inventario del panel SIN desactivar el modo construccion.
+-- El jugador puede equipar bloques y volver a colocar cerrando el panel.
+invBtn.MouseButton1Click:Connect(function()
+        if not buildModeActive then return end
+        -- Mostrar panel y seleccionar tab Inventario
+        buildPanelOpen = true
+        buildPanel.Visible = true
+        selectTab(2) -- tab Inventario
+        updateInventarioTab()
 end)
 
 -- Cuando se abre mochila o musica, cerrar todo de build
