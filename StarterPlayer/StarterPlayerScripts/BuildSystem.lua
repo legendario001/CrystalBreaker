@@ -929,7 +929,7 @@ local function createGuideBeam(parcel)
         guideBeam.Name = "GuideBeam"
         guideBeam.Attachment0 = guideAtt0
         guideBeam.Attachment1 = guideAtt1
-        guideBeam.Texture = "rbxassetid://15036194220" -- textura de flecha (señala a la izquierda, con TextureMode=Wrap anima hacia la parcela)
+        guideBeam.Texture = "rbxassetid://89938583631693" -- textura de flecha nueva
         guideBeam.TextureMode = Enum.TextureMode.Wrap
         guideBeam.TextureLength = 4 -- cada flecha mide 4 studs
         guideBeam.Color = ColorSequence.new(Color3.fromRGB(255, 220, 100)) -- amarillo dorado
@@ -958,20 +958,21 @@ local function createGuideBeam(parcel)
                 local dist = (currentRoot.Position - parcel.Position).Magnitude
 
                 -- Fade progresivo:
-                -- - dist > 30: visible (transparency 0.3)
-                -- - 25 <= dist <= 30: fade de 0.3 a 1
-                -- - dist < 15: eliminar beam
-                if dist < 15 then
-                        -- Eliminar beam (jugador llego a la parcela)
+                -- La parcela mide 36x56 studs. Centro a borde mas cercano = ~18 studs.
+                -- - dist > 28: visible (transparency 0.3)
+                -- - 20 <= dist <= 28: fade de 0.3 a 1
+                -- - dist < 20: eliminar beam (jugador ya piso la parcela)
+                if dist < 20 then
+                        -- Eliminar beam (jugador piso la parcela)
                         if guideBeam then guideBeam:Destroy() guideBeam = nil end
                         if guideAtt0 then guideAtt0:Destroy() guideAtt0 = nil end
                         if guideAtt1 then guideAtt1:Destroy() guideAtt1 = nil end
                         if guideLoopConn then guideLoopConn:Disconnect() guideLoopConn = nil end
-                        print("[Build] Beam guia eliminado (jugador llego a la parcela)")
+                        print("[Build] Beam guia eliminado (jugador piso la parcela)")
                         return
-                elseif dist < 25 then
-                        -- Fade out entre 25 y 15 studs
-                        local fadeT = (dist - 15) / 10 -- 0 a 1
+                elseif dist < 28 then
+                        -- Fade out entre 28 y 20 studs
+                        local fadeT = (dist - 20) / 8 -- 0 a 1
                         local transparency = 1 - (fadeT * 0.7) -- 1 (oculto) a 0.3 (visible)
                         guideBeam.Transparency = NumberSequence.new(transparency)
                 else
