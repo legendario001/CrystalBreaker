@@ -25,6 +25,10 @@ function BuildSystem.init(dependencies)
         -- Detectar si es movil
         local isMobileBuild = UserInputService.TouchEnabled and not UserInputService.MouseEnabled
 
+        -- Posicion de la mira en pantalla (Vector2 en pixels). Inicia en el centro.
+        -- Se actualiza al arrastrar el dedo sobre la mira.
+        local crosshairPos = nil -- se inicializa en el centro cuando se activa el modo
+
         -- Eventos
         local PlaceBlockEvent = deps.PlaceBlockEvent
         local RemoveBlockEvent = deps.RemoveBlockEvent
@@ -193,13 +197,13 @@ local function updateGhostBlock()
         local parcelSizeY = parcel.Size and parcel.Size.Y or 1
         local parcelTopY = parcel.Position.Y + (parcelSizeY / 2)
 
-        -- En PC: usar mouse. En movil: raycast desde el centro de la pantalla (mira)
+        -- En PC: usar mouse. En movil: raycast desde la posicion de la mira (arrastrable)
         local mouseTarget, mousePos, targetSurface
         if isMobileBuild then
-                -- Raycast desde el centro de la pantalla
+                -- Usar crosshairPos si esta definida, sino centro de pantalla
                 local viewportSize = camera.ViewportSize
-                local screenCenter = Vector2.new(viewportSize.X / 2, viewportSize.Y / 2)
-                local unitRay = camera:ViewportPointToRay(screenCenter.X, screenCenter.Y)
+                local screenPoint = crosshairPos or Vector2.new(viewportSize.X / 2, viewportSize.Y / 2)
+                local unitRay = camera:ViewportPointToRay(screenPoint.X, screenPoint.Y)
                 local rayOrigin = unitRay.Origin
                 local rayDirection = unitRay.Direction * 500 -- 500 studs de alcance
                 local raycastParams = RaycastParams.new()
@@ -1054,12 +1058,12 @@ local function showBuildNotice(text, color)
 end
 
 -- ============================================
--- Helper: obtener bloque apuntado desde el centro de la pantalla (movil)
+-- Helper: obtener bloque apuntado desde la posicion de la mira (movil)
 -- ============================================
 local function getTargetBlockFromScreenCenter()
         local viewportSize = camera.ViewportSize
-        local screenCenter = Vector2.new(viewportSize.X / 2, viewportSize.Y / 2)
-        local unitRay = camera:ViewportPointToRay(screenCenter.X, screenCenter.Y)
+        local screenPoint = crosshairPos or Vector2.new(viewportSize.X / 2, viewportSize.Y / 2)
+        local unitRay = camera:ViewportPointToRay(screenPoint.X, screenPoint.Y)
         local rayOrigin = unitRay.Origin
         local rayDirection = unitRay.Direction * 500
         local raycastParams = RaycastParams.new()
@@ -1081,18 +1085,86 @@ end
 -- Solo visible en movil + modo construccion activo
 -- ============================================
 local mobileCrosshair, mobilePlaceBtn, mobileRemoveBtn
+-- Estado de arrastre de la mira
+local crosshairDragging = false
+local crosshairTouchOffset = Vector2.new(0, 0) -- offset entre el touch y el centro de la mira al iniciar arrastre
+
 if isMobileBuild then
-        -- Mira central (icono de dedo)
-        mobileCrosshair = Instance.new("ImageLabel")
+        -- Mira central (icono de dedo) - TextButton para poder arrastrarla
+        mobileCrosshair = Instance.new("TextButton")
         mobileCrosshair.Name = "MobileCrosshair"
         mobileCrosshair.Size = UDim2.new(0, 80, 0, 80)
         mobileCrosshair.Position = UDim2.new(0.5, -40, 0.5, -40)
-        mobileCrosshair.BackgroundTransparency = 1
-        mobileCrosshair.Image = "rbxassetid://18985225104"
-        mobileCrosshair.ScaleType = Enum.ScaleType.Fit
+        mobileCrosshair.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+        mobileCrosshair.BackgroundTransparency = 0.5
+        mobileCrosshair.BorderSizePixel = 0
+        mobileCrosshair.Text = ""
         mobileCrosshair.Visible = false
         mobileCrosshair.ZIndex = 100
         mobileCrosshair.Parent = screenGui
+        Instance.new("UICorner", mobileCrosshair).CornerRadius = UDim.new(1, 0) -- circular
+
+        -- Imagen del dedo dentro del boton
+        local crosshairImg = Instance.new("ImageLabel")
+        crosshairImg.Size = UDim2.new(0.8, 0, 0.8, 0)
+        crosshairImg.Position = UDim2.new(0.1, 0, 0.1, 0)
+        crosshairImg.BackgroundTransparency = 1
+        crosshairImg.Image = "rbxassetid://18985225104"
+        crosshairImg.ScaleType = Enum.ScaleType.Fit
+        crosshairImg.ZIndex = 101
+        crosshairImg.Parent = mobileCrosshair
+
+        -- Inicializar crosshairPos en el centro de la pantalla
+        local initViewport = camera.ViewportSize
+        crosshairPos = Vector2.new(initViewport.X / 2, initViewport.Y / 2)
+
+        -- Funcion para actualizar la posicion visual de la mira
+        local function updateCrosshairVisual()
+                if mobileCrosshair and crosshairPos then
+                        mobileCrosshair.Position = UDim2.new(0, crosshairPos.X - 40, 0, crosshairPos.Y - 40)
+                end
+        end
+        updateCrosshairVisual()
+
+        -- Detectar touch sobre la mira para iniciar arrastre
+        UserInputService.InputBegan:Connect(function(input, processed)
+                if not buildModeActive then return end
+                if input.UserInputType ~= Enum.UserInputType.Touch then return end
+                -- Verificar si el touch empezo sobre la mira
+                local touchPos = input.Position
+                local crosshairGuiPos = mobileCrosshair.AbsolutePosition
+                local crosshairSize = mobileCrosshair.AbsoluteSize
+                if touchPos.X >= crosshairGuiPos.X and touchPos.X <= crosshairGuiPos.X + crosshairSize.X and
+                   touchPos.Y >= crosshairGuiPos.Y and touchPos.Y <= crosshairGuiPos.Y + crosshairSize.Y then
+                        crosshairDragging = true
+                        -- Calcular offset entre el touch y el centro de la mira
+                        crosshairTouchOffset = Vector2.new(crosshairPos.X - touchPos.X, crosshairPos.Y - touchPos.Y)
+                end
+        end)
+
+        -- Mover la mira al arrastrar
+        UserInputService.TouchMoved:Connect(function(input, processed)
+                if not buildModeActive then return end
+                if not crosshairDragging then return end
+                if input.UserInputType ~= Enum.UserInputType.Touch then return end
+                local touchPos = input.Position
+                -- Nueva posicion = touch + offset (mantiene el punto donde agarraste la mira)
+                local newPos = Vector2.new(touchPos.X + crosshairTouchOffset.X, touchPos.Y + crosshairTouchOffset.Y)
+                -- Clamp dentro de los limites de la pantalla (con margen de 40px para que no se salga)
+                local viewport = camera.ViewportSize
+                newPos = Vector2.new(
+                        math.clamp(newPos.X, 40, viewport.X - 40),
+                        math.clamp(newPos.Y, 40, viewport.Y - 40)
+                )
+                crosshairPos = newPos
+                updateCrosshairVisual()
+        end)
+
+        -- Terminar arrastre
+        UserInputService.TouchEnded:Connect(function(input, processed)
+                if input.UserInputType ~= Enum.UserInputType.Touch then return end
+                crosshairDragging = false
+        end)
 
         -- Boton COLOCAR (centro derecha, hasta la orilla)
         mobilePlaceBtn = Instance.new("TextButton")
