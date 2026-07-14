@@ -929,9 +929,9 @@ local function createGuideBeam(parcel)
         guideBeam.Name = "GuideBeam"
         guideBeam.Attachment0 = guideAtt0
         guideBeam.Attachment1 = guideAtt1
-        guideBeam.Texture = "rbxassetid://89938583631693" -- textura de flecha nueva
+        guideBeam.Texture = "rbxassetid://89938583631693" -- textura de flecha
         guideBeam.TextureMode = Enum.TextureMode.Wrap
-        guideBeam.TextureLength = 4 -- cada flecha mide 4 studs
+        guideBeam.TextureLength = -4 -- negativo para voltear la flecha (señale hacia la parcela, no hacia el jugador)
         guideBeam.Color = ColorSequence.new(Color3.fromRGB(255, 220, 100)) -- amarillo dorado
         guideBeam.LightEmission = 1 -- brilla
         guideBeam.Width0 = 4
@@ -958,21 +958,20 @@ local function createGuideBeam(parcel)
                 local dist = (currentRoot.Position - parcel.Position).Magnitude
 
                 -- Fade progresivo:
-                -- La parcela mide 36x56 studs. Centro a borde mas cercano = ~18 studs.
-                -- - dist > 28: visible (transparency 0.3)
-                -- - 20 <= dist <= 28: fade de 0.3 a 1
-                -- - dist < 20: eliminar beam (jugador ya piso la parcela)
-                if dist < 20 then
-                        -- Eliminar beam (jugador piso la parcela)
+                -- - dist > 50: visible (transparency 0.3)
+                -- - 40 <= dist <= 50: fade de 0.3 a 1
+                -- - dist < 40: eliminar beam (jugador ya esta cerca de la parcela)
+                if dist < 40 then
+                        -- Eliminar beam (jugador ya esta cerca de la parcela)
                         if guideBeam then guideBeam:Destroy() guideBeam = nil end
                         if guideAtt0 then guideAtt0:Destroy() guideAtt0 = nil end
                         if guideAtt1 then guideAtt1:Destroy() guideAtt1 = nil end
                         if guideLoopConn then guideLoopConn:Disconnect() guideLoopConn = nil end
-                        print("[Build] Beam guia eliminado (jugador piso la parcela)")
+                        print("[Build] Beam guia eliminado (jugador a <40 studs de la parcela)")
                         return
-                elseif dist < 28 then
-                        -- Fade out entre 28 y 20 studs
-                        local fadeT = (dist - 20) / 8 -- 0 a 1
+                elseif dist < 50 then
+                        -- Fade out entre 50 y 40 studs
+                        local fadeT = (dist - 40) / 10 -- 0 a 1
                         local transparency = 1 - (fadeT * 0.7) -- 1 (oculto) a 0.3 (visible)
                         guideBeam.Transparency = NumberSequence.new(transparency)
                 else
@@ -1062,9 +1061,10 @@ local function activateBuildMode()
         -- Crear grid (solo si el jugador esta cerca de su parcela)
         local parcel = findPlayerParcel()
         createGridVisual(parcel)
-        -- Crear beam guia si el jugador esta lejos de su parcela (>30 studs)
+        -- Crear beam guia si el jugador esta lejos de su parcela (>40 studs)
+        -- Si ya esta a 40 o menos, no se crea (no hace falta guiarlo)
         local assignedParcel, distToParcel = getPlayerAssignedParcel()
-        if assignedParcel and distToParcel and distToParcel > 30 then
+        if assignedParcel and distToParcel and distToParcel > 40 then
                 createGuideBeam(assignedParcel)
                 print("[Build] Beam guia creado (jugador a " .. math.floor(distToParcel) .. " studs de la parcela)")
         end
