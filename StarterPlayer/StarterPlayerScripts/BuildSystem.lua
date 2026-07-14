@@ -111,6 +111,32 @@ local function findPlayerParcel()
         return nil
 end
 
+-- Obtener la parcela asignada al jugador sin filtro de distancia (para el Beam guia)
+-- Retorna: parcel (Instance) o nil
+local function getPlayerAssignedParcel()
+        local parcelas = Workspace:FindFirstChild("Parcelas")
+        if not parcelas then return nil end
+        -- Por ahora usamos la parcela mas cercana (igual que findPlayerParcel pero sin filtro de 50 studs)
+        -- En el futuro se puede mejorar para usar la parcela asignada por ParcelManager
+        local char = player.Character
+        if not char then return nil end
+        local root = char:FindFirstChild("HumanoidRootPart")
+        if not root then return nil end
+
+        local closest = nil
+        local closestDist = math.huge
+        for _, p in ipairs(parcelas:GetChildren()) do
+                if p:IsA("BasePart") then
+                        local dist = (p.Position - root.Position).Magnitude
+                        if dist < closestDist then
+                                closestDist = dist
+                                closest = p
+                        end
+                end
+        end
+        return closest, closestDist -- devolver tambien la distancia
+end
+
 -- Snap de posicion a la cuadricula de 4 studs
 local function snapToGrid(position, parcelCenter)
         local offsetX = position.X - parcelCenter.X
@@ -864,6 +890,109 @@ local function updateInventarioTab()
         end
 end
 
+-- ============================================
+-- BEAM GUIA: flechas animadas que guian al jugador hacia su parcela
+-- Solo aparece si el jugador esta lejos (>30 studs) al activar modo construccion
+-- Desaparece progresivamente al acercarse (<25 studs fade, <15 studs elimina)
+-- ============================================
+local guideBeam = nil
+local guideAtt0 = nil -- attachment en el jugador
+local guideAtt1 = nil -- attachment en la parcela
+local guideLoopConn = nil -- conexion del RunService para actualizar el beam
+
+-- Crear el beam guia entre el jugador y la parcela
+local function createGuideBeam(parcel)
+        if not parcel then return end
+        -- Limpiar beam anterior si existe
+        if guideBeam then
+                guideBeam:Destroy()
+                guideBeam = nil
+        end
+        if guideAtt0 then guideAtt0:Destroy() guideAtt0 = nil end
+        if guideAtt1 then guideAtt1:Destroy() guideAtt1 = nil end
+
+        local char = player.Character
+        if not char then return end
+        local root = char:FindFirstChild("HumanoidRootPart")
+        if not root then return end
+
+        -- Attachment en el jugador (sobrevive al movimiento)
+        guideAtt0 = Instance.new("Attachment")
+        guideAtt0.Name = "GuideAtt0"
+        guideAtt0.Position = Vector3.new(0, -2.5, 0) -- debajo del torso (a la altura del suelo)
+        guideAtt0.Parent = root
+
+        -- Attachment en la parcela (fijo)
+        guideAtt1 = Instance.new("Attachment")
+        guideAtt1.Name = "GuideAtt1"
+        guideAtt1.Position = Vector3.new(0, 2, 0) -- un poco arriba del suelo de la parcela
+        guideAtt1.Parent = parcel
+
+        -- Beam
+        guideBeam = Instance.new("Beam")
+        guideBeam.Name = "GuideBeam"
+        guideBeam.Attachment0 = guideAtt0
+        guideBeam.Attachment1 = guideAtt1
+        guideBeam.Texture = "rbxassetid://6018375130" -- textura de flecha blanca repetible
+        guideBeam.TextureMode = Enum.TextureMode.Wrap
+        guideBeam.TextureLength = 4 -- cada flecha mide 4 studs
+        guideBeam.Color = ColorSequence.new(Color3.fromRGB(255, 220, 100)) -- amarillo dorado
+        guideBeam.LightEmission = 1 -- brilla
+        guideBeam.Width0 = 4
+        guideBeam.Width1 = 4
+        guideBeam.FaceCamera = true -- las flechas siempre miran a la camara
+        guideBeam.Transparency = NumberSequence.new(0.3) -- semi-transparente
+        guideBeam.Parent = root
+
+        -- Loop para actualizar el beam (mover attachment0 con el jugador + fade por distancia)
+        if guideLoopConn then guideLoopConn:Disconnect() end
+        guideLoopConn = RunService.RenderStepped:Connect(function()
+                if not guideBeam or not guideBeam.Parent then
+                        if guideLoopConn then guideLoopConn:Disconnect() guideLoopConn = nil end
+                        return
+                end
+                -- Verificar que el jugador y la parcela sigan existiendo
+                local currentChar = player.Character
+                if not currentChar then return end
+                local currentRoot = currentChar:FindFirstChild("HumanoidRootPart")
+                if not currentRoot then return end
+                if not parcel or not parcel.Parent then return end
+
+                -- Calcular distancia al centro de la parcela
+                local dist = (currentRoot.Position - parcel.Position).Magnitude
+
+                -- Fade progresivo:
+                -- - dist > 30: visible (transparency 0.3)
+                -- - 25 <= dist <= 30: fade de 0.3 a 1
+                -- - dist < 15: eliminar beam
+                if dist < 15 then
+                        -- Eliminar beam (jugador llego a la parcela)
+                        if guideBeam then guideBeam:Destroy() guideBeam = nil end
+                        if guideAtt0 then guideAtt0:Destroy() guideAtt0 = nil end
+                        if guideAtt1 then guideAtt1:Destroy() guideAtt1 = nil end
+                        if guideLoopConn then guideLoopConn:Disconnect() guideLoopConn = nil end
+                        print("[Build] Beam guia eliminado (jugador llego a la parcela)")
+                        return
+                elseif dist < 25 then
+                        -- Fade out entre 25 y 15 studs
+                        local fadeT = (dist - 15) / 10 -- 0 a 1
+                        local transparency = 1 - (fadeT * 0.7) -- 1 (oculto) a 0.3 (visible)
+                        guideBeam.Transparency = NumberSequence.new(transparency)
+                else
+                        -- Visible
+                        guideBeam.Transparency = NumberSequence.new(0.3)
+                end
+        end)
+end
+
+-- Eliminar el beam guia
+local function removeGuideBeam()
+        if guideLoopConn then guideLoopConn:Disconnect() guideLoopConn = nil end
+        if guideBeam then guideBeam:Destroy() guideBeam = nil end
+        if guideAtt0 then guideAtt0:Destroy() guideAtt0 = nil end
+        if guideAtt1 then guideAtt1:Destroy() guideAtt1 = nil end
+end
+
 -- Activar modo construccion (cierra panel, muestra hotbar y grid)
 -- Texto de ayuda movil: aparece 1 vez al activar modo construccion (solo movil)
 local function showMobileBuildHint()
@@ -933,9 +1062,15 @@ local function activateBuildMode()
         buildPanel.Visible = false
         buildModeActive = true
         buildBtn.BackgroundColor3 = Color3.fromRGB(80, 220, 100)
-        -- Crear grid
+        -- Crear grid (solo si el jugador esta cerca de su parcela)
         local parcel = findPlayerParcel()
         createGridVisual(parcel)
+        -- Crear beam guia si el jugador esta lejos de su parcela (>30 studs)
+        local assignedParcel, distToParcel = getPlayerAssignedParcel()
+        if assignedParcel and distToParcel and distToParcel > 30 then
+                createGuideBeam(assignedParcel)
+                print("[Build] Beam guia creado (jugador a " .. math.floor(distToParcel) .. " studs de la parcela)")
+        end
         -- Desactivar pelota si esta equipada
         if ballEquippedRef() then
                 unequipBall()
@@ -956,6 +1091,7 @@ local function deactivateBuildMode()
         buildPanelOpen = false
         buildPanel.Visible = false
         removeGridVisual()
+        removeGuideBeam() -- eliminar beam guia si existe
         if ghostBlock then
                 ghostBlock:Destroy()
                 ghostBlock = nil
