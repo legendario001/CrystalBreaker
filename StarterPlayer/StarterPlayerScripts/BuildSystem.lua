@@ -88,6 +88,9 @@ local ghostBlock = nil           -- Part preview que sigue al mouse
 local gridVisual = nil           -- Folder con las lineas del grid
 local canPlace = false           -- true si se puede colocar en la posicion actual del ghost
 local currentTab = 1             -- 1=Materiales, 2=Inventario, 3=Modo Construccion
+local pickaxeEquipped = false    -- true si el pico esta equipado (solo PC, click izq quita bloques en vez de colocar)
+local pickaxeBtn = nil           -- forward declaration (boton pico, solo PC)
+local showBuildNotice -- forward declaration (funcion definida mas abajo)
 
 -- Funcion para obtener la parcela del jugador (busca en Workspace/Parcelas)
 local function findPlayerParcel()
@@ -697,6 +700,68 @@ hotbarCountLabel.Parent = hotbarSlot
 Instance.new("UICorner", hotbarCountLabel).CornerRadius = UDim.new(0, 6)
 
 -- ============================================
+-- Boton PICO (solo PC, a la derecha del hotbar)
+-- Al equipar el pico, click izquierdo QUITA bloques en vez de colocarlos
+-- ============================================
+if not isMobileBuild then
+        pickaxeBtn = Instance.new("TextButton")
+        pickaxeBtn.Name = "PickaxeBtn"
+        pickaxeBtn.Size = UDim2.new(0, 100, 0, 100)
+        pickaxeBtn.Position = UDim2.new(0.5, 60, 1, -120) -- 110px a la derecha del hotbar (-50 + 100 + 10 = 60)
+        pickaxeBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+        pickaxeBtn.BackgroundTransparency = 0.1
+        pickaxeBtn.BorderSizePixel = 0
+        pickaxeBtn.Text = ""
+        pickaxeBtn.Visible = false
+        pickaxeBtn.ZIndex = 50
+        pickaxeBtn.Parent = screenGui
+        Instance.new("UICorner", pickaxeBtn).CornerRadius = UDim.new(0, 12)
+
+        local pickaxeStroke = Instance.new("UIStroke")
+        pickaxeStroke.Color = Color3.fromRGB(180, 100, 60) -- naranja madera
+        pickaxeStroke.Thickness = 2
+        pickaxeStroke.Transparency = 0.2
+        pickaxeStroke.Parent = pickaxeBtn
+
+        -- Icono del pico (emoji temporal)
+        local pickaxeIcon = Instance.new("TextLabel")
+        pickaxeIcon.Size = UDim2.new(0.6, 0, 0.5, 0)
+        pickaxeIcon.Position = UDim2.new(0.2, 0, 0.1, 0)
+        pickaxeIcon.BackgroundTransparency = 1
+        pickaxeIcon.Text = "⛏️"
+        pickaxeIcon.TextScaled = true
+        pickaxeIcon.ZIndex = 51
+        pickaxeIcon.Parent = pickaxeBtn
+
+        -- Texto "Pico" debajo del icono
+        local pickaxeLabel = Instance.new("TextLabel")
+        pickaxeLabel.Size = UDim2.new(1, 0, 0.25, 0)
+        pickaxeLabel.Position = UDim2.new(0, 0, 0.65, 0)
+        pickaxeLabel.BackgroundTransparency = 1
+        pickaxeLabel.Text = "Pico"
+        pickaxeLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        pickaxeLabel.TextScaled = true
+        pickaxeLabel.Font = Enum.Font.GothamBold
+        pickaxeLabel.ZIndex = 51
+        pickaxeLabel.Parent = pickaxeBtn
+
+        -- Handler: equipar/desequipar pico
+        pickaxeBtn.MouseButton1Click:Connect(function()
+                if not buildModeActive then return end
+                pickaxeEquipped = not pickaxeEquipped
+                if pickaxeEquipped then
+                        pickaxeBtn.BackgroundColor3 = Color3.fromRGB(220, 100, 60) -- naranja brillante = equipado
+                        pickaxeStroke.Thickness = 3
+                        showBuildNotice("⛏️ Pico equipado. Click izquierdo quita bloques.", Color3.fromRGB(255, 220, 100))
+                else
+                        pickaxeBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 40) -- oscuro = no equipado
+                        pickaxeStroke.Thickness = 2
+                        showBuildNotice("Pico desequipado. Click izquierdo coloca bloques.", Color3.fromRGB(255, 220, 100))
+                end
+        end)
+end
+
+-- ============================================
 -- Funciones de UI
 -- ============================================
 
@@ -1079,6 +1144,8 @@ local function activateBuildMode()
         musicPanel.Visible = false
         updateHotbar()
         if updateMobileBuildUI then updateMobileBuildUI() end
+        -- Mostrar boton pico (solo PC)
+        if pickaxeBtn then pickaxeBtn.Visible = true end
         -- Mostrar texto de ayuda 1 vez al activar modo construccion (solo movil)
         showMobileBuildHint()
         print("[Build] Modo construccion ACTIVADO (con hotbar)")
@@ -1098,6 +1165,9 @@ local function deactivateBuildMode()
         buildBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
         updateHotbar()
         if updateMobileBuildUI then updateMobileBuildUI() end
+        -- Ocultar boton pico y desequiparlo (solo PC)
+        if pickaxeBtn then pickaxeBtn.Visible = false end
+        pickaxeEquipped = false
         print("[Build] Modo construccion DESACTIVADO")
 end
 
@@ -1208,7 +1278,7 @@ UserInputService.InputBegan:Connect(function(input, processed)
 end)
 
 -- Aviso flotante (notificacion temporal en pantalla)
-local function showBuildNotice(text, color)
+function showBuildNotice(text, color)
         color = color or Color3.fromRGB(255, 180, 80)
         local notice = Instance.new("TextLabel")
         notice.Name = "BuildNotice"
@@ -1440,12 +1510,20 @@ function updateMobileBuildUI()
         if mobileRemoveBtn then mobileRemoveBtn.Visible = visible end
 end
 
--- Click izquierdo: colocar / Click derecho: quitar (solo en modo construccion activo)
+-- Click izquierdo: colocar O quitar (segun pico equipado). Click derecho eliminado (rotar camara)
 UserInputService.InputBegan:Connect(function(input, processed)
         if not buildModeActive then return end
         if processed then return end
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                -- Verificar si hay bloque equipado
+                -- Si el pico esta equipado, click izquierdo QUITA bloques
+                if pickaxeEquipped then
+                        local mouseTarget = mouse.Target
+                        if mouseTarget and string.sub(mouseTarget.Name, 1, 6) == "Block_" then
+                                RemoveBlockEvent:FireServer(mouseTarget)
+                        end
+                        return
+                end
+                -- Si el pico NO esta equipado, click izquierdo COLOCA bloques
                 if not equippedBlockId or not blockInventory[equippedBlockId] or blockInventory[equippedBlockId] <= 0 then
                         showBuildNotice("⚠ No tienes bloques equipados. Compra en Materiales y equipa en Inventario.", Color3.fromRGB(255, 100, 100))
                         return
@@ -1455,12 +1533,8 @@ UserInputService.InputBegan:Connect(function(input, processed)
                 elseif ghostBlock and ghostBlock.LocalTransparencyModifier < 1 and not canPlace then
                         showBuildNotice("⚠ No puedes colocar aqui (fuera de parcela o posicion ocupada)", Color3.fromRGB(255, 100, 100))
                 end
-        elseif input.UserInputType == Enum.UserInputType.MouseButton2 then
-                local mouseTarget = mouse.Target
-                if mouseTarget and string.sub(mouseTarget.Name, 1, 6) == "Block_" then
-                        RemoveBlockEvent:FireServer(mouseTarget)
-                end
         end
+        -- Click derecho (MouseButton2) eliminado: ahora se usa para rotar la camara
 end)
 
 -- Touch para mobile: DESHABILITADO en modo construccion
