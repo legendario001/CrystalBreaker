@@ -34,6 +34,8 @@ function BuildSystem.init(dependencies)
         local RemoveBlockEvent = deps.RemoveBlockEvent
         local BuyBlockEvent = deps.BuyBlockEvent
         local UpdateInventoryEvent = deps.UpdateInventoryEvent
+        -- RemoteFunction para obtener la parcela asignada del jugador
+        local GetPlayerParcel = ReplicatedStorage:WaitForChild("GetPlayerParcel", 15)
 
         -- UI externa (para cerrar al activar build)
         local backpackPanel = deps.backpackPanel
@@ -111,30 +113,24 @@ local function findPlayerParcel()
         return nil
 end
 
--- Obtener la parcela asignada al jugador sin filtro de distancia (para el Beam guia)
--- Retorna: parcel (Instance) o nil
+-- Obtener la parcela ASIGNADA al jugador (consulta al servidor via RemoteFunction)
+-- Retorna: parcel (Instance) o nil, distancia (number) o nil
 local function getPlayerAssignedParcel()
-        local parcelas = Workspace:FindFirstChild("Parcelas")
-        if not parcelas then return nil end
-        -- Por ahora usamos la parcela mas cercana (igual que findPlayerParcel pero sin filtro de 50 studs)
-        -- En el futuro se puede mejorar para usar la parcela asignada por ParcelManager
-        local char = player.Character
-        if not char then return nil end
-        local root = char:FindFirstChild("HumanoidRootPart")
-        if not root then return nil end
+        -- Consultar al servidor cual es la parcela asignada al jugador
+        local parcel = nil
+        pcall(function()
+                parcel = GetPlayerParcel:InvokeServer()
+        end)
+        if not parcel then return nil, nil end
 
-        local closest = nil
-        local closestDist = math.huge
-        for _, p in ipairs(parcelas:GetChildren()) do
-                if p:IsA("BasePart") then
-                        local dist = (p.Position - root.Position).Magnitude
-                        if dist < closestDist then
-                                closestDist = dist
-                                closest = p
-                        end
-                end
-        end
-        return closest, closestDist -- devolver tambien la distancia
+        -- Calcular distancia del jugador a su parcela asignada
+        local char = player.Character
+        if not char then return parcel, nil end
+        local root = char:FindFirstChild("HumanoidRootPart")
+        if not root then return parcel, nil end
+
+        local dist = (root.Position - parcel.Position).Magnitude
+        return parcel, dist
 end
 
 -- Snap de posicion a la cuadricula de 4 studs
@@ -933,7 +929,7 @@ local function createGuideBeam(parcel)
         guideBeam.Name = "GuideBeam"
         guideBeam.Attachment0 = guideAtt0
         guideBeam.Attachment1 = guideAtt1
-        guideBeam.Texture = "rbxassetid://6018375130" -- textura de flecha blanca repetible
+        guideBeam.Texture = "rbxassetid://15036194220" -- textura de flecha (señala a la izquierda, con TextureMode=Wrap anima hacia la parcela)
         guideBeam.TextureMode = Enum.TextureMode.Wrap
         guideBeam.TextureLength = 4 -- cada flecha mide 4 studs
         guideBeam.Color = ColorSequence.new(Color3.fromRGB(255, 220, 100)) -- amarillo dorado
