@@ -20,6 +20,10 @@ function BuildSystem.init(dependencies)
         local RunService = deps.RunService
         local Workspace = deps.Workspace
         local ReplicatedStorage = deps.ReplicatedStorage
+        local camera = Workspace.CurrentCamera
+
+        -- Detectar si es movil
+        local isMobileBuild = UserInputService.TouchEnabled and not UserInputService.MouseEnabled
 
         -- Eventos
         local PlaceBlockEvent = deps.PlaceBlockEvent
@@ -122,6 +126,7 @@ local hotbarPreview
 local hotbarNameLabel
 local hotbarCountLabel
 local invBtn
+local updateMobileBuildUI -- forward declaration (funcion definida mas abajo)
 
 -- Actualizar el hotbar inferior (slot con el bloque equipado + count)
 local function updateHotbar()
@@ -188,9 +193,55 @@ local function updateGhostBlock()
         local parcelSizeY = parcel.Size and parcel.Size.Y or 1
         local parcelTopY = parcel.Position.Y + (parcelSizeY / 2)
 
-        local mouseTarget = mouse.Target
-        local mousePos = mouse.Hit.Position
-        local targetSurface = mouse.TargetSurface
+        -- En PC: usar mouse. En movil: raycast desde el centro de la pantalla (mira)
+        local mouseTarget, mousePos, targetSurface
+        if isMobileBuild then
+                -- Raycast desde el centro de la pantalla
+                local viewportSize = camera.ViewportSize
+                local screenCenter = Vector2.new(viewportSize.X / 2, viewportSize.Y / 2)
+                local unitRay = camera:ViewportPointToRay(screenCenter.X, screenCenter.Y)
+                local rayOrigin = unitRay.Origin
+                local rayDirection = unitRay.Direction * 500 -- 500 studs de alcance
+                local raycastParams = RaycastParams.new()
+                raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+                -- Excluir el ghost block y el propio personaje del jugador
+                local filterList = {}
+                if ghostBlock then table.insert(filterList, ghostBlock) end
+                local char = player.Character
+                if char then table.insert(filterList, char) end
+                raycastParams.FilterDescendantsInstances = filterList
+                local rayResult = Workspace:Raycast(rayOrigin, rayDirection, raycastParams)
+                if rayResult then
+                        mouseTarget = rayResult.Instance
+                        mousePos = rayResult.Position
+                        -- Calcular TargetSurface a partir de la normal
+                        local n = rayResult.Normal
+                        if math.abs(n.Y - 1) < 0.5 then targetSurface = Enum.NormalId.Top
+                        elseif math.abs(n.Y + 1) < 0.5 then targetSurface = Enum.NormalId.Bottom
+                        elseif math.abs(n.Z + 1) < 0.5 then targetSurface = Enum.NormalId.Front
+                        elseif math.abs(n.Z - 1) < 0.5 then targetSurface = Enum.NormalId.Back
+                        elseif math.abs(n.X + 1) < 0.5 then targetSurface = Enum.NormalId.Left
+                        elseif math.abs(n.X - 1) < 0.5 then targetSurface = Enum.NormalId.Right
+                        end
+                else
+                        -- No hit: no hay target
+                        mouseTarget = nil
+                        mousePos = nil
+                end
+        else
+                -- PC: usar mouse
+                mouseTarget = mouse.Target
+                mousePos = mouse.Hit.Position
+                targetSurface = mouse.TargetSurface
+        end
+
+        -- Si no hay posicion valida, ocultar ghost
+        if not mousePos then
+                if ghostBlock then ghostBlock.LocalTransparencyModifier = 1 end
+                canPlace = false
+                return
+        end
+
         local normalVec = Vector3.new(0, 0, 0)
         if targetSurface == Enum.NormalId.Top then normalVec = Vector3.new(0, 1, 0)
         elseif targetSurface == Enum.NormalId.Bottom then normalVec = Vector3.new(0, -1, 0)
@@ -828,6 +879,7 @@ local function activateBuildMode()
         backpackPanel.Visible = false
         musicPanel.Visible = false
         updateHotbar()
+        if updateMobileBuildUI then updateMobileBuildUI() end
         print("[Build] Modo construccion ACTIVADO (con hotbar)")
 end
 
@@ -843,6 +895,7 @@ local function deactivateBuildMode()
         end
         buildBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
         updateHotbar()
+        if updateMobileBuildUI then updateMobileBuildUI() end
         print("[Build] Modo construccion DESACTIVADO")
 end
 
@@ -1000,6 +1053,123 @@ local function showBuildNotice(text, color)
         end)
 end
 
+-- ============================================
+-- Helper: obtener bloque apuntado desde el centro de la pantalla (movil)
+-- ============================================
+local function getTargetBlockFromScreenCenter()
+        local viewportSize = camera.ViewportSize
+        local screenCenter = Vector2.new(viewportSize.X / 2, viewportSize.Y / 2)
+        local unitRay = camera:ViewportPointToRay(screenCenter.X, screenCenter.Y)
+        local rayOrigin = unitRay.Origin
+        local rayDirection = unitRay.Direction * 500
+        local raycastParams = RaycastParams.new()
+        raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+        local filterList = {}
+        if ghostBlock then table.insert(filterList, ghostBlock) end
+        local char = player.Character
+        if char then table.insert(filterList, char) end
+        raycastParams.FilterDescendantsInstances = filterList
+        local rayResult = Workspace:Raycast(rayOrigin, rayDirection, raycastParams)
+        if rayResult and rayResult.Instance and string.sub(rayResult.Instance.Name, 1, 6) == "Block_" then
+                return rayResult.Instance
+        end
+        return nil
+end
+
+-- ============================================
+-- UI MOVIL: mira + boton colocar + boton quitar
+-- Solo visible en movil + modo construccion activo
+-- ============================================
+local mobileCrosshair, mobilePlaceBtn, mobileRemoveBtn
+if isMobileBuild then
+        -- Mira central (icono de dedo)
+        mobileCrosshair = Instance.new("ImageLabel")
+        mobileCrosshair.Name = "MobileCrosshair"
+        mobileCrosshair.Size = UDim2.new(0, 80, 0, 80)
+        mobileCrosshair.Position = UDim2.new(0.5, -40, 0.5, -40)
+        mobileCrosshair.BackgroundTransparency = 1
+        mobileCrosshair.Image = "rbxassetid://18985225104"
+        mobileCrosshair.ScaleType = Enum.ScaleType.Fit
+        mobileCrosshair.Visible = false
+        mobileCrosshair.ZIndex = 100
+        mobileCrosshair.Parent = screenGui
+
+        -- Boton COLOCAR (centro derecha, hasta la orilla)
+        mobilePlaceBtn = Instance.new("TextButton")
+        mobilePlaceBtn.Name = "MobilePlaceBtn"
+        mobilePlaceBtn.Size = UDim2.new(0, 90, 0, 90)
+        mobilePlaceBtn.Position = UDim2.new(1, -100, 0.5, 0) -- derecha, centro vertical
+        mobilePlaceBtn.BackgroundColor3 = Color3.fromRGB(80, 220, 100)
+        mobilePlaceBtn.BorderSizePixel = 0
+        mobilePlaceBtn.Text = "Colocar"
+        mobilePlaceBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
+        mobilePlaceBtn.TextScaled = true
+        mobilePlaceBtn.Font = Enum.Font.GothamBold
+        mobilePlaceBtn.Visible = false
+        mobilePlaceBtn.ZIndex = 100
+        mobilePlaceBtn.Parent = screenGui
+        Instance.new("UICorner", mobilePlaceBtn).CornerRadius = UDim.new(0, 12)
+        local placeStroke = Instance.new("UIStroke")
+        placeStroke.Color = Color3.fromRGB(40, 120, 60)
+        placeStroke.Thickness = 2
+        placeStroke.Parent = mobilePlaceBtn
+
+        -- Boton QUITAR (arriba del boton colocar)
+        mobileRemoveBtn = Instance.new("TextButton")
+        mobileRemoveBtn.Name = "MobileRemoveBtn"
+        mobileRemoveBtn.Size = UDim2.new(0, 90, 0, 90)
+        mobileRemoveBtn.Position = UDim2.new(1, -100, 0.5, -100) -- derecha, 100px arriba del boton colocar
+        mobileRemoveBtn.BackgroundColor3 = Color3.fromRGB(220, 80, 80)
+        mobileRemoveBtn.BorderSizePixel = 0
+        mobileRemoveBtn.Text = "Quitar"
+        mobileRemoveBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        mobileRemoveBtn.TextScaled = true
+        mobileRemoveBtn.Font = Enum.Font.GothamBold
+        mobileRemoveBtn.Visible = false
+        mobileRemoveBtn.ZIndex = 100
+        mobileRemoveBtn.Parent = screenGui
+        Instance.new("UICorner", mobileRemoveBtn).CornerRadius = UDim.new(0, 12)
+        local removeStroke = Instance.new("UIStroke")
+        removeStroke.Color = Color3.fromRGB(120, 40, 40)
+        removeStroke.Thickness = 2
+        removeStroke.Parent = mobileRemoveBtn
+
+        -- Handler boton COLOCAR
+        mobilePlaceBtn.MouseButton1Click:Connect(function()
+                if not buildModeActive then return end
+                -- Verificar si hay bloque equipado
+                if not equippedBlockId or not blockInventory[equippedBlockId] or blockInventory[equippedBlockId] <= 0 then
+                        showBuildNotice("⚠ No tienes bloques equipados. Compra en Materiales y equipa en Inventario.", Color3.fromRGB(255, 100, 100))
+                        return
+                end
+                if ghostBlock and ghostBlock.LocalTransparencyModifier < 1 and canPlace then
+                        PlaceBlockEvent:FireServer(equippedBlockId, ghostBlock.Position, nil)
+                elseif ghostBlock and ghostBlock.LocalTransparencyModifier < 1 and not canPlace then
+                        showBuildNotice("⚠ No puedes colocar aqui (fuera de parcela o posicion ocupada)", Color3.fromRGB(255, 100, 100))
+                end
+        end)
+
+        -- Handler boton QUITAR
+        mobileRemoveBtn.MouseButton1Click:Connect(function()
+                if not buildModeActive then return end
+                local targetBlock = getTargetBlockFromScreenCenter()
+                if targetBlock then
+                        RemoveBlockEvent:FireServer(targetBlock)
+                else
+                        showBuildNotice("⚠ No hay bloque apuntado por la mira", Color3.fromRGB(255, 100, 100))
+                end
+        end)
+end
+
+-- Actualizar visibilidad de UI movil segun modo construccion
+function updateMobileBuildUI()
+        if not isMobileBuild then return end
+        local visible = buildModeActive
+        if mobileCrosshair then mobileCrosshair.Visible = visible end
+        if mobilePlaceBtn then mobilePlaceBtn.Visible = visible end
+        if mobileRemoveBtn then mobileRemoveBtn.Visible = visible end
+end
+
 -- Click izquierdo: colocar / Click derecho: quitar (solo en modo construccion activo)
 UserInputService.InputBegan:Connect(function(input, processed)
         if not buildModeActive then return end
@@ -1023,21 +1193,24 @@ UserInputService.InputBegan:Connect(function(input, processed)
         end
 end)
 
--- Touch para mobile
-UserInputService.InputBegan:Connect(function(input, processed)
-        if not buildModeActive then return end
-        if processed then return end
-        if input.UserInputType == Enum.UserInputType.Touch then
-                -- Verificar si hay bloque equipado
-                if not equippedBlockId or not blockInventory[equippedBlockId] or blockInventory[equippedBlockId] <= 0 then
-                        showBuildNotice("⚠ No tienes bloques equipados. Compra en Materiales y equipa en Inventario.", Color3.fromRGB(255, 100, 100))
-                        return
-                end
-                if ghostBlock and ghostBlock.LocalTransparencyModifier < 1 and canPlace then
-                        PlaceBlockEvent:FireServer(equippedBlockId, ghostBlock.Position, nil)
-                end
-        end
-end)
+-- Touch para mobile: DESHABILITADO en modo construccion
+-- En movil, ahora se usan los botones Colocar/Quitar dedicados (mobilePlaceBtn, mobileRemoveBtn)
+-- y la mira central (mobileCrosshair). Tocar la pantalla ya no coloca bloques.
+-- (Este handler queda comentado para referencia, no se conecta)
+-- UserInputService.InputBegan:Connect(function(input, processed)
+-- \tif not buildModeActive then return end
+-- \tif processed then return end
+-- \tif input.UserInputType == Enum.UserInputType.Touch then
+-- \t\t-- Verificar si hay bloque equipado
+-- \t\tif not equippedBlockId or not blockInventory[equippedBlockId] or blockInventory[equippedBlockId] <= 0 then
+-- \t\t\tshowBuildNotice("⚠ No tienes bloques equipados. Compra en Materiales y equipa en Inventario.", Color3.fromRGB(255, 100, 100))
+-- \t\t\treturn
+-- \t\tend
+-- \t\tif ghostBlock and ghostBlock.LocalTransparencyModifier < 1 and canPlace then
+-- \t\t\tPlaceBlockEvent:FireServer(equippedBlockId, ghostBlock.Position, nil)
+-- \t\tend
+-- \tend
+-- end)
 
 -- Loop para actualizar ghost block
 RunService.RenderStepped:Connect(function()
