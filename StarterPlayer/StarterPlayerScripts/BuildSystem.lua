@@ -912,26 +912,28 @@ local function createGuideBeam(parcel)
         local root = char:FindFirstChild("HumanoidRootPart")
         if not root then return end
 
-        -- Attachment en el jugador (sobrevive al movimiento)
+        -- Attachment en la parcela (fijo) - AHORA ES Attachment0 (origen del beam)
+        -- Al hacer la parcela el Attachment0, la textura fluye de parcela -> jugador,
+        -- lo que hace que la flecha señale hacia la parcela (direccion correcta)
         guideAtt0 = Instance.new("Attachment")
         guideAtt0.Name = "GuideAtt0"
-        guideAtt0.Position = Vector3.new(0, -2.5, 0) -- debajo del torso (a la altura del suelo)
-        guideAtt0.Parent = root
+        guideAtt0.Position = Vector3.new(0, 2, 0) -- un poco arriba del suelo de la parcela
+        guideAtt0.Parent = parcel
 
-        -- Attachment en la parcela (fijo)
+        -- Attachment en el jugador (sobrevive al movimiento) - AHORA ES Attachment1 (destino)
         guideAtt1 = Instance.new("Attachment")
         guideAtt1.Name = "GuideAtt1"
-        guideAtt1.Position = Vector3.new(0, 2, 0) -- un poco arriba del suelo de la parcela
-        guideAtt1.Parent = parcel
+        guideAtt1.Position = Vector3.new(0, -2.5, 0) -- debajo del torso (a la altura del suelo)
+        guideAtt1.Parent = root
 
         -- Beam
         guideBeam = Instance.new("Beam")
         guideBeam.Name = "GuideBeam"
-        guideBeam.Attachment0 = guideAtt0
-        guideBeam.Attachment1 = guideAtt1
+        guideBeam.Attachment0 = guideAtt0 -- parcela (origen)
+        guideBeam.Attachment1 = guideAtt1 -- jugador (destino)
         guideBeam.Texture = "rbxassetid://89938583631693" -- textura de flecha
         guideBeam.TextureMode = Enum.TextureMode.Wrap
-        guideBeam.TextureLength = -4 -- negativo para voltear la flecha (señale hacia la parcela, no hacia el jugador)
+        guideBeam.TextureLength = 4 -- positivo (cada flecha mide 4 studs)
         guideBeam.Color = ColorSequence.new(Color3.fromRGB(255, 220, 100)) -- amarillo dorado
         guideBeam.LightEmission = 1 -- brilla
         guideBeam.Width0 = 4
