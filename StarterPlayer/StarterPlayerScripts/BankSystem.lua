@@ -56,31 +56,21 @@ function BankSystem.init(deps)
 
         local bankBillboard = Instance.new("BillboardGui")
         bankBillboard.Name = "BankInteractGui"
-        bankBillboard.Size = UDim2.new(0, 120, 0, 180) -- mas grande para que quepan la E + el dedo
-        bankBillboard.StudsOffset = Vector3.new(0, -3, 0) -- 3 studs abajo del banco (subio 5 desde -8)
+        bankBillboard.Size = UDim2.new(0, 80, 0, 80)
+        bankBillboard.StudsOffset = Vector3.new(0, -3, 0) -- 3 studs abajo del banco
         bankBillboard.AlwaysOnTop = true
         bankBillboard.LightInfluence = 0
         bankBillboard.MaxDistance = 40 -- visible desde lejos (porque ahora aparece a 30 studs)
         bankBillboard.Enabled = false -- oculto por defecto
         bankBillboard.Parent = bankPart
 
-        -- Imagen E (arriba)
+        -- Imagen E (unica imagen del billboard)
         local eImage = Instance.new("ImageLabel")
-        eImage.Size = UDim2.new(1, 0, 0.6, 0) -- 60% del billboard (arriba)
-        eImage.Position = UDim2.new(0, 0, 0, 0)
+        eImage.Size = UDim2.new(1, 0, 1, 0)
         eImage.BackgroundTransparency = 1
         eImage.Image = "rbxassetid://78972021775884"
         eImage.ScaleType = Enum.ScaleType.Fit
         eImage.Parent = bankBillboard
-
-        -- Dedo tactil (abajo, señalando la E) - mismo icono que se usa para cofres/colocacion
-        local fingerImage = Instance.new("ImageLabel")
-        fingerImage.Size = UDim2.new(0.6, 0, 0.5, 0) -- 60% ancho, 50% alto
-        fingerImage.Position = UDim2.new(0.2, 0, 0.55, 0) -- centrado horizontal, abajo
-        fingerImage.BackgroundTransparency = 1
-        fingerImage.Image = "rbxassetid://18985225104" -- dedo tactil (mismo que cofres)
-        fingerImage.ScaleType = Enum.ScaleType.Fit
-        fingerImage.Parent = bankBillboard
 
         -- Hacer el BillboardGui clickable (para movil y PC)
         -- Boton transparente que cubre todo el billboard
@@ -88,7 +78,7 @@ function BankSystem.init(deps)
         clickBtn.Size = UDim2.new(1, 0, 1, 0)
         clickBtn.BackgroundTransparency = 1
         clickBtn.Text = ""
-        clickBtn.ZIndex = 10 -- arriba de las imagenes para recibir el click
+        clickBtn.ZIndex = 10 -- arriba de la imagen para recibir el click
         clickBtn.Parent = bankBillboard
 
         clickBtn.MouseButton1Click:Connect(function()
