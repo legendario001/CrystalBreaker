@@ -34,6 +34,22 @@ else
 end
 local CharacterManager = require(ServerStorage.ServerModules.CharacterManager)
 local ModelManager = require(ServerStorage.ServerModules.ModelManager)
+-- SaveManager para persistencia de datos (DataStore)
+local SaveManager
+local ok_sm, err_sm = pcall(function()
+        SaveManager = require(ServerStorage.ServerModules.SaveManager)
+end)
+if not ok_sm or not SaveManager then
+        warn("[CRITICAL] SaveManager no se pudo cargar: " .. tostring(err_sm))
+        SaveManager = {
+                loadPlayerData = function() return nil end,
+                savePlayerData = function() return false end,
+                clearCache = function() end,
+                saveAllPlayers = function() return 0 end,
+        }
+else
+        print("[OK] SaveManager cargado correctamente")
+end
 -- ParcelManager + BuildManager para sistema de construccion
 local ParcelManager
 local ok_pm, err_pm = pcall(function()
@@ -291,6 +307,28 @@ local function getAllPedestals(base)
         end
 
         return allPedestals
+end
+
+-- Buscar un pedestal por nombre y numero de piso en la base del jugador
+-- Para restaurar personajes colocados desde DataStore
+local function findPedestalByNameAndFloor(base, pedestalName, floorNum)
+        if not base or not pedestalName then return nil end
+        floorNum = floorNum or 1
+        if floorNum == 1 then
+                local floor1Peds = base:FindFirstChild("Pedestals")
+                if floor1Peds then
+                        return floor1Peds:FindFirstChild(pedestalName)
+                end
+        else
+                local floor = base:FindFirstChild("Floor" .. floorNum)
+                if floor then
+                        local peds = floor:FindFirstChild("Pedestals" .. floorNum)
+                        if peds then
+                                return peds:FindFirstChild(pedestalName)
+                        end
+                end
+        end
+        return nil
 end
 
 local function isPlayerValid(player)
@@ -1157,6 +1195,149 @@ task.spawn(function()
         end
 end)
 
+-- ============================================
+-- SISTEMA DE GUARDADO (DataStore via SaveManager)
+-- ============================================
+
+-- Forward declaration (sendInventoryUpdate se define mas abajo en el archivo)
+local sendInventoryUpdate
+
+-- Guardar el progreso del jugador
+local function savePlayerProgress(player)
+        if not isPlayerValid(player) then return end
+        local data = playerData[player.UserId]
+        if not data then return end
+
+        local baseLevel = BaseManager.getBaseLevel(player.UserId)
+        local blockInventory = BuildManager.getInventory(player.UserId)
+        local blocksFolder = ParcelManager.getBlocksFolder(player.UserId)
+
+        local success = SaveManager.savePlayerData(player.UserId, data, baseLevel, blockInventory, blocksFolder)
+        if success then
+                print("[Save] Datos guardados para " .. player.Name)
+        else
+                warn("[Save] Error al guardar datos de " .. player.Name)
+        end
+end
+
+-- Restaurar el progreso del jugador desde datos guardados
+local function restorePlayerProgress(player, savedData, base)
+        if not savedData then return end
+        local data = playerData[player.UserId]
+        if not data then return end
+
+        -- Restaurar dinero
+        if savedData.money then
+                data.money = savedData.money
+                local leaderstats = player:FindFirstChild("leaderstats")
+                if leaderstats then
+                        local coins = leaderstats:FindFirstChild("Coins")
+                        if coins then coins.Value = data.money end
+                end
+                task.delay(0.5, function()
+                        if isPlayerValid(player) then
+                                Events.MoneyUpdate:FireClient(player, data.money)
+                        end
+                end)
+        end
+
+        -- Restaurar nivel de base
+        if savedData.baseLevel and savedData.baseLevel > 1 then
+                BaseManager.setBaseLevel(player.UserId, savedData.baseLevel)
+                -- Activar pisos comprados
+                if BaseUpgradeManager and base then
+                        for floorNum = 2, savedData.baseLevel do
+                                if floorNum == 2 then BaseUpgradeManager.activateFloor2(base)
+                                elseif floorNum == 3 then BaseUpgradeManager.activateFloor3(base)
+                                elseif floorNum == 4 then BaseUpgradeManager.activateFloor4(base)
+                                elseif floorNum == 5 then BaseUpgradeManager.activateFloor5(base)
+                                end
+                        end
+                        BaseUpgradeManager.updateButtonUI(base, savedData.baseLevel)
+                end
+        end
+
+        -- Restaurar personajes
+        if savedData.characters and base then
+                for idxStr, charSaved in pairs(savedData.characters) do
+                        local idx = tonumber(idxStr)
+                        if idx and charSaved and charSaved.name and charSaved.rarity then
+                                -- Buscar el modelo por nombre y rareza
+                                local model, folder = CharacterManager.getModelByName(charSaved.rarity, charSaved.name)
+                                if model then
+                                        local charData = {
+                                                name = charSaved.name,
+                                                rarity = charSaved.rarity,
+                                                level = charSaved.level or 1,
+                                                model = model,
+                                                folder = folder,
+                                                pedestal = nil,
+                                                fusionLevel = charSaved.fusionLevel or 0,
+                                        }
+                                        data.characters[idx] = charData
+
+                                        -- Si tenia pedestal, colocarlo ahi
+                                        if charSaved.pedestalName and charSaved.pedestalFloor then
+                                                local pedestal = findPedestalByNameAndFloor(base, charSaved.pedestalName, charSaved.pedestalFloor)
+                                                if pedestal and not pedestal:FindFirstChild("CharacterModel") then
+                                                        -- Verificar que el pedestal este activo (visible)
+                                                        local platform = pedestal:FindFirstChild("Platform")
+                                                        local isVisible = true
+                                                        if platform and platform.Transparency == 1 then
+                                                                isVisible = false
+                                                        end
+                                                        if isVisible then
+                                                                ModelManager.placeOnPedestal(model, pedestal)
+                                                                charData.pedestal = pedestal
+                                                                ModelManager.createLabels(pedestal, charData.name, charData.rarity, charData.level, charData.fusionLevel or 0)
+                                                                local moneyPile = ModelManager.createMoneyPile(pedestal, charData.rarity, charData.level, charData.fusionLevel or 0, player)
+                                                                local upgradeBtn = ModelManager.createUpgradeButton(pedestal, charData.rarity, charData.level, charData.fusionLevel or 0)
+                                                                if upgradeBtn then
+                                                                        setupUpgradeButtonEvents(pedestal, upgradeBtn, idx)
+                                                                end
+                                                                if moneyPile then
+                                                                        setupMoneyPileEvents(pedestal, moneyPile)
+                                                                end
+                                                        end
+                                                end
+                                        end
+                                else
+                                        warn("[Save] No se encontro modelo '" .. charSaved.name .. "' en rareza '" .. charSaved.rarity .. "' para " .. player.Name)
+                                end
+                        end
+                end
+        end
+
+        -- Restaurar inventario de bloques (se carga via BuildManager.setInventory)
+        if savedData.blockInventory and BuildManager.setInventory then
+                BuildManager.setInventory(player.UserId, savedData.blockInventory)
+                -- Enviar inventario al cliente para que actualice la UI
+                task.delay(1, function()
+                        if isPlayerValid(player) then
+                                sendInventoryUpdate(player)
+                        end
+                end)
+        end
+
+        -- Restaurar bloques colocados (se hace despues de que la parcela este asignada)
+        if savedData.placedBlocks and #savedData.placedBlocks > 0 then
+                task.delay(2, function()
+                        if not isPlayerValid(player) then return end
+                        local parcel = ParcelManager.getParcel(player.UserId)
+                        if not parcel then return end
+                        for _, blockSaved in ipairs(savedData.placedBlocks) do
+                                local position = Vector3.new(blockSaved.px, blockSaved.py, blockSaved.pz)
+                                local rotation = Vector3.new(blockSaved.rx, blockSaved.ry, blockSaved.rz)
+                                -- Colocar bloque sin descontar del inventario (ya esta colocado)
+                                BuildManager.placeBlockNoCost(player, blockSaved.blockId, position, rotation)
+                        end
+                        print("[Save] " .. #savedData.placedBlocks .. " bloques restaurados para " .. player.Name)
+                end)
+        end
+
+        print("[Save] Progreso restaurado para " .. player.Name .. " (money=" .. (savedData.money or 0) .. ")")
+end
+
 -- PLAYERS
 Players.PlayerAdded:Connect(function(player)
         print(player.Name.." se unio")
@@ -1169,9 +1350,17 @@ Players.PlayerAdded:Connect(function(player)
         local coins = Instance.new("IntValue")
         coins.Name = "Coins" coins.Value = 0 coins.Parent = leaderstats
 
+        -- Cargar datos guardados desde DataStore (antes de asignar la base)
+        local savedData = SaveManager.loadPlayerData(player.UserId)
+        if savedData then
+                print("[Save] Datos encontrados para " .. player.Name)
+        else
+                print("[Save] Sin datos guardados para " .. player.Name .. " (jugador nuevo)")
+        end
+
         task.delay(1, function()
                 if isPlayerValid(player) then
-                        Events.MoneyUpdate:FireClient(player, 0)
+                        Events.MoneyUpdate:FireClient(player, savedData and savedData.money or 0)
                 end
         end)
 
@@ -1188,6 +1377,10 @@ Players.PlayerAdded:Connect(function(player)
                         if ParcelManager then
                                 ParcelManager.assignByBaseName(player, base.Name)
                         end
+                        -- Restaurar progreso DESPUES de que la base y parcela esten asignadas
+                        if savedData then
+                                restorePlayerProgress(player, savedData, base)
+                        end
                 else
                         task.delay(5, function()
                                 if not isPlayerValid(player) then return end
@@ -1200,6 +1393,10 @@ Players.PlayerAdded:Connect(function(player)
                                         -- Asignar parcela tambien en el reintento
                                         if ParcelManager then
                                                 ParcelManager.assignByBaseName(player, base.Name)
+                                        end
+                                        -- Restaurar progreso en el reintento tambien
+                                        if savedData then
+                                                restorePlayerProgress(player, savedData, base)
                                         end
                                 end
                         end)
@@ -1276,6 +1473,9 @@ Players.PlayerRemoving:Connect(function(player)
                 end
         end
 
+        -- GUARDAR PROGRESO antes de limpiar (la parcela y bloques aun existen)
+        savePlayerProgress(player)
+
         BaseManager.release(userId)
         -- Liberar parcela de construccion del jugador
         if ParcelManager then
@@ -1285,6 +1485,8 @@ Players.PlayerRemoving:Connect(function(player)
         if BuildManager then
                 BuildManager.cleanupPlayer(userId)
         end
+        -- Limpiar cache de SaveManager
+        SaveManager.clearCache(userId)
 end)
 
 -- ============================================
@@ -1727,7 +1929,7 @@ local removeBlockCooldowns = {}
 local buyBlockCooldowns = {}
 
 -- Helper: enviar inventario actualizado al cliente
-local function sendInventoryUpdate(player)
+function sendInventoryUpdate(player)
         if not isPlayerValid(player) then return end
         local inv = BuildManager.getInventory(player.UserId)
         -- Convertir a tabla serializable (id -> count)
@@ -1844,6 +2046,39 @@ Events.GetPlayerParcel.OnServerInvoke = function(player)
 end
 
 print("=== GameHandler iniciado ===")
+
+-- ============================================
+-- AUTO-SAVE: guardar todos los jugadores cada 60 segundos
+-- ============================================
+task.spawn(function()
+        while true do
+                task.wait(60)
+                for _, player in ipairs(Players:GetPlayers()) do
+                        if isPlayerValid(player) then
+                                local ok = pcall(function()
+                                        savePlayerProgress(player)
+                                end)
+                                if not ok then
+                                        warn("[Save] Error en auto-save de " .. player.Name)
+                                end
+                        end
+                end
+        end
+end)
+
+-- Guardar todos los jugadores cuando el servidor se cierra
+game:BindToClose(function()
+        print("[Save] Servidor cerrandose - guardando todos los jugadores...")
+        for _, player in ipairs(Players:GetPlayers()) do
+                if isPlayerValid(player) then
+                        pcall(function()
+                                savePlayerProgress(player)
+                        end)
+                end
+        end
+        task.wait(3) -- esperar a que terminen los saves
+        print("[Save] Todos los jugadores guardados.")
+end)
 
 
 
