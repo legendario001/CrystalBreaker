@@ -56,7 +56,7 @@ function BankSystem.init(deps)
 
         local bankBillboard = Instance.new("BillboardGui")
         bankBillboard.Name = "BankInteractGui"
-        bankBillboard.Size = UDim2.new(0, 80, 0, 80)
+        bankBillboard.Size = UDim2.new(0, 120, 0, 180) -- mas grande para que quepan la E + el dedo
         bankBillboard.StudsOffset = Vector3.new(0, -3, 0) -- 3 studs abajo del banco (subio 5 desde -8)
         bankBillboard.AlwaysOnTop = true
         bankBillboard.LightInfluence = 0
@@ -64,24 +64,40 @@ function BankSystem.init(deps)
         bankBillboard.Enabled = false -- oculto por defecto
         bankBillboard.Parent = bankPart
 
+        -- Imagen E (arriba)
         local eImage = Instance.new("ImageLabel")
-        eImage.Size = UDim2.new(1, 0, 1, 0)
+        eImage.Size = UDim2.new(1, 0, 0.6, 0) -- 60% del billboard (arriba)
+        eImage.Position = UDim2.new(0, 0, 0, 0)
         eImage.BackgroundTransparency = 1
         eImage.Image = "rbxassetid://78972021775884"
         eImage.ScaleType = Enum.ScaleType.Fit
         eImage.Parent = bankBillboard
 
-        -- Hacer el BillboardGui clickable (para movil)
-        -- Agregar un TextButton transparente sobre la imagen
+        -- Dedo tactil (abajo, señalando la E) - mismo icono que se usa para cofres/colocacion
+        local fingerImage = Instance.new("ImageLabel")
+        fingerImage.Size = UDim2.new(0.6, 0, 0.5, 0) -- 60% ancho, 50% alto
+        fingerImage.Position = UDim2.new(0.2, 0, 0.55, 0) -- centrado horizontal, abajo
+        fingerImage.BackgroundTransparency = 1
+        fingerImage.Image = "rbxassetid://18985225104" -- dedo tactil (mismo que cofres)
+        fingerImage.ScaleType = Enum.ScaleType.Fit
+        fingerImage.Parent = bankBillboard
+
+        -- Hacer el BillboardGui clickable (para movil y PC)
+        -- Boton transparente que cubre todo el billboard
         local clickBtn = Instance.new("TextButton")
         clickBtn.Size = UDim2.new(1, 0, 1, 0)
         clickBtn.BackgroundTransparency = 1
         clickBtn.Text = ""
+        clickBtn.ZIndex = 10 -- arriba de las imagenes para recibir el click
         clickBtn.Parent = bankBillboard
 
         clickBtn.MouseButton1Click:Connect(function()
                 if nearBank then
-                        openBankPanel()
+                        if bankPanelOpen then
+                                closeBankPanel()
+                        else
+                                openBankPanel()
+                        end
                 end
         end)
 
@@ -383,64 +399,6 @@ function formatMoney(amount)
         local isMobileBank = UserInputService.TouchEnabled and not UserInputService.MouseEnabled
 
         -- ============================================
-        -- Boton flotante de banco (solo movil, aparece al acercarse)
-        -- ============================================
-        local mobileBankBtn = nil
-        if isMobileBank then
-                mobileBankBtn = Instance.new("TextButton")
-                mobileBankBtn.Name = "MobileBankBtn"
-                mobileBankBtn.Size = UDim2.new(0, 100, 0, 100)
-                mobileBankBtn.Position = UDim2.new(0.5, -50, 0.6, 0) -- centro horizontal, 60% vertical
-                mobileBankBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-                mobileBankBtn.BackgroundTransparency = 0.1
-                mobileBankBtn.BorderSizePixel = 0
-                mobileBankBtn.Text = ""
-                mobileBankBtn.Visible = false
-                mobileBankBtn.ZIndex = 100
-                mobileBankBtn.Parent = screenGui
-                Instance.new("UICorner", mobileBankBtn).CornerRadius = UDim.new(0, 12)
-
-                local mobileBankStroke = Instance.new("UIStroke")
-                mobileBankStroke.Color = Color3.fromRGB(100, 220, 100) -- verde (banco)
-                mobileBankStroke.Thickness = 2
-                mobileBankStroke.Transparency = 0.2
-                mobileBankStroke.Parent = mobileBankBtn
-
-                -- Icono E (imagen)
-                local mobileBankIcon = Instance.new("ImageLabel")
-                mobileBankIcon.Size = UDim2.new(0.6, 0, 0.6, 0)
-                mobileBankIcon.Position = UDim2.new(0.2, 0, 0.05, 0)
-                mobileBankIcon.BackgroundTransparency = 1
-                mobileBankIcon.Image = "rbxassetid://78972021775884"
-                mobileBankIcon.ScaleType = Enum.ScaleType.Fit
-                mobileBankIcon.ZIndex = 101
-                mobileBankIcon.Parent = mobileBankBtn
-
-                -- Texto "Banco"
-                local mobileBankLabel = Instance.new("TextLabel")
-                mobileBankLabel.Size = UDim2.new(1, 0, 0.25, 0)
-                mobileBankLabel.Position = UDim2.new(0, 0, 0.7, 0)
-                mobileBankLabel.BackgroundTransparency = 1
-                mobileBankLabel.Text = "Banco"
-                mobileBankLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-                mobileBankLabel.TextScaled = true
-                mobileBankLabel.Font = Enum.Font.GothamBold
-                mobileBankLabel.ZIndex = 101
-                mobileBankLabel.Parent = mobileBankBtn
-
-                -- Handler: abrir/cerrar panel
-                mobileBankBtn.MouseButton1Click:Connect(function()
-                        if nearBank then
-                                if bankPanelOpen then
-                                        closeBankPanel()
-                                else
-                                        openBankPanel()
-                                end
-                        end
-                end)
-        end
-
-        -- ============================================
         -- Deteccion de proximidad + input E
         -- ============================================
 
@@ -459,11 +417,6 @@ function formatMoney(amount)
                 -- Mostrar/ocultar billboard (siempre, en PC y movil)
                 if bankBillboard then
                         bankBillboard.Enabled = nearBank
-                end
-
-                -- Mostrar/ocultar boton flotante movil
-                if mobileBankBtn then
-                        mobileBankBtn.Visible = nearBank and not bankPanelOpen
                 end
         end)
 
