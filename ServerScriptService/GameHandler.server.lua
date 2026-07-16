@@ -1230,6 +1230,8 @@ local function savePlayerProgress(player)
         local blocksFolder = ParcelManager.getBlocksFolder(player.UserId)
         local bankBalance = BankManager.getBalance(player.UserId)
 
+        print("[Save] Guardando " .. player.Name .. ": money=" .. (data.money or 0) .. ", bankBalance=" .. bankBalance)
+
         local success = SaveManager.savePlayerData(player.UserId, data, baseLevel, blockInventory, blocksFolder, bankBalance)
         if success then
                 print("[Save] Datos guardados para " .. player.Name)
@@ -1243,6 +1245,12 @@ local function restorePlayerProgress(player, savedData, base)
         if not savedData then return end
         local data = playerData[player.UserId]
         if not data then return end
+
+        -- Evitar que se restaure 2 veces (si se llama desde task.delay 3 y task.delay 5)
+        if data._restored then
+                return
+        end
+        data._restored = true
 
         -- Restaurar dinero
         if savedData.money then
