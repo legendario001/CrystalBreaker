@@ -23,7 +23,7 @@ function BankSystem.init(deps)
 
         -- Posicion del banco (donde aparece la imagen E y donde el jugador debe acercarse)
         local BANK_POSITION = Vector3.new(126, 4.5, 3)
-        local BANK_INTERACT_DISTANCE = 12 -- studs para mostrar la E
+        local BANK_INTERACT_DISTANCE = 30 -- studs para mostrar la E (aparece desde 30 studs)
 
         -- Estado
         local bankBalance = 0
@@ -57,10 +57,10 @@ function BankSystem.init(deps)
         local bankBillboard = Instance.new("BillboardGui")
         bankBillboard.Name = "BankInteractGui"
         bankBillboard.Size = UDim2.new(0, 80, 0, 80)
-        bankBillboard.StudsOffset = Vector3.new(0, 4, 0) -- 4 studs arriba del banco
+        bankBillboard.StudsOffset = Vector3.new(0, 5, 0) -- 5 studs arriba del banco
         bankBillboard.AlwaysOnTop = true
         bankBillboard.LightInfluence = 0
-        bankBillboard.MaxDistance = 30 -- solo visible de cerca
+        bankBillboard.MaxDistance = 40 -- visible desde lejos (porque ahora aparece a 30 studs)
         bankBillboard.Enabled = false -- oculto por defecto
         bankBillboard.Parent = bankPart
 
