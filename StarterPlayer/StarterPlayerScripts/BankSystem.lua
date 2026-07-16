@@ -21,7 +21,7 @@ function BankSystem.init(deps)
         local WithdrawMoneyEvent = ReplicatedStorage:WaitForChild("WithdrawMoney", 15)
         local BankUIUpdateEvent = ReplicatedStorage:WaitForChild("BankUIUpdate", 15)
 
-        -- Posicion del banco (Part invisible en Workspace)
+        -- Posicion del banco (donde aparece la imagen E y donde el jugador debe acercarse)
         local BANK_POSITION = Vector3.new(126, 4.5, 3)
         local BANK_INTERACT_DISTANCE = 12 -- studs para mostrar la E
 
@@ -31,68 +31,61 @@ function BankSystem.init(deps)
         local bankPanelOpen = false
         local nearBank = false
 
-        -- Encontrar el Part del banco
-        -- Estrategia: 1) buscar por nombre "EBanco" en todo Workspace
-        --              2) si no, buscar por posicion cercana (radio amplio de 10 studs)
-        local function findBankPart()
-                -- 1) Buscar por nombre "EBanco" en todos los descendientes de Workspace
-                for _, obj in ipairs(Workspace:GetDescendants()) do
-                        if obj:IsA("BasePart") and obj.Name == "EBanco" then
-                                return obj
-                        end
-                end
-                -- 2) Fallback: buscar por posicion cercana (radio de 10 studs)
-                for _, obj in ipairs(Workspace:GetDescendants()) do
-                        if obj:IsA("BasePart") then
-                                local dist = (obj.Position - BANK_POSITION).Magnitude
-                                if dist < 10 then
-                                        return obj
-                                end
-                        end
-                end
-                return nil
-        end
+        -- Forward declarations (funciones definidas mas abajo)
+        local openBankPanel
+        local closeBankPanel
+        local updateBankUI
+        local formatMoney
 
         -- ============================================
         -- BillboardGui con la imagen E sobre el banco
         -- ============================================
-        local bankPart = findBankPart()
-        local bankBillboard = nil
+        -- En vez de buscar un Part existente, creamos un Part invisible temporal
+        -- en la posicion del banco. Esto garantiza que siempre funcione sin importar
+        -- si el usuario creo un Part o no.
+        local bankPart = Instance.new("Part")
+        bankPart.Name = "BankAnchor"
+        bankPart.Anchored = true
+        bankPart.CanCollide = false
+        bankPart.CanQuery = false
+        bankPart.CanTouch = false
+        bankPart.Transparency = 1
+        bankPart.Size = Vector3.new(0.1, 0.1, 0.1)
+        bankPart.Position = BANK_POSITION
+        bankPart.Parent = Workspace
 
-        if bankPart then
-                bankBillboard = Instance.new("BillboardGui")
-                bankBillboard.Name = "BankInteractGui"
-                bankBillboard.Size = UDim2.new(0, 80, 0, 80)
-                bankBillboard.StudsOffset = Vector3.new(0, 4, 0) -- 4 studs arriba del banco
-                bankBillboard.AlwaysOnTop = true
-                bankBillboard.LightInfluence = 0
-                bankBillboard.MaxDistance = 30 -- solo visible de cerca
-                bankBillboard.Enabled = false -- oculto por defecto
-                bankBillboard.Parent = bankPart
+        local bankBillboard = Instance.new("BillboardGui")
+        bankBillboard.Name = "BankInteractGui"
+        bankBillboard.Size = UDim2.new(0, 80, 0, 80)
+        bankBillboard.StudsOffset = Vector3.new(0, 4, 0) -- 4 studs arriba del banco
+        bankBillboard.AlwaysOnTop = true
+        bankBillboard.LightInfluence = 0
+        bankBillboard.MaxDistance = 30 -- solo visible de cerca
+        bankBillboard.Enabled = false -- oculto por defecto
+        bankBillboard.Parent = bankPart
 
-                local eImage = Instance.new("ImageLabel")
-                eImage.Size = UDim2.new(1, 0, 1, 0)
-                eImage.BackgroundTransparency = 1
-                eImage.Image = "rbxassetid://78972021775884"
-                eImage.ScaleType = Enum.ScaleType.Fit
-                eImage.Parent = bankBillboard
+        local eImage = Instance.new("ImageLabel")
+        eImage.Size = UDim2.new(1, 0, 1, 0)
+        eImage.BackgroundTransparency = 1
+        eImage.Image = "rbxassetid://78972021775884"
+        eImage.ScaleType = Enum.ScaleType.Fit
+        eImage.Parent = bankBillboard
 
-                -- Hacer el BillboardGui clickable (para movil)
-                -- Agregar un TextButton transparente sobre la imagen
-                local clickBtn = Instance.new("TextButton")
-                clickBtn.Size = UDim2.new(1, 0, 1, 0)
-                clickBtn.BackgroundTransparency = 1
-                clickBtn.Text = ""
-                clickBtn.Parent = bankBillboard
+        -- Hacer el BillboardGui clickable (para movil)
+        -- Agregar un TextButton transparente sobre la imagen
+        local clickBtn = Instance.new("TextButton")
+        clickBtn.Size = UDim2.new(1, 0, 1, 0)
+        clickBtn.BackgroundTransparency = 1
+        clickBtn.Text = ""
+        clickBtn.Parent = bankBillboard
 
-                clickBtn.MouseButton1Click:Connect(function()
-                        if nearBank then
-                                openBankPanel()
-                        end
-                end)
-        else
-                warn("[BankSystem] No se encontro el Part 'EBanco' en Workspace. Crea un Part llamado 'EBanco' (cerca de posicion " .. tostring(BANK_POSITION) .. ") para que el banco funcione.")
-        end
+        clickBtn.MouseButton1Click:Connect(function()
+                if nearBank then
+                        openBankPanel()
+                end
+        end)
+
+        print("[BankSystem] Part ancla del banco creado en " .. tostring(BANK_POSITION))
 
         -- ============================================
         -- Panel de banco
@@ -271,7 +264,7 @@ function BankSystem.init(deps)
         -- Funciones
         -- ============================================
 
-        function openBankPanel()
+function openBankPanel()
                 bankPanelOpen = true
                 bankPanel.Visible = true
                 -- Cerrar otros paneles
@@ -284,19 +277,19 @@ function BankSystem.init(deps)
                 updateBankUI()
         end
 
-        function closeBankPanel()
+function closeBankPanel()
                 bankPanelOpen = false
                 bankPanel.Visible = false
                 amountInput.Text = ""
         end
 
-        function updateBankUI()
+function updateBankUI()
                 balanceLabel.Text = "Saldo en banco: $" .. formatMoney(bankBalance)
                 moneyLabel.Text = "Dinero contigo: $" .. formatMoney(playerMoney)
         end
 
         -- Formato de dinero (K, M, B, T)
-        function formatMoney(amount)
+function formatMoney(amount)
                 amount = amount or 0
                 if amount >= 1000000000000 then
                         return string.format("%.1fT", amount / 1000000000000)
