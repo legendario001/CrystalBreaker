@@ -57,7 +57,7 @@ function BankSystem.init(deps)
         local bankBillboard = Instance.new("BillboardGui")
         bankBillboard.Name = "BankInteractGui"
         bankBillboard.Size = UDim2.new(0, 80, 0, 80)
-        bankBillboard.StudsOffset = Vector3.new(0, -8, 0) -- 8 studs abajo del banco
+        bankBillboard.StudsOffset = Vector3.new(0, -3, 0) -- 3 studs abajo del banco (subio 5 desde -8)
         bankBillboard.AlwaysOnTop = true
         bankBillboard.LightInfluence = 0
         bankBillboard.MaxDistance = 40 -- visible desde lejos (porque ahora aparece a 30 studs)
