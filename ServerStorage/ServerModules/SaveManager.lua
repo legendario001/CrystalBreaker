@@ -70,9 +70,11 @@ local function serializeCharacters(characters)
         return serialized
 end
 
--- Serializar bloques colocados (Part -> tabla con posicion y blockId)
-local function serializePlacedBlocks(blocksFolder)
+-- Serializar bloques colocados (Part -> tabla con posicion RELATIVA al centro de la parcela)
+-- Esto permite que la construccion se mueva con el jugador si le asignan otra parcela
+local function serializePlacedBlocks(blocksFolder, parcelCenter)
         if not blocksFolder then return {} end
+        parcelCenter = parcelCenter or Vector3.new(0, 0, 0)
         local serialized = {}
         for _, block in ipairs(blocksFolder:GetChildren()) do
                 if block:IsA("BasePart") then
@@ -80,9 +82,10 @@ local function serializePlacedBlocks(blocksFolder)
                         if idTag then
                                 table.insert(serialized, {
                                         blockId = idTag.Value,
-                                        px = block.Position.X,
-                                        py = block.Position.Y,
-                                        pz = block.Position.Z,
+                                        -- Posicion relativa al centro de la parcela (offset)
+                                        ox = block.Position.X - parcelCenter.X,
+                                        oy = block.Position.Y - parcelCenter.Y,
+                                        oz = block.Position.Z - parcelCenter.Z,
                                         rx = block.Orientation.X,
                                         ry = block.Orientation.Y,
                                         rz = block.Orientation.Z,
@@ -135,8 +138,8 @@ end
 
 -- Guardar datos del jugador en DataStore
 -- Parametros:
---   userId, playerData (de GameHandler), baseLevel, blockInventory, blocksFolder, bankBalance
-function SaveManager.savePlayerData(userId, playerData, baseLevel, blockInventory, blocksFolder, bankBalance)
+--   userId, playerData (de GameHandler), baseLevel, blockInventory, blocksFolder, bankBalance, parcelCenter
+function SaveManager.savePlayerData(userId, playerData, baseLevel, blockInventory, blocksFolder, bankBalance, parcelCenter)
         -- Construir la tabla de datos a guardar
         local dataToSave = {
                 money = 0,
@@ -160,7 +163,7 @@ function SaveManager.savePlayerData(userId, playerData, baseLevel, blockInventor
         end
 
         if blocksFolder then
-                dataToSave.placedBlocks = serializePlacedBlocks(blocksFolder)
+                dataToSave.placedBlocks = serializePlacedBlocks(blocksFolder, parcelCenter)
         end
 
         -- Guardar en DataStore
