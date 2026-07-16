@@ -31,9 +31,11 @@ function BankSystem.init(deps)
         local bankPanelOpen = false
         local nearBank = false
 
-        -- Encontrar el Part del banco (por posicion cercana)
+        -- Encontrar el Part del banco (busca en todo Workspace, incluyendo subcarpetas como Banco/)
+        -- Usa la posicion cercana para identificarlo
         local function findBankPart()
-                for _, obj in ipairs(Workspace:GetChildren()) do
+                -- Buscar en Workspace y todos sus descendientes
+                for _, obj in ipairs(Workspace:GetDescendants()) do
                         if obj:IsA("BasePart") then
                                 local dist = (obj.Position - BANK_POSITION).Magnitude
                                 if dist < 5 then
