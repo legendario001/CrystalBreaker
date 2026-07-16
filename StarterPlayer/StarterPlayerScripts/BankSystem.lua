@@ -72,16 +72,32 @@ function BankSystem.init(deps)
         eImage.ScaleType = Enum.ScaleType.Fit
         eImage.Parent = bankBillboard
 
-        -- Hacer el BillboardGui clickable (para movil y PC)
-        -- Boton transparente que cubre todo el billboard
-        local clickBtn = Instance.new("TextButton")
-        clickBtn.Size = UDim2.new(1, 0, 1, 0)
-        clickBtn.BackgroundTransparency = 1
-        clickBtn.Text = ""
-        clickBtn.ZIndex = 10 -- arriba de la imagen para recibir el click
-        clickBtn.Parent = bankBillboard
+        -- ============================================
+        -- Boton clickable en ScreenGui (sigue al banco en pantalla)
+        -- BillboardGui no recibe touch en movil de forma confiable, por eso usamos ScreenGui
+        -- ============================================
+        local camera = Workspace.CurrentCamera
+        local bankClickBtn = Instance.new("TextButton")
+        bankClickBtn.Name = "BankClickBtn"
+        bankClickBtn.Size = UDim2.new(0, 100, 0, 100)
+        bankClickBtn.Position = UDim2.new(0.5, -50, 0.5, -50) -- se actualiza en el loop
+        bankClickBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+        bankClickBtn.BackgroundTransparency = 1 -- totalmente transparente
+        bankClickBtn.BorderSizePixel = 0
+        bankClickBtn.Text = ""
+        bankClickBtn.Visible = false
+        bankClickBtn.ZIndex = 100
+        bankClickBtn.Parent = screenGui
 
-        clickBtn.MouseButton1Click:Connect(function()
+        -- Imagen E dentro del boton ScreenGui (se ve igual que el billboard)
+        local screenEImage = Instance.new("ImageLabel")
+        screenEImage.Size = UDim2.new(1, 0, 1, 0)
+        screenEImage.BackgroundTransparency = 1
+        screenEImage.Image = "rbxassetid://78972021775884"
+        screenEImage.ScaleType = Enum.ScaleType.Fit
+        screenEImage.Parent = bankClickBtn
+
+        bankClickBtn.MouseButton1Click:Connect(function()
                 if nearBank then
                         if bankPanelOpen then
                                 closeBankPanel()
@@ -401,12 +417,26 @@ function formatMoney(amount)
                 if not root then return end
 
                 local dist = (root.Position - bankPart.Position).Magnitude
-                local wasNear = nearBank
                 nearBank = dist < BANK_INTERACT_DISTANCE
 
-                -- Mostrar/ocultar billboard (siempre, en PC y movil)
+                -- Ocultar billboard original (usamos el boton ScreenGui en su lugar)
                 if bankBillboard then
-                        bankBillboard.Enabled = nearBank
+                        bankBillboard.Enabled = false
+                end
+
+                -- Posicionar y mostrar/ocultar el boton ScreenGui
+                if nearBank and not bankPanelOpen then
+                        -- Convertir posicion del banco a coordenadas de pantalla
+                        local screenPos, onScreen = camera:WorldToViewportPoint(bankPart.Position + Vector3.new(0, 3, 0))
+                        if onScreen then
+                                bankClickBtn.Visible = true
+                                -- Centrar el boton en la posicion del banco en pantalla
+                                bankClickBtn.Position = UDim2.new(0, screenPos.X - 50, 0, screenPos.Y - 50)
+                        else
+                                bankClickBtn.Visible = false
+                        end
+                else
+                        bankClickBtn.Visible = false
                 end
         end)
 
