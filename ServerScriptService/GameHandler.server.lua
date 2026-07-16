@@ -1297,6 +1297,25 @@ local function restorePlayerProgress(player, savedData, base)
                                                                 end
                                                                 if moneyPile then
                                                                         setupMoneyPileEvents(pedestal, moneyPile)
+                                                                        -- Restaurar dinero acumulado guardado
+                                                                        local savedMoney = charSaved.accumulatedMoney or 0
+                                                                        if savedMoney > 0 then
+                                                                                local mv = moneyPile:FindFirstChild("MoneyValue")
+                                                                                if mv then
+                                                                                        mv.Value = savedMoney
+                                                                                end
+                                                                                -- Actualizar el label del MoneyPile
+                                                                                local bbGui = moneyPile:FindFirstChild("MoneyGui")
+                                                                                if bbGui then
+                                                                                        local frame = bbGui:FindFirstChild("Frame")
+                                                                                        if frame then
+                                                                                                local ml = frame:FindFirstChild("MoneyLabel")
+                                                                                                if ml then
+                                                                                                        ml.Text = "$" .. tostring(savedMoney)
+                                                                                                end
+                                                                                        end
+                                                                                end
+                                                                        end
                                                                 end
                                                         end
                                                 end
