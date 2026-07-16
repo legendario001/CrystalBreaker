@@ -83,6 +83,23 @@ if not ok_bld or not BuildManager then
 else
         print("[OK] BuildManager cargado correctamente")
 end
+-- BankManager para sistema de banco (depositar/retirar dinero)
+local BankManager
+local ok_bnk, err_bnk = pcall(function()
+        BankManager = require(ServerStorage.ServerModules.BankManager)
+end)
+if not ok_bnk or not BankManager then
+        warn("[CRITICAL] BankManager no se pudo cargar: " .. tostring(err_bnk))
+        BankManager = {
+                getBalance = function() return 0 end,
+                setBalance = function() end,
+                deposit = function() return false, "BankManager no cargo" end,
+                withdraw = function() return false, "BankManager no cargo" end,
+                cleanupPlayer = function() end,
+        }
+else
+        print("[OK] BankManager cargado correctamente")
+end
 -- BaseUpgradeManager es opcional - si falla, el juego sigue sin mejora de base
 local BaseUpgradeManager
 local ok_bum, err_bum = pcall(function()
@@ -1211,8 +1228,9 @@ local function savePlayerProgress(player)
         local baseLevel = BaseManager.getBaseLevel(player.UserId)
         local blockInventory = BuildManager.getInventory(player.UserId)
         local blocksFolder = ParcelManager.getBlocksFolder(player.UserId)
+        local bankBalance = BankManager.getBalance(player.UserId)
 
-        local success = SaveManager.savePlayerData(player.UserId, data, baseLevel, blockInventory, blocksFolder)
+        local success = SaveManager.savePlayerData(player.UserId, data, baseLevel, blockInventory, blocksFolder, bankBalance)
         if success then
                 print("[Save] Datos guardados para " .. player.Name)
         else
@@ -1352,6 +1370,12 @@ local function restorePlayerProgress(player, savedData, base)
                         end
                         print("[Save] " .. #savedData.placedBlocks .. " bloques restaurados para " .. player.Name)
                 end)
+        end
+
+        -- Restaurar saldo del banco
+        if savedData.bankBalance and savedData.bankBalance > 0 then
+                BankManager.setBalance(player.UserId, savedData.bankBalance)
+                print("[Save] Banco restaurado para " .. player.Name .. " (saldo=" .. savedData.bankBalance .. ")")
         end
 
         print("[Save] Progreso restaurado para " .. player.Name .. " (money=" .. (savedData.money or 0) .. ")")
@@ -1503,6 +1527,10 @@ Players.PlayerRemoving:Connect(function(player)
         -- Limpiar inventario de bloques del jugador
         if BuildManager then
                 BuildManager.cleanupPlayer(userId)
+        end
+        -- Limpiar saldo del banco del jugador (los datos ya estan guardados en DataStore)
+        if BankManager then
+                BankManager.cleanupPlayer(userId)
         end
         -- Limpiar cache de SaveManager
         SaveManager.clearCache(userId)
@@ -2063,6 +2091,115 @@ Events.GetPlayerParcel.OnServerInvoke = function(player)
         local parcel = ParcelManager.getParcel(player.UserId)
         return parcel
 end
+
+-- ============================================
+-- SISTEMA DE BANCO (DepositMoney / WithdrawMoney)
+-- ============================================
+
+-- Cooldowns para deposito/retiro
+local depositCooldowns = {}
+local withdrawCooldowns = {}
+
+-- Helper: enviar actualizacion de UI del banco al cliente
+local function sendBankUpdate(player)
+        if not isPlayerValid(player) then return end
+        local balance = BankManager.getBalance(player.UserId)
+        local data = playerData[player.UserId]
+        local playerMoney = (data and data.money) or 0
+        pcall(function()
+                Events.BankUIUpdate:FireClient(player, balance, playerMoney)
+        end)
+end
+
+-- DEPOSIT MONEY: jugador deposita dinero en el banco
+Events.DepositMoney.OnServerEvent:Connect(function(player, amount)
+        local ok, err = pcall(function()
+                if not isPlayerValid(player) then return end
+                -- Cooldown
+                if depositCooldowns[player.UserId] then return end
+                depositCooldowns[player.UserId] = true
+                task.delay(0.3, function() depositCooldowns[player.UserId] = nil end)
+
+                local data = playerData[player.UserId]
+                if not data then return end
+
+                -- Validar cantidad
+                amount = math.floor(tonumber(amount) or 0)
+                if amount <= 0 then
+                        warn("[Bank] Cantidad invalida de deposito: " .. tostring(amount))
+                        return
+                end
+
+                -- Validar que el jugador tenga ese dinero
+                if (data.money or 0) < amount then
+                        warn("[Bank] " .. player.Name .. " no tiene $" .. amount .. " para depositar (tiene $" .. (data.money or 0) .. ")")
+                        return
+                end
+
+                -- Quitar dinero del jugador y depositar en banco
+                data.money = data.money - amount
+                BankManager.deposit(player.UserId, amount)
+
+                -- Actualizar leaderstats
+                local leaderstats = player:FindFirstChild("leaderstats")
+                if leaderstats then
+                        local coins = leaderstats:FindFirstChild("Coins")
+                        if coins then coins.Value = data.money end
+                end
+                Events.MoneyUpdate:FireClient(player, data.money)
+
+                -- Enviar actualizacion de UI del banco
+                sendBankUpdate(player)
+
+                print("[Bank] " .. player.Name .. " deposito $" .. amount .. " (saldo banco: $" .. BankManager.getBalance(player.UserId) .. ")")
+        end)
+        if not ok then warn("Error DepositMoney: "..tostring(err)) end
+end)
+
+-- WITHDRAW MONEY: jugador retira dinero del banco
+Events.WithdrawMoney.OnServerEvent:Connect(function(player, amount)
+        local ok, err = pcall(function()
+                if not isPlayerValid(player) then return end
+                -- Cooldown
+                if withdrawCooldowns[player.UserId] then return end
+                withdrawCooldowns[player.UserId] = true
+                task.delay(0.3, function() withdrawCooldowns[player.UserId] = nil end)
+
+                local data = playerData[player.UserId]
+                if not data then return end
+
+                -- Validar cantidad
+                amount = math.floor(tonumber(amount) or 0)
+                if amount <= 0 then
+                        warn("[Bank] Cantidad invalida de retiro: " .. tostring(amount))
+                        return
+                end
+
+                -- Retirar del banco (valida saldo suficiente)
+                local success, result = BankManager.withdraw(player.UserId, amount)
+                if not success then
+                        warn("[Bank] No se pudo retirar: " .. tostring(result))
+                        return
+                end
+
+                -- Dar dinero al jugador
+                data.money = (data.money or 0) + amount
+
+                -- Actualizar leaderstats
+                local leaderstats = player:FindFirstChild("leaderstats")
+                if leaderstats then
+                        local coins = leaderstats:FindFirstChild("Coins")
+                        if coins then coins.Value = data.money end
+                end
+                Events.MoneyUpdate:FireClient(player, data.money)
+
+                -- Enviar actualizacion de UI del banco
+                sendBankUpdate(player)
+
+                print("[Bank] " .. player.Name .. " retiro $" .. amount .. " (saldo banco: $" .. BankManager.getBalance(player.UserId) .. ")")
+        end)
+        if not ok then warn("Error WithdrawMoney: "..tostring(err)) end
+end)
 
 print("=== GameHandler iniciado ===")
 
