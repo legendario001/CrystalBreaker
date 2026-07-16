@@ -1380,11 +1380,20 @@ local function restorePlayerProgress(player, savedData, base)
                 end)
         end
 
-        -- Restaurar saldo del banco
-        if savedData.bankBalance and savedData.bankBalance > 0 then
-                BankManager.setBalance(player.UserId, savedData.bankBalance)
-                print("[Save] Banco restaurado para " .. player.Name .. " (saldo=" .. savedData.bankBalance .. ")")
-        end
+        -- Restaurar saldo del banco (siempre setear, incluso si es 0)
+        local savedBankBalance = savedData.bankBalance or 0
+        BankManager.setBalance(player.UserId, savedBankBalance)
+        print("[Save] Banco restaurado para " .. player.Name .. " (saldo=" .. savedBankBalance .. ")")
+        -- Enviar BankUIUpdate al cliente para que su UI muestre el saldo correcto desde el inicio
+        task.delay(2, function()
+                if isPlayerValid(player) then
+                        local data = playerData[player.UserId]
+                        local playerMoney = (data and data.money) or 0
+                        pcall(function()
+                                Events.BankUIUpdate:FireClient(player, savedBankBalance, playerMoney)
+                        end)
+                end
+        end)
 
         print("[Save] Progreso restaurado para " .. player.Name .. " (money=" .. (savedData.money or 0) .. ")")
 end
