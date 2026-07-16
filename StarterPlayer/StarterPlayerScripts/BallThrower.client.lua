@@ -2503,28 +2503,48 @@ print("Sistema de musica cargado!")
 -- de 200 local registers del chunk principal de Luau.
 local BuildSystem = require(script.Parent:WaitForChild("BuildSystem", 10))
 if BuildSystem then
-	BuildSystem.init({
-		player = player,
-		screenGui = screenGui,
-		mouse = mouse,
-		UserInputService = UserInputService,
-		RunService = RunService,
-		Workspace = Workspace,
-		ReplicatedStorage = ReplicatedStorage,
-		PlaceBlockEvent = PlaceBlockEvent,
-		RemoveBlockEvent = RemoveBlockEvent,
-		BuyBlockEvent = BuyBlockEvent,
-		UpdateInventoryEvent = UpdateInventoryEvent,
-		backpackPanel = backpackPanel,
-		musicPanel = musicPanel,
-		backpackBtn = backpackBtn,
-		musicBtn = musicBtn,
-		ballEquippedRef = function() return ballEquipped end,
-		unequipBall = unequipBall,
-	})
-	print("Sistema de construccion cargado!")
+        BuildSystem.init({
+                player = player,
+                screenGui = screenGui,
+                mouse = mouse,
+                UserInputService = UserInputService,
+                RunService = RunService,
+                Workspace = Workspace,
+                ReplicatedStorage = ReplicatedStorage,
+                PlaceBlockEvent = PlaceBlockEvent,
+                RemoveBlockEvent = RemoveBlockEvent,
+                BuyBlockEvent = BuyBlockEvent,
+                UpdateInventoryEvent = UpdateInventoryEvent,
+                backpackPanel = backpackPanel,
+                musicPanel = musicPanel,
+                backpackBtn = backpackBtn,
+                musicBtn = musicBtn,
+                ballEquippedRef = function() return ballEquipped end,
+                unequipBall = unequipBall,
+        })
+        print("Sistema de construccion cargado!")
 else
-	warn("[Build] No se pudo cargar BuildSystem ModuleScript")
+        warn("[Build] No se pudo cargar BuildSystem ModuleScript")
+end
+
+-- ============================================
+-- SISTEMA DE BANCO (ModuleScript BankSystem)
+-- ============================================
+local BankSystem = require(script.Parent:WaitForChild("BankSystem", 10))
+if BankSystem then
+        BankSystem.init({
+                player = player,
+                screenGui = screenGui,
+                UserInputService = UserInputService,
+                RunService = RunService,
+                Workspace = Workspace,
+                ReplicatedStorage = ReplicatedStorage,
+                backpackPanel = backpackPanel,
+                musicPanel = musicPanel,
+        })
+        print("Sistema de banco cargado!")
+else
+        warn("[Bank] No se pudo cargar BankSystem ModuleScript")
 end
 
 
