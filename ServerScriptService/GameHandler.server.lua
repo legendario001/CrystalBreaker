@@ -1227,12 +1227,18 @@ local function savePlayerProgress(player)
 
         local baseLevel = BaseManager.getBaseLevel(player.UserId)
         local blockInventory = BuildManager.getInventory(player.UserId)
+        local parcel = ParcelManager.getParcel(player.UserId)
         local blocksFolder = ParcelManager.getBlocksFolder(player.UserId)
         local bankBalance = BankManager.getBalance(player.UserId)
+        -- Centro de la parcela para guardar posiciones relativas de bloques
+        local parcelCenter = nil
+        if parcel then
+                parcelCenter = parcel.Position
+        end
 
-        print("[Save] Guardando " .. player.Name .. ": money=" .. (data.money or 0) .. ", bankBalance=" .. bankBalance)
+        print("[Save] Guardando " .. player.Name .. ": money=" .. (data.money or 0) .. ", bankBalance=" .. bankBalance .. ", blocksFolder=" .. (blocksFolder and "si" or "no"))
 
-        local success = SaveManager.savePlayerData(player.UserId, data, baseLevel, blockInventory, blocksFolder, bankBalance)
+        local success = SaveManager.savePlayerData(player.UserId, data, baseLevel, blockInventory, blocksFolder, bankBalance, parcelCenter)
         if success then
                 print("[Save] Datos guardados para " .. player.Name)
         else
@@ -1365,18 +1371,37 @@ local function restorePlayerProgress(player, savedData, base)
         end
 
         -- Restaurar bloques colocados (se hace despues de que la parcela este asignada)
+        -- Las posiciones se guardan RELATIVAS al centro de la parcela, asi que sumamos
+        -- el offset al centro de la parcela actual (que puede ser diferente a la original)
         if savedData.placedBlocks and #savedData.placedBlocks > 0 then
                 task.delay(2, function()
                         if not isPlayerValid(player) then return end
                         local parcel = ParcelManager.getParcel(player.UserId)
                         if not parcel then return end
+                        local parcelCenter = parcel.Position
+                        local restoredCount = 0
                         for _, blockSaved in ipairs(savedData.placedBlocks) do
-                                local position = Vector3.new(blockSaved.px, blockSaved.py, blockSaved.pz)
-                                local rotation = Vector3.new(blockSaved.rx, blockSaved.ry, blockSaved.rz)
+                                -- Posicion absoluta = centro de parcela actual + offset guardado
+                                local position
+                                if blockSaved.ox ~= nil then
+                                        -- Formato nuevo: posiciones relativas (ox, oy, oz)
+                                        position = Vector3.new(
+                                                parcelCenter.X + blockSaved.ox,
+                                                parcelCenter.Y + blockSaved.oy,
+                                                parcelCenter.Z + blockSaved.oz
+                                        )
+                                else
+                                        -- Formato antiguo: posiciones absolutas (px, py, pz) - compatibilidad
+                                        position = Vector3.new(blockSaved.px, blockSaved.py, blockSaved.pz)
+                                end
+                                local rotation = Vector3.new(blockSaved.rx or 0, blockSaved.ry or 0, blockSaved.rz or 0)
                                 -- Colocar bloque sin descontar del inventario (ya esta colocado)
-                                BuildManager.placeBlockNoCost(player, blockSaved.blockId, position, rotation)
+                                local success = BuildManager.placeBlockNoCost(player, blockSaved.blockId, position, rotation)
+                                if success then
+                                        restoredCount = restoredCount + 1
+                                end
                         end
-                        print("[Save] " .. #savedData.placedBlocks .. " bloques restaurados para " .. player.Name)
+                        print("[Save] " .. restoredCount .. "/" .. #savedData.placedBlocks .. " bloques restaurados para " .. player.Name)
                 end)
         end
 
