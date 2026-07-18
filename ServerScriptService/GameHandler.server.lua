@@ -100,6 +100,31 @@ if not ok_bnk or not BankManager then
 else
         print("[OK] BankManager cargado correctamente")
 end
+-- LeaderboardManager para tabla de lideres (top 30 + personajes bailando)
+local LeaderboardManager
+local ok_lb, err_lb = pcall(function()
+        LeaderboardManager = require(ServerStorage.ServerModules.LeaderboardManager)
+end)
+if not ok_lb or not LeaderboardManager then
+        warn("[CRITICAL] LeaderboardManager no se pudo cargar: " .. tostring(err_lb))
+        LeaderboardManager = {
+                loadAll = function() end,
+                saveAll = function() end,
+                updateBalance = function() end,
+                recalculateTop = function() end,
+                getTop30 = function() return {} end,
+                updateTop3Characters = function() end,
+        }
+else
+        print("[OK] LeaderboardManager cargado correctamente")
+end
+-- Conectar BankManager con LeaderboardManager: cuando cambia el saldo, actualizar leaderboard
+if BankManager and LeaderboardManager then
+        BankManager.onBalanceChanged = function(userId, newBalance)
+                LeaderboardManager.updateBalance(userId, newBalance)
+        end
+        print("[OK] BankManager <-> LeaderboardManager conectados")
+end
 -- BaseUpgradeManager es opcional - si falla, el juego sigue sin mejora de base
 local BaseUpgradeManager
 local ok_bum, err_bum = pcall(function()
@@ -2244,6 +2269,75 @@ Events.WithdrawMoney.OnServerEvent:Connect(function(player, amount)
 end)
 
 print("=== GameHandler iniciado ===")
+
+-- ============================================
+-- SISTEMA DE LEADERBOARD (tabla de lideres)
+-- ============================================
+
+-- Helper: obtener nombre de jugador por userId (con cache)
+local playerNameCache = {}
+local function getPlayerName(userId)
+        if playerNameCache[userId] then return playerNameCache[userId] end
+        local success, name = pcall(function()
+                return Players:GetNameFromUserIdAsync(userId)
+        end)
+        if success and name then
+                playerNameCache[userId] = name
+                return name
+        end
+        return "Jugador"
+end
+
+-- Helper: enviar leaderboard a todos los clientes
+local function sendLeaderboardToAll()
+        local top = LeaderboardManager.getTop30()
+        -- Construir tabla serializable con nombre y balance
+        local data = {}
+        for i, entry in ipairs(top) do
+                table.insert(data, {
+                        rank = i,
+                        userId = entry.userId,
+                        name = getPlayerName(entry.userId),
+                        balance = entry.balance,
+                })
+        end
+        -- Enviar a todos los jugadores
+        for _, player in ipairs(Players:GetPlayers()) do
+                pcall(function()
+                        Events.LeaderboardUpdate:FireClient(player, data)
+                end)
+        end
+end
+
+-- Cargar leaderboard al iniciar el servidor
+task.spawn(function()
+        -- Esperar un poco a que el DataStore este listo
+        task.wait(3)
+        LeaderboardManager.loadAll()
+        sendLeaderboardToAll()
+        LeaderboardManager.updateTop3Characters()
+        print("[Leaderboard] Sistema iniciado")
+end)
+
+-- Auto-update del leaderboard cada 60 segundos
+task.spawn(function()
+        while true do
+                task.wait(60)
+                -- Actualizar balances de jugadores online en el cache del leaderboard
+                for _, player in ipairs(Players:GetPlayers()) do
+                        local balance = BankManager.getBalance(player.UserId)
+                        LeaderboardManager.updateBalance(player.UserId, balance)
+                end
+                -- Recalcular top
+                LeaderboardManager.recalculateTop()
+                -- Guardar en DataStore
+                LeaderboardManager.saveAll()
+                -- Enviar a clientes
+                sendLeaderboardToAll()
+                -- Actualizar personajes del Top 3
+                LeaderboardManager.updateTop3Characters()
+        end
+end)
 
 -- ============================================
 -- AUTO-SAVE: guardar todos los jugadores cada 60 segundos
