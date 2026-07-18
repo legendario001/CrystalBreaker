@@ -173,8 +173,10 @@ local function spawnTopCharacter(rank, userId)
 
         -- Posicionar el modelo: sumar offset en Y para que se pare encima del pedestal
         -- El HumanoidRootPart esta en el centro del cuerpo, asi que subimos ~3 studs
+        -- Rotar -90 grados en Y (90 grados a la izquierda del jugador)
         local spawnPosition = position + Vector3.new(0, 3.5, 0)
-        model:PivotTo(CFrame.new(spawnPosition))
+        local spawnCFrame = CFrame.new(spawnPosition) * CFrame.Angles(0, math.rad(-90), 0)
+        model:PivotTo(spawnCFrame)
 
         -- Parent al folder ANTES de reproducir animacion (necesario para el Animator)
         local folder = ensureTopCharactersFolder()
@@ -195,6 +197,8 @@ local function spawnTopCharacter(rank, userId)
                 humanoid.MaxHealth = math.huge
                 humanoid.Health = math.huge
                 humanoid.BreakJointsOnDeath = false
+                -- Plataforma para que no se caiga
+                humanoid.PlatformStand = true
 
                 -- Cargar y reproducir animacion de baile
                 local animator = humanoid:FindFirstChildOfClass("Animator")
@@ -208,6 +212,29 @@ local function spawnTopCharacter(rank, userId)
                 track.Looped = true
                 track.Priority = Enum.AnimationPriority.Action
                 track:Play()
+        end
+
+        -- Fijar el personaje en su posicion para que no se mueva al tocarlo
+        -- Usamos BodyPosition + BodyGyro en el HumanoidRootPart (no rompe animaciones)
+        local hrp = model:FindFirstChild("HumanoidRootPart")
+        if hrp then
+                -- BodyPosition: fija la posicion (con fuerza alta para que no se mueva)
+                local bodyPos = Instance.new("BodyPosition")
+                bodyPos.Name = "LockPosition"
+                bodyPos.Position = spawnPosition
+                bodyPos.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+                bodyPos.P = 10000 -- fuerza
+                bodyPos.D = 500 -- amortiguacion
+                bodyPos.Parent = hrp
+
+                -- BodyGyro: fija la rotacion
+                local bodyGyro = Instance.new("BodyGyro")
+                bodyGyro.Name = "LockRotation"
+                bodyGyro.CFrame = spawnCFrame
+                bodyGyro.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+                bodyGyro.P = 10000
+                bodyGyro.D = 500
+                bodyGyro.Parent = hrp
         end
 
         -- Etiqueta con el nombre y rango
