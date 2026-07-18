@@ -2547,6 +2547,22 @@ else
         warn("[Bank] No se pudo cargar BankSystem ModuleScript")
 end
 
+-- ============================================
+-- SISTEMA DE LEADERBOARD (ModuleScript LeaderboardSystem)
+-- ============================================
+local LeaderboardSystem = require(script.Parent:WaitForChild("LeaderboardSystem", 10))
+if LeaderboardSystem then
+        LeaderboardSystem.init({
+                player = player,
+                screenGui = screenGui,
+                Workspace = Workspace,
+                ReplicatedStorage = ReplicatedStorage,
+        })
+        print("Sistema de leaderboard cargado!")
+else
+        warn("[Leaderboard] No se pudo cargar LeaderboardSystem ModuleScript")
+end
+
 
 
 
