@@ -172,10 +172,10 @@ local function spawnTopCharacter(rank, userId)
         end
 
         -- Posicionar el modelo: sumar offset en Y para que se pare encima del pedestal
-        -- El HumanoidRootPart esta en el centro del cuerpo, asi que subimos ~3 studs
-        -- Rotar -90 grados en Y (90 grados a la izquierda del jugador)
-        local spawnPosition = position + Vector3.new(0, 3.5, 0)
-        local spawnCFrame = CFrame.new(spawnPosition) * CFrame.Angles(0, math.rad(-90), 0)
+        -- El HumanoidRootPart esta en el centro del cuerpo, asi que subimos ~5 studs
+        -- Rotar +90 grados en Y (90 grados a la izquierda del jugador)
+        local spawnPosition = position + Vector3.new(0, 5, 0)
+        local spawnCFrame = CFrame.new(spawnPosition) * CFrame.Angles(0, math.rad(90), 0)
         model:PivotTo(spawnCFrame)
 
         -- Parent al folder ANTES de reproducir animacion (necesario para el Animator)
