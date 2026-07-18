@@ -145,18 +145,56 @@ local function spawnTopCharacter(rank, userId)
                 return nil
         end
 
-        -- Posicionar el modelo
-        model:PivotTo(CFrame.new(position))
+        -- Asegurar que el modelo tenga PrimaryPart (necesario para PivotTo)
+        if not model.PrimaryPart then
+                local hrp = model:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                        model.PrimaryPart = hrp
+                else
+                        -- Buscar cualquier BasePart
+                        for _, p in ipairs(model:GetDescendants()) do
+                                if p:IsA("BasePart") then
+                                        model.PrimaryPart = p
+                                        break
+                                end
+                        end
+                end
+        end
 
-        -- Hacer que el modelo no sea controlable
+        -- Hacer todas las partes no colisionables (para que no estorben)
+        -- NO poner Anchored = true porque rompe las animaciones
+        for _, part in ipairs(model:GetDescendants()) do
+                if part:IsA("BasePart") then
+                        part.CanCollide = false
+                        part.CanQuery = false
+                        part.CanTouch = false
+                end
+        end
+
+        -- Posicionar el modelo: sumar offset en Y para que se pare encima del pedestal
+        -- El HumanoidRootPart esta en el centro del cuerpo, asi que subimos ~3 studs
+        local spawnPosition = position + Vector3.new(0, 3.5, 0)
+        model:PivotTo(CFrame.new(spawnPosition))
+
+        -- Parent al folder ANTES de reproducir animacion (necesario para el Animator)
+        local folder = ensureTopCharactersFolder()
+        if folder then
+                model.Parent = folder
+        else
+                model.Parent = Workspace
+        end
+
+        -- Configurar Humanoid
         local humanoid = model:FindFirstChildOfClass("Humanoid")
         if humanoid then
                 humanoid.WalkSpeed = 0
                 humanoid.JumpPower = 0
                 humanoid.JumpHeight = 0
+                humanoid.AutoRotate = false
                 -- Desactivar salud (no puede morir)
                 humanoid.MaxHealth = math.huge
                 humanoid.Health = math.huge
+                humanoid.BreakJointsOnDeath = false
 
                 -- Cargar y reproducir animacion de baile
                 local animator = humanoid:FindFirstChildOfClass("Animator")
@@ -170,22 +208,6 @@ local function spawnTopCharacter(rank, userId)
                 track.Looped = true
                 track.Priority = Enum.AnimationPriority.Action
                 track:Play()
-        end
-
-        -- Hacer todas las partes no colisionables (para que no estorben)
-        for _, part in ipairs(model:GetDescendants()) do
-                if part:IsA("BasePart") then
-                        part.CanCollide = false
-                        part.Anchored = true
-                end
-        end
-
-        -- Parent al folder
-        local folder = ensureTopCharactersFolder()
-        if folder then
-                model.Parent = folder
-        else
-                model.Parent = Workspace
         end
 
         -- Etiqueta con el nombre y rango
