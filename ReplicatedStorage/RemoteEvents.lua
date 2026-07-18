@@ -32,7 +32,8 @@ local eventNames = {
         "UpdateInventory",
         "DepositMoney",
         "WithdrawMoney",
-        "BankUIUpdate"
+        "BankUIUpdate",
+        "LeaderboardUpdate"
 }
 
 for _, name in ipairs(eventNames) do
