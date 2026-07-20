@@ -12,7 +12,7 @@ local Workspace = game:GetService("Workspace")
 local LeaderboardManager = {}
 
 -- DataStore global con todos los saldos: { [userId] = bankBalance }
-local leaderboardStore = DataStoreService:GetDataStore("LeaderboardBankBalances_v1")
+local leaderboardStore = DataStoreService:GetDataStore("LeaderboardBankBalances_v2")
 
 -- Cache en memoria: { [userId] = balance }
 local allBalances = {}
