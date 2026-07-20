@@ -27,6 +27,7 @@ local function serializeCharacter(charData)
                 rarity = charData.rarity,
                 level = charData.level or 1,
                 fusionLevel = charData.fusionLevel or 0,
+                modelName = charData.modelName or (charData.model and charData.model.Name) or charData.name,
                 pedestalName = nil,
                 pedestalFloor = nil,
                 accumulatedMoney = 0, -- dinero acumulado en el MoneyPile (no recogido)
