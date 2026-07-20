@@ -17,10 +17,10 @@ local baseLevels = {} -- [userId] = nivel (1=sin mejora, 2=segundo piso)
 
 -- Costo de mejora (TEST - ajustable en el futuro)
 local UPGRADE_COSTS = {
-        [2] = 10,         -- Nivel 1 -> 2: $10 (TEST)
-        [3] = 25,         -- Nivel 2 -> 3: $25 (TEST)
-        [4] = 50,         -- Nivel 3 -> 4: $50 (TEST)
-        [5] = 100,        -- Nivel 4 -> 5: $100 (TEST)
+        [2] = 1000000,           -- Nivel 1 -> 2: 1M
+        [3] = 100000000,         -- Nivel 2 -> 3: 100M
+        [4] = 1000000000,        -- Nivel 3 -> 4: 1000M (1B)
+        [5] = 100000000000,      -- Nivel 4 -> 5: 100B
 }
 
 function BaseManager.getBase(userId)
