@@ -515,10 +515,10 @@ function ModelManager.getUpgradeCost(currentLevel, rarity)
         -- Multiplicador por rareza (Morado = base, las demas mas baratas)
         local rarityMultipliers = {
                 Morado = 1.0,    -- sin descuento
-                Rojo = 0.85,     -- 15% mas barato
-                Amarillo = 0.70, -- 30% mas barato
-                Azul = 0.55,     -- 45% mas barato
-                Blanco = 0.40,   -- 60% mas barato
+                Rojo = 0.70,     -- 30% mas barato
+                Amarillo = 0.40, -- 60% mas barato
+                Azul = 0.30,     -- 70% mas barato
+                Blanco = 0.15,   -- 85% mas barato
         }
         local mult = rarityMultipliers[rarity] or 1.0
         return math.floor(baseCost * mult)
