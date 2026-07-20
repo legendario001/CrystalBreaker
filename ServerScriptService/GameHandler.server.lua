@@ -589,10 +589,10 @@ Events.ThrowBall.OnServerEvent:Connect(function(player, startPos, launchVel, bal
                 -- Configuracion de pelotas
                 local SERVER_BALL_CONFIG = {
                         basic = { color = Color3.fromRGB(100, 200, 255), material = Enum.Material.SmoothPlastic, gravity = 1.0, bounce = true, damage = 1, modelName = nil },
-                        fire = { color = Color3.fromRGB(255, 100, 30), material = Enum.Material.Neon, gravity = 0.3, bounce = false, damage = 2, modelName = "FireBallModel" },
-            earth = { color = Color3.fromRGB(140, 90, 50), material = Enum.Material.Slate, gravity = 1.0, bounce = true, damage = 3, modelName = "EarthBallModel" },
-            air = { color = Color3.fromRGB(240, 250, 255), material = Enum.Material.Glass, gravity = 0.2, bounce = true, damage = 1, modelName = "AirBallModel" },
-            water = { color = Color3.fromRGB(80, 150, 220), material = Enum.Material.Glass, gravity = 1.0, bounce = true, damage = 2, modelName = "WaterBallModel" }
+                        fire = { color = Color3.fromRGB(255, 100, 30), material = Enum.Material.Neon, gravity = 0.3, bounce = false, damage = 10, modelName = "FireBallModel" },
+            earth = { color = Color3.fromRGB(140, 90, 50), material = Enum.Material.Slate, gravity = 1.0, bounce = true, damage = 100, modelName = "EarthBallModel" },
+            air = { color = Color3.fromRGB(240, 250, 255), material = Enum.Material.Glass, gravity = 0.2, bounce = true, damage = 10000, modelName = "AirBallModel" },
+            water = { color = Color3.fromRGB(80, 150, 220), material = Enum.Material.Glass, gravity = 1.0, bounce = true, damage = 1000, modelName = "WaterBallModel" }
                 }
                 local ballCfg = SERVER_BALL_CONFIG[ballType] or SERVER_BALL_CONFIG.basic
 
@@ -770,7 +770,7 @@ Events.PickupChest.OnServerEvent:Connect(function(player)
                 rarityColor = rarityColors[rarity] or Color3.fromRGB(220, 220, 220)
 
                 -- Obtener el personaje ganado AHORA (para mostrarlo al final de la animacion)
-                local model, folder = CharacterManager.getRandomModel(rarity)
+                local model, folder, modelName = CharacterManager.getRandomModel(rarity)
                 local charName = model and model.Name or (rarity.." Personaje")
 
                 -- Guardar posicion del cofre ANTES de destruirlo (para respawn del cristal)
@@ -799,7 +799,8 @@ Events.PickupChest.OnServerEvent:Connect(function(player)
                 local charIndex = getNextCharIndex(currentData.characters)
                 currentData.characters[charIndex] = {
                         name=charName, rarity=rarity, level=1,
-                        model=model, folder=folder, pedestal=nil
+                        model=model, folder=folder, pedestal=nil,
+                        modelName=modelName or (model and model.Name) or charName
                 }
                 currentData.carrying = charIndex
                 createCarryTool(player, model)
@@ -1320,8 +1321,10 @@ local function restorePlayerProgress(player, savedData, base)
                 for idxStr, charSaved in pairs(savedData.characters) do
                         local idx = tonumber(idxStr)
                         if idx and charSaved and charSaved.name and charSaved.rarity then
-                                -- Buscar el modelo por nombre y rareza
-                                local model, folder = CharacterManager.getModelByName(charSaved.rarity, charSaved.name)
+                                -- Buscar el modelo por modelName (nombre real del modelo, no el nombre mostrado)
+                                -- Esto es CRITICO para personajes fusionados cuyo "name" es "X Fusion" pero el modelo real es "X"
+                                local modelNameToFind = charSaved.modelName or charSaved.name
+                                local model, folder = CharacterManager.getModelByName(charSaved.rarity, modelNameToFind)
                                 if model then
                                         local charData = {
                                                 name = charSaved.name,
@@ -1331,6 +1334,7 @@ local function restorePlayerProgress(player, savedData, base)
                                                 folder = folder,
                                                 pedestal = nil,
                                                 fusionLevel = charSaved.fusionLevel or 0,
+                                                modelName = modelNameToFind,
                                         }
                                         data.characters[idx] = charData
 
@@ -1898,7 +1902,8 @@ Events.FuseCharacters.OnServerEvent:Connect(function(player)
                         model = charA.model,
                         folder = charA.folder,
                         pedestal = nil,
-                        fusionLevel = newFusionLevel
+                        fusionLevel = newFusionLevel,
+                        modelName = charA.modelName or (charA.model and charA.model.Name) or charA.name
                 }
 
                 -- Dar al jugador como carrying (sale por el output de la maquina)
