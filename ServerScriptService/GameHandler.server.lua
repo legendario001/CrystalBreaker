@@ -2163,6 +2163,55 @@ end
 -- SISTEMA DE BANCO (DepositMoney / WithdrawMoney)
 -- ============================================
 
+-- ============================================
+-- COMPRA DE PELOTAS (BuyBall)
+-- ============================================
+-- Costos de las pelotas (deben coincidir con BALL_TYPES del cliente)
+local BALL_COSTS = {
+        basic = 0,
+        fire = 100000,        -- 100K
+        earth = 5000000,      -- 5M
+        water = 100000000,    -- 100M
+        air = 5000000000,     -- 5B
+}
+
+Events.BuyBall.OnServerEvent:Connect(function(player, ballKey)
+        local ok, err = pcall(function()
+                if not isPlayerValid(player) then return end
+                local data = playerData[player.UserId]
+                if not data then return end
+
+                -- Validar ballKey
+                local cost = BALL_COSTS[ballKey]
+                if not cost then
+                        warn("[BuyBall] Pelota invalida: " .. tostring(ballKey))
+                        Events.BallPurchased:FireClient(player, false, ballKey, "Pelota invalida")
+                        return
+                end
+
+                -- Validar dinero
+                if (data.money or 0) < cost then
+                        warn("[BuyBall] " .. player.Name .. " no tiene dinero para " .. ballKey .. " ($" .. cost .. ")")
+                        Events.BallPurchased:FireClient(player, false, ballKey, "Dinero insuficiente! Necesitas $" .. cost)
+                        return
+                end
+
+                -- Descontar dinero
+                data.money = data.money - cost
+                local leaderstats = player:FindFirstChild("leaderstats")
+                if leaderstats then
+                        local coins = leaderstats:FindFirstChild("Coins")
+                        if coins then coins.Value = data.money end
+                end
+                Events.MoneyUpdate:FireClient(player, data.money)
+
+                -- Confirmar compra al cliente
+                Events.BallPurchased:FireClient(player, true, ballKey, "Compra exitosa")
+                print("[BuyBall] " .. player.Name .. " compro " .. ballKey .. " por $" .. cost)
+        end)
+        if not ok then warn("Error BuyBall: "..tostring(err)) end
+end)
+
 -- Cooldowns para deposito/retiro
 local depositCooldowns = {}
 local withdrawCooldowns = {}
