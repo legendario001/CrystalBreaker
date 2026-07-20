@@ -1469,6 +1469,69 @@ local function restorePlayerProgress(player, savedData, base)
                 end
         end
 
+        -- ============================================
+        -- DINERO OFFLINE: calcular dinero generado mientras el jugador estuvo fuera
+        -- ============================================
+        if savedData.lastSaveTimestamp and savedData.lastSaveTimestamp > 0 then
+                local currentTime = os.time()
+                local elapsedSeconds = currentTime - savedData.lastSaveTimestamp
+
+                -- Limitar a maximo 24 horas (86400 segundos) para no dar dinero infinito
+                if elapsedSeconds > 86400 then
+                        elapsedSeconds = 86400
+                end
+
+                -- Solo calcular si paso mas de 60 segundos (evitar calculos inutiles)
+                if elapsedSeconds > 60 then
+                        -- Calcular el rate total de todos los personajes en pedestales
+                        local totalRatePerSecond = 0
+                        if data.characters then
+                                for _, charData in pairs(data.characters) do
+                                        if charData and charData.pedestal then
+                                                local rate = ModelManager.getMoneyRate(
+                                                        charData.rarity,
+                                                        charData.level or 1,
+                                                        charData.fusionLevel or 0
+                                                )
+                                                -- El rate es por 2 segundos, asi que dividir entre 2 para obtener por segundo
+                                                totalRatePerSecond = totalRatePerSecond + (rate / 2)
+                                        end
+                                end
+                        end
+
+                        if totalRatePerSecond > 0 then
+                                local offlineEarnings = math.floor(totalRatePerSecond * elapsedSeconds)
+
+                                -- Dar el dinero al jugador
+                                data.money = (data.money or 0) + offlineEarnings
+                                local leaderstats = player:FindFirstChild("leaderstats")
+                                if leaderstats then
+                                        local coins = leaderstats:FindFirstChild("Coins")
+                                        if coins then coins.Value = data.money end
+                                end
+
+                                -- Enviar dinero actualizado al cliente
+                                task.delay(3, function()
+                                        if isPlayerValid(player) then
+                                                Events.MoneyUpdate:FireClient(player, data.money)
+                                        end
+                                end)
+
+                                -- Calcular tiempo legible para el mensaje
+                                local hours = math.floor(elapsedSeconds / 3600)
+                                local minutes = math.floor((elapsedSeconds % 3600) / 60)
+                                local timeStr = ""
+                                if hours > 0 then
+                                        timeStr = hours .. "h " .. minutes .. "m"
+                                else
+                                        timeStr = minutes .. "m"
+                                end
+
+                                print("[Save] Dinero offline para " .. player.Name .. ": $" .. offlineEarnings .. " (" .. timeStr .. " fuera, rate/sec: " .. totalRatePerSecond .. ")")
+                        end
+                end
+        end
+
         print("[Save] Progreso restaurado para " .. player.Name .. " (money=" .. (savedData.money or 0) .. ")")
 end
 
