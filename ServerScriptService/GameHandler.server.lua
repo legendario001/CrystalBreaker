@@ -151,6 +151,7 @@ local pickupCooldowns = {}
 -- ============================================
 local SOUND_COLLECT_MONEY = "rbxassetid://79392333090964"
 local SOUND_UPGRADE       = "rbxassetid://203620899"
+local SOUND_BUY_BLOCK     = "rbxassetid://13449037359" -- sonido al comprar bloques de construccion
 local SOUND_CRYSTAL_BREAK = "rbxassetid://124054125419097"
 -- Lista de sonidos al romper cristal (se reproduce 1 al azar cada vez)
 local CRYSTAL_BREAK_SOUNDS = {
@@ -537,7 +538,7 @@ local function setupUpgradeButtonEvents(pedestal, upgradeBtn, charIdx)
 
                         local currentLevel = charData.level or 1
                         if currentLevel >= 100 then return end
-                        local cost = ModelManager.getUpgradeCost(currentLevel, charData.rarity)
+                        local cost = ModelManager.getUpgradeCost(currentLevel)
                         if (data.money or 0) < cost then return end
 
                         data.money = data.money - cost
@@ -588,10 +589,10 @@ Events.ThrowBall.OnServerEvent:Connect(function(player, startPos, launchVel, bal
                 -- Configuracion de pelotas
                 local SERVER_BALL_CONFIG = {
                         basic = { color = Color3.fromRGB(100, 200, 255), material = Enum.Material.SmoothPlastic, gravity = 1.0, bounce = true, damage = 1, modelName = nil },
-                        fire = { color = Color3.fromRGB(255, 100, 30), material = Enum.Material.Neon, gravity = 0.3, bounce = false, damage = 10, modelName = "FireBallModel" },
-            earth = { color = Color3.fromRGB(140, 90, 50), material = Enum.Material.Slate, gravity = 1.0, bounce = true, damage = 100, modelName = "EarthBallModel" },
-            air = { color = Color3.fromRGB(240, 250, 255), material = Enum.Material.Glass, gravity = 0.2, bounce = true, damage = 10000, modelName = "AirBallModel" },
-            water = { color = Color3.fromRGB(80, 150, 220), material = Enum.Material.Glass, gravity = 1.0, bounce = true, damage = 1000, modelName = "WaterBallModel" }
+                        fire = { color = Color3.fromRGB(255, 100, 30), material = Enum.Material.Neon, gravity = 0.3, bounce = false, damage = 2, modelName = "FireBallModel" },
+            earth = { color = Color3.fromRGB(140, 90, 50), material = Enum.Material.Slate, gravity = 1.0, bounce = true, damage = 3, modelName = "EarthBallModel" },
+            air = { color = Color3.fromRGB(240, 250, 255), material = Enum.Material.Glass, gravity = 0.2, bounce = true, damage = 1, modelName = "AirBallModel" },
+            water = { color = Color3.fromRGB(80, 150, 220), material = Enum.Material.Glass, gravity = 1.0, bounce = true, damage = 2, modelName = "WaterBallModel" }
                 }
                 local ballCfg = SERVER_BALL_CONFIG[ballType] or SERVER_BALL_CONFIG.basic
 
@@ -769,41 +770,7 @@ Events.PickupChest.OnServerEvent:Connect(function(player)
                 rarityColor = rarityColors[rarity] or Color3.fromRGB(220, 220, 220)
 
                 -- Obtener el personaje ganado AHORA (para mostrarlo al final de la animacion)
-
-
-                -- Evitar dar personajes que el jugador ya tiene (para menos repetidos)
-
-
-                local avoidList = {}
-
-
-                local currentDataAvoid = playerData[player.UserId]
-
-
-                if currentDataAvoid and currentDataAvoid.characters then
-
-
-                    for _, c in pairs(currentDataAvoid.characters) do
-
-
-                        if c and c.modelName and c.rarity == rarity then
-
-
-                            table.insert(avoidList, c.modelName)
-
-
-                        end
-
-
-                    end
-
-
-                end
-
-
-                local model, folder, modelName = CharacterManager.getRandomModel(rarity, avoidList)
-
-
+                local model, folder = CharacterManager.getRandomModel(rarity)
                 local charName = model and model.Name or (rarity.." Personaje")
 
                 -- Guardar posicion del cofre ANTES de destruirlo (para respawn del cristal)
@@ -831,13 +798,8 @@ Events.PickupChest.OnServerEvent:Connect(function(player)
 
                 local charIndex = getNextCharIndex(currentData.characters)
                 currentData.characters[charIndex] = {
-
-                    name=charName, rarity=rarity, level=1,
-
-                    model=model, folder=folder, pedestal=nil,
-
-                    modelName=modelName or (model and model.Name) or charName
-
+                        name=charName, rarity=rarity, level=1,
+                        model=model, folder=folder, pedestal=nil
                 }
                 currentData.carrying = charIndex
                 createCarryTool(player, model)
@@ -1057,7 +1019,7 @@ Events.UpgradeCharacter.OnServerEvent:Connect(function(player)
                 local charData = closestEntry.data
                 local currentLevel = charData.level or 1
                 if currentLevel >= 100 then return end
-                local cost = ModelManager.getUpgradeCost(currentLevel, charData.rarity)
+                local cost = ModelManager.getUpgradeCost(currentLevel)
                 if (data.money or 0) < cost then return end
 
                 data.money = data.money - cost
@@ -1358,10 +1320,8 @@ local function restorePlayerProgress(player, savedData, base)
                 for idxStr, charSaved in pairs(savedData.characters) do
                         local idx = tonumber(idxStr)
                         if idx and charSaved and charSaved.name and charSaved.rarity then
-                                -- Buscar el modelo por modelName (nombre real del modelo, no el nombre mostrado)
-                                -- Esto es importante para personajes fusionados cuyo "name" es "X Fusion" pero el modelo real es "X"
-                                local modelNameToFind = charSaved.modelName or charSaved.name
-                                local model, folder = CharacterManager.getModelByName(charSaved.rarity, modelNameToFind)
+                                -- Buscar el modelo por nombre y rareza
+                                local model, folder = CharacterManager.getModelByName(charSaved.rarity, charSaved.name)
                                 if model then
                                         local charData = {
                                                 name = charSaved.name,
@@ -1371,7 +1331,6 @@ local function restorePlayerProgress(player, savedData, base)
                                                 folder = folder,
                                                 pedestal = nil,
                                                 fusionLevel = charSaved.fusionLevel or 0,
-                                                modelName = modelNameToFind,
                                         }
                                         data.characters[idx] = charData
 
@@ -1914,23 +1873,13 @@ Events.FuseCharacters.OnServerEvent:Connect(function(player)
                 -- Crear el personaje fusionado
                 local newIdx = getNextCharIndex(data.characters)
                 data.characters[newIdx] = {
-
-                    name = fusedName,
-
-                    rarity = charA.rarity,
-
-                    level = charA.level,
-
-                    model = charA.model,
-
-                    folder = charA.folder,
-
-                    pedestal = nil,
-
-                    fusionLevel = newFusionLevel,
-
-                    modelName = charA.modelName or (charA.model and charA.model.Name) or charA.name
-
+                        name = fusedName,
+                        rarity = charA.rarity,
+                        level = charA.level,
+                        model = charA.model,
+                        folder = charA.folder,
+                        pedestal = nil,
+                        fusionLevel = newFusionLevel
                 }
 
                 -- Dar al jugador como carrying (sale por el output de la maquina)
@@ -2151,6 +2100,9 @@ Events.BuyBlock.OnServerEvent:Connect(function(player, blockId)
 
                 -- Enviar inventario actualizado al cliente
                 sendInventoryUpdate(player)
+
+                -- Sonido de compra
+                playSoundForPlayer(SOUND_BUY_BLOCK, player)
         end)
         if not ok then warn("Error BuyBlock: "..tostring(err)) end
 end)
@@ -2214,55 +2166,6 @@ end
 -- ============================================
 -- SISTEMA DE BANCO (DepositMoney / WithdrawMoney)
 -- ============================================
-
--- ============================================
--- COMPRA DE PELOTAS (BuyBall)
--- ============================================
--- Costos de las pelotas (deben coincidir con BALL_TYPES del cliente)
-local BALL_COSTS = {
-        basic = 0,
-        fire = 100000,        -- 100K
-        earth = 5000000,      -- 5M
-        water = 100000000,    -- 100M
-        air = 5000000000,     -- 5B
-}
-
-Events.BuyBall.OnServerEvent:Connect(function(player, ballKey)
-        local ok, err = pcall(function()
-                if not isPlayerValid(player) then return end
-                local data = playerData[player.UserId]
-                if not data then return end
-
-                -- Validar ballKey
-                local cost = BALL_COSTS[ballKey]
-                if not cost then
-                        warn("[BuyBall] Pelota invalida: " .. tostring(ballKey))
-                        Events.BallPurchased:FireClient(player, false, ballKey, "Pelota invalida")
-                        return
-                end
-
-                -- Validar dinero
-                if (data.money or 0) < cost then
-                        warn("[BuyBall] " .. player.Name .. " no tiene dinero para " .. ballKey .. " ($" .. cost .. ")")
-                        Events.BallPurchased:FireClient(player, false, ballKey, "Dinero insuficiente! Necesitas $" .. cost)
-                        return
-                end
-
-                -- Descontar dinero
-                data.money = data.money - cost
-                local leaderstats = player:FindFirstChild("leaderstats")
-                if leaderstats then
-                        local coins = leaderstats:FindFirstChild("Coins")
-                        if coins then coins.Value = data.money end
-                end
-                Events.MoneyUpdate:FireClient(player, data.money)
-
-                -- Confirmar compra al cliente
-                Events.BallPurchased:FireClient(player, true, ballKey, "Compra exitosa")
-                print("[BuyBall] " .. player.Name .. " compro " .. ballKey .. " por $" .. cost)
-        end)
-        if not ok then warn("Error BuyBall: "..tostring(err)) end
-end)
 
 -- Cooldowns para deposito/retiro
 local depositCooldowns = {}
