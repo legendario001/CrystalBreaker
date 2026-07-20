@@ -150,6 +150,7 @@ function SaveManager.savePlayerData(userId, playerData, baseLevel, blockInventor
                 placedBlocks = {},
                 bankBalance = bankBalance or 0,
                 unlockedBalls = unlockedBalls or {}, -- pelotas desbloqueadas
+                lastSaveTimestamp = os.time(), -- timestamp del ultimo guardado (para dinero offline)
                 version = 1, -- version del formato de guardado
         }
 
