@@ -537,7 +537,7 @@ local function setupUpgradeButtonEvents(pedestal, upgradeBtn, charIdx)
 
                         local currentLevel = charData.level or 1
                         if currentLevel >= 100 then return end
-                        local cost = ModelManager.getUpgradeCost(currentLevel)
+                        local cost = ModelManager.getUpgradeCost(currentLevel, charData.rarity)
                         if (data.money or 0) < cost then return end
 
                         data.money = data.money - cost
@@ -1057,7 +1057,7 @@ Events.UpgradeCharacter.OnServerEvent:Connect(function(player)
                 local charData = closestEntry.data
                 local currentLevel = charData.level or 1
                 if currentLevel >= 100 then return end
-                local cost = ModelManager.getUpgradeCost(currentLevel)
+                local cost = ModelManager.getUpgradeCost(currentLevel, charData.rarity)
                 if (data.money or 0) < cost then return end
 
                 data.money = data.money - cost
