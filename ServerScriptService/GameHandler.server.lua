@@ -1264,7 +1264,7 @@ local function savePlayerProgress(player)
 
         print("[Save] Guardando " .. player.Name .. ": money=" .. (data.money or 0) .. ", bankBalance=" .. bankBalance .. ", blocksFolder=" .. (blocksFolder and "si" or "no"))
 
-        local success = SaveManager.savePlayerData(player.UserId, data, baseLevel, blockInventory, blocksFolder, bankBalance, parcelCenter)
+        local success = SaveManager.savePlayerData(player.UserId, data, baseLevel, blockInventory, blocksFolder, bankBalance, parcelCenter, data.unlockedBalls)
         if success then
                 print("[Save] Datos guardados para " .. player.Name)
         else
@@ -1446,13 +1446,32 @@ local function restorePlayerProgress(player, savedData, base)
                 end
         end)
 
+        -- Restaurar pelotas desbloqueadas
+        if savedData.unlockedBalls then
+                local data = playerData[player.UserId]
+                if data then
+                        data.unlockedBalls = savedData.unlockedBalls
+                        -- Asegurar que basic siempre este desbloqueada
+                        data.unlockedBalls["basic"] = true
+                        print("[Save] Pelotas desbloqueadas restauradas para " .. player.Name)
+                        -- Enviar las pelotas desbloqueadas al cliente
+                        task.delay(2, function()
+                                if isPlayerValid(player) then
+                                        pcall(function()
+                                                Events.BallsRestored:FireClient(player, data.unlockedBalls)
+                                        end)
+                                end
+                        end)
+                end
+        end
+
         print("[Save] Progreso restaurado para " .. player.Name .. " (money=" .. (savedData.money or 0) .. ")")
 end
 
 -- PLAYERS
 Players.PlayerAdded:Connect(function(player)
         print(player.Name.." se unio")
-        playerData[player.UserId] = {characters={}, carrying=nil, money=0}
+        playerData[player.UserId] = {characters={}, carrying=nil, money=0, unlockedBalls={["basic"]=true}}
 
         local leaderstats = Instance.new("Folder")
         leaderstats.Name = "leaderstats"
@@ -2166,6 +2185,66 @@ end
 -- ============================================
 -- SISTEMA DE BANCO (DepositMoney / WithdrawMoney)
 -- ============================================
+
+-- ============================================
+-- COMPRA DE PELOTAS (BuyBall)
+-- ============================================
+-- Costos de las pelotas (deben coincidir con BALL_TYPES del cliente)
+local BALL_COSTS = {
+        basic = 0,
+        fire = 100000,        -- 100K
+        earth = 5000000,      -- 5M
+        water = 100000000,    -- 100M
+        air = 5000000000,     -- 5B
+}
+
+Events.BuyBall.OnServerEvent:Connect(function(player, ballKey)
+        local ok, err = pcall(function()
+                if not isPlayerValid(player) then return end
+                local data = playerData[player.UserId]
+                if not data then return end
+
+                -- Validar ballKey
+                local cost = BALL_COSTS[ballKey]
+                if not cost then
+                        warn("[BuyBall] Pelota invalida: " .. tostring(ballKey))
+                        Events.BallPurchased:FireClient(player, false, ballKey, "Pelota invalida")
+                        return
+                end
+
+                -- Validar que no este ya desbloqueada
+                if data.unlockedBalls and data.unlockedBalls[ballKey] then
+                        warn("[BuyBall] " .. player.Name .. " ya tiene " .. ballKey .. " desbloqueada")
+                        Events.BallPurchased:FireClient(player, false, ballKey, "Ya tienes esta pelota")
+                        return
+                end
+
+                -- Validar dinero
+                if (data.money or 0) < cost then
+                        warn("[BuyBall] " .. player.Name .. " no tiene dinero para " .. ballKey .. " ($" .. cost .. ")")
+                        Events.BallPurchased:FireClient(player, false, ballKey, "Dinero insuficiente! Necesitas $" .. cost)
+                        return
+                end
+
+                -- Descontar dinero
+                data.money = data.money - cost
+                local leaderstats = player:FindFirstChild("leaderstats")
+                if leaderstats then
+                        local coins = leaderstats:FindFirstChild("Coins")
+                        if coins then coins.Value = data.money end
+                end
+                Events.MoneyUpdate:FireClient(player, data.money)
+
+                -- Marcar como desbloqueada
+                if not data.unlockedBalls then data.unlockedBalls = {} end
+                data.unlockedBalls[ballKey] = true
+
+                -- Confirmar compra al cliente
+                Events.BallPurchased:FireClient(player, true, ballKey, "Compra exitosa")
+                print("[BuyBall] " .. player.Name .. " compro " .. ballKey .. " por $" .. cost)
+        end)
+        if not ok then warn("Error BuyBall: "..tostring(err)) end
+end)
 
 -- Cooldowns para deposito/retiro
 local depositCooldowns = {}
