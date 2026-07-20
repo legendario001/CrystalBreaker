@@ -10,7 +10,7 @@ local Players = game:GetService("Players")
 local SaveManager = {}
 
 -- DataStore principal (un solo store por jugador, clave = userId)
-local playerStore = DataStoreService:GetDataStore("PlayerData_v1")
+local playerStore = DataStoreService:GetDataStore("PlayerData_v2")
 
 -- Cache de datos cargados (para no leer del DataStore en cada save)
 local loadedData = {} -- [userId] = data table
