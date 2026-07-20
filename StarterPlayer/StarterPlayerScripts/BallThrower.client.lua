@@ -2617,6 +2617,29 @@ else
         warn("[Leaderboard] No se pudo cargar LeaderboardSystem ModuleScript")
 end
 
+-- ============================================
+-- SISTEMA DE TIENDA (ModuleScript ShopSystem)
+-- ============================================
+local ShopSystem = require(script.Parent:WaitForChild("ShopSystem", 10))
+if ShopSystem then
+        ShopSystem.init({
+                player = player,
+                screenGui = screenGui,
+                UserInputService = UserInputService,
+                RunService = RunService,
+                Workspace = Workspace,
+                ReplicatedStorage = ReplicatedStorage,
+                backpackPanel = backpackPanel,
+                openBackpack = function()
+                        backpackPanel.Visible = true
+                        updateBackpackUI()
+                end,
+        })
+        print("Sistema de tienda cargado!")
+else
+        warn("[Shop] No se pudo cargar ShopSystem ModuleScript")
+end
+
 
 
 
