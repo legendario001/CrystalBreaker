@@ -1430,7 +1430,10 @@ player.CharacterAdded:Connect(function()
         updateUI()
 end)
 
+local playerMoney = 0 -- trackea el dinero del jugador (se actualiza con MoneyUpdate)
+
 MoneyUpdateEvent.OnClientEvent:Connect(function(amount)
+        playerMoney = amount or 0
         moneyLabel.Text = formatMoneyClient(amount)
 end)
 
@@ -2177,20 +2180,31 @@ local function updateBackpackUI()
                         actionBtn.TextScaled = true
 
                         actionBtn.MouseButton1Click:Connect(function()
-                                -- Por ahora, desbloquear gratis para testear
-                                -- En el futuro se validara el dinero del servidor
-                                BALL_TYPES[ballKey].unlocked = true
-                                selectedBallType = ballKey
-                                if ballEquipped then
-                                        reEquipBall()
+                                -- Validar dinero suficiente (cliente-side, el servidor tambien validara)
+                                if playerMoney < ballConfig.cost then
+                                        -- No tiene dinero: mostrar aviso
+                                        local notice = Instance.new("TextLabel")
+                                        notice.Size = UDim2.new(0, 300, 0, 50)
+                                        notice.Position = UDim2.new(0.5, -150, 0.3, 0)
+                                        notice.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
+                                        notice.BorderSizePixel = 0
+                                        notice.Text = "Dinero insuficiente! Necesitas $" .. formatMoneyClient(ballConfig.cost)
+                                        notice.TextColor3 = Color3.fromRGB(255, 255, 255)
+                                        notice.TextScaled = true
+                                        notice.Font = Enum.Font.GothamBold
+                                        notice.ZIndex = 200
+                                        notice.Parent = screenGui
+                                        Instance.new("UICorner", notice).CornerRadius = UDim.new(0, 8)
+                                        task.delay(2, function()
+                                                if notice and notice.Parent then notice:Destroy() end
+                                        end)
+                                        return
                                 end
-                                -- Reproducir sonido de equipar al comprar/seleccionar
-                                if ballConfig.soundEquip then
-                                        playClientSound(ballConfig.soundEquip, 0.6)
+                                -- Pedir al servidor que valide y descuente el dinero
+                                local BuyBallEvent = ReplicatedStorage:FindFirstChild("BuyBall")
+                                if BuyBallEvent then
+                                        BuyBallEvent:FireServer(ballKey)
                                 end
-                                updateBallIcon()
-                                updateBackpackUI()
-                                print("Pelota de " .. ballConfig.name .. " desbloqueada y seleccionada")
                         end)
                 end
         end
@@ -2495,6 +2509,46 @@ muteBtn.MouseButton1Click:Connect(function()
 end)
 
 print("Sistema de musica cargado!")
+
+-- ============================================
+-- COMPRA DE PELOTAS (validacion servidor)
+-- ============================================
+local BallPurchasedEvent = ReplicatedStorage:WaitForChild("BallPurchased", 15)
+BallPurchasedEvent.OnClientEvent:Connect(function(success, ballKey, message)
+        if success then
+                -- Compra exitosa: desbloquear y seleccionar la pelota
+                BALL_TYPES[ballKey].unlocked = true
+                selectedBallType = ballKey
+                if ballEquipped then
+                        reEquipBall()
+                end
+                -- Reproducir sonido de equipar al comprar/seleccionar
+                local ballConfig = BALL_TYPES[ballKey]
+                if ballConfig and ballConfig.soundEquip then
+                        playClientSound(ballConfig.soundEquip, 0.6)
+                end
+                updateBallIcon()
+                updateBackpackUI()
+                print("Pelota de " .. (ballConfig and ballConfig.name or ballKey) .. " comprada y seleccionada")
+        else
+                -- Compra fallida: mostrar mensaje
+                local notice = Instance.new("TextLabel")
+                notice.Size = UDim2.new(0, 400, 0, 50)
+                notice.Position = UDim2.new(0.5, -200, 0.3, 0)
+                notice.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
+                notice.BorderSizePixel = 0
+                notice.Text = message or "No se pudo comprar la pelota"
+                notice.TextColor3 = Color3.fromRGB(255, 255, 255)
+                notice.TextScaled = true
+                notice.Font = Enum.Font.GothamBold
+                notice.ZIndex = 200
+                notice.Parent = screenGui
+                Instance.new("UICorner", notice).CornerRadius = UDim.new(0, 8)
+                task.delay(2, function()
+                        if notice and notice.Parent then notice:Destroy() end
+                end)
+        end
+end)
 
 -- ============================================
 -- SISTEMA DE CONSTRUCCION (modo build)
