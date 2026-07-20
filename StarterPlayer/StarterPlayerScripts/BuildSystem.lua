@@ -1628,7 +1628,7 @@ end)
 -- Al acercarse aparece el boton E, al hacer click activa modo construccion
 -- ============================================
 local CONSTRUCTION_ZONE_POSITION = Vector3.new(49.588, 4.1, -3.355)
-local CONSTRUCTION_ZONE_DISTANCE = 25 -- studs para mostrar la E
+local CONSTRUCTION_ZONE_DISTANCE = 18 -- studs para mostrar la E
 
 -- Crear Part ancla invisible
 local constructionZonePart = Instance.new("Part")
