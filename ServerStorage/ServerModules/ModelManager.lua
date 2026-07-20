@@ -457,7 +457,7 @@ function ModelManager.createLabels(pedestal, charName, rarity, level, fusionLeve
 
         -- Fila 5: Costo siguiente nivel (etiqueta gris + dinero verde)
         if level < 100 then
-                local nextCost = ModelManager.getUpgradeCost(level)
+                local nextCost = ModelManager.getUpgradeCost(level, rarity)
                 local nextLevelLabel = Instance.new("TextLabel")
                 nextLevelLabel.Size = UDim2.new(1, 0, 0.17, 0)
                 nextLevelLabel.Position = UDim2.new(0, 0, 0.83, 0)
@@ -509,9 +509,19 @@ end
 -- L1->2: $100 | L10->11: $100K | L50->51: $12.5M | L80->81: $51.2M | L99->100: $97M
 -- Total L1->99: ~2.5B (necesitas MUCHO juego para maxear)
 -- ============================================
-function ModelManager.getUpgradeCost(currentLevel)
+function ModelManager.getUpgradeCost(currentLevel, rarity)
         if currentLevel >= 100 then return math.huge end
-        return math.floor(UPGRADE_BASE_COST * math.pow(currentLevel, 3))
+        local baseCost = math.floor(UPGRADE_BASE_COST * math.pow(currentLevel, 3))
+        -- Multiplicador por rareza (Morado = base, las demas mas baratas)
+        local rarityMultipliers = {
+                Morado = 1.0,    -- sin descuento
+                Rojo = 0.85,     -- 15% mas barato
+                Amarillo = 0.70, -- 30% mas barato
+                Azul = 0.55,     -- 45% mas barato
+                Blanco = 0.40,   -- 60% mas barato
+        }
+        local mult = rarityMultipliers[rarity] or 1.0
+        return math.floor(baseCost * mult)
 end
 
 -- ============================================
@@ -764,7 +774,7 @@ function ModelManager.createUpgradeButton(pedestal, rarity, level, fusionLevel)
                 costLabel.Text = '<font color="' .. COLOR_MAX .. '">Nivel maximo!</font>'
                 costLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
         else
-                local cost = ModelManager.getUpgradeCost(level or 1)
+                local cost = ModelManager.getUpgradeCost(level or 1, rarity)
                 costLabel.RichText = true
                 costLabel.Text = '<font color="' .. COLOR_LABEL .. '">Costo: </font><font color="' .. COLOR_MONEY .. '">$' .. ModelManager.formatMoney(cost) .. '</font>'
                 costLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -785,7 +795,7 @@ function ModelManager.updateUpgradeButtonUI(pedestal, rarity, level)
         if not btn then return end
 
         local isMaxLevel = level >= 100
-        local cost = ModelManager.getUpgradeCost(level)
+        local cost = ModelManager.getUpgradeCost(level, rarity)
 
         local bb = btn:FindFirstChild("UpgradeGui")
         if not bb then return end
