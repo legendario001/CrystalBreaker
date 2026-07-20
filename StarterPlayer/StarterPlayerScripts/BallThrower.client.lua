@@ -2550,6 +2550,20 @@ BallPurchasedEvent.OnClientEvent:Connect(function(success, ballKey, message)
         end
 end)
 
+-- Recibir pelotas desbloqueadas al cargar desde DataStore
+local BallsRestoredEvent = ReplicatedStorage:WaitForChild("BallsRestored", 15)
+BallsRestoredEvent.OnClientEvent:Connect(function(unlockedBalls)
+        if not unlockedBalls then return end
+        for ballKey, isUnlocked in pairs(unlockedBalls) do
+                if isUnlocked and BALL_TYPES[ballKey] then
+                        BALL_TYPES[ballKey].unlocked = true
+                        print("[Balls] Pelota restaurada: " .. ballKey)
+                end
+        end
+        updateBallIcon()
+        updateBackpackUI()
+end)
+
 -- ============================================
 -- SISTEMA DE CONSTRUCCION (modo build)
 -- ============================================
