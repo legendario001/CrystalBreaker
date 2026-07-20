@@ -12,11 +12,11 @@ local CrystalSpawner = {}
 -- Colores, rareza y nombres bonitos de cristales
 -- hp = vida del cristal (golpes necesarios para romperlo)
 local CRYSTAL_TYPES = {
-        {color = Color3.fromRGB(170, 85, 255),  name = "Morado",   displayName = "MITICO",  weight = 3,  hp = 10},
-        {color = Color3.fromRGB(255, 80, 80),   name = "Rojo",     displayName = "EPICO",   weight = 6,  hp = 8},
-        {color = Color3.fromRGB(255, 255, 100), name = "Amarillo", displayName = "RARO",    weight = 12, hp = 6},
-        {color = Color3.fromRGB(85, 170, 255),  name = "Azul",     displayName = "INCOMUN", weight = 25, hp = 4},
-        {color = Color3.fromRGB(220, 220, 220), name = "Blanco",   displayName = "COMUN",   weight = 54, hp = 2}
+        {color = Color3.fromRGB(170, 85, 255),  name = "Morado",   displayName = "MITICO",  weight = 3,  hp = 1000000},
+        {color = Color3.fromRGB(255, 80, 80),   name = "Rojo",     displayName = "EPICO",   weight = 6,  hp = 100000},
+        {color = Color3.fromRGB(255, 255, 100), name = "Amarillo", displayName = "RARO",    weight = 12, hp = 10000},
+        {color = Color3.fromRGB(85, 170, 255),  name = "Azul",     displayName = "INCOMUN", weight = 25, hp = 1000},
+        {color = Color3.fromRGB(220, 220, 220), name = "Blanco",   displayName = "COMUN",   weight = 54, hp = 10}
 }
 
 local CHEST_TIMEOUT = 15 -- segundos antes de que el cofre desaparezca y regenere cristal
@@ -137,12 +137,25 @@ local function createCrystal(position, crystalType, parent)
         healthBarFill.Parent = healthBarBg
         Instance.new("UICorner", healthBarFill).CornerRadius = UDim.new(0, 4)
 
-        -- Texto con la vida (ej: "10/10")
+        -- Texto con la vida (ej: "1M/1M", "10K/10K", "10/10")
+        -- Formatear números grandes con K/M/B
+        local function formatHP(n)
+                n = n or 0
+                if n >= 1000000000 then
+                        return string.format("%.1fB", n / 1000000000)
+                elseif n >= 1000000 then
+                        return string.format("%.1fM", n / 1000000)
+                elseif n >= 10000 then
+                        return string.format("%.1fK", n / 1000)
+                else
+                        return tostring(n)
+                end
+        end
         local healthText = Instance.new("TextLabel")
         healthText.Name = "HealthText"
         healthText.Size = UDim2.new(1, 0, 1, 0)
         healthText.BackgroundTransparency = 1
-        healthText.Text = crystalHP .. "/" .. crystalHP
+        healthText.Text = formatHP(crystalHP) .. "/" .. formatHP(crystalHP)
         healthText.TextColor3 = Color3.fromRGB(255, 255, 255)
         healthText.TextScaled = true
         healthText.Font = Enum.Font.GothamBold
@@ -382,10 +395,22 @@ function CrystalSpawner.updateCrystalHealthUI(crystal, currentHealth, maxHealth)
                 healthBarFill.BackgroundColor3 = Color3.fromRGB(255, 80, 80) -- rojo
         end
 
-        -- Actualizar texto
+        -- Actualizar texto (con formato K/M/B)
         local healthText = healthBarFill:FindFirstChild("HealthText")
         if healthText then
-                healthText.Text = currentHealth .. "/" .. maxHealth
+                local function formatHP(n)
+                        n = n or 0
+                        if n >= 1000000000 then
+                                return string.format("%.1fB", n / 1000000000)
+                        elseif n >= 1000000 then
+                                return string.format("%.1fM", n / 1000000)
+                        elseif n >= 10000 then
+                                return string.format("%.1fK", n / 1000)
+                        else
+                                return tostring(n)
+                        end
+                end
+                healthText.Text = formatHP(currentHealth) .. "/" .. formatHP(maxHealth)
         end
 end
 
