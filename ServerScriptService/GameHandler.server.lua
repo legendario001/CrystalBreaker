@@ -588,10 +588,10 @@ Events.ThrowBall.OnServerEvent:Connect(function(player, startPos, launchVel, bal
                 -- Configuracion de pelotas
                 local SERVER_BALL_CONFIG = {
                         basic = { color = Color3.fromRGB(100, 200, 255), material = Enum.Material.SmoothPlastic, gravity = 1.0, bounce = true, damage = 1, modelName = nil },
-                        fire = { color = Color3.fromRGB(255, 100, 30), material = Enum.Material.Neon, gravity = 0.3, bounce = false, damage = 2, modelName = "FireBallModel" },
-            earth = { color = Color3.fromRGB(140, 90, 50), material = Enum.Material.Slate, gravity = 1.0, bounce = true, damage = 3, modelName = "EarthBallModel" },
-            air = { color = Color3.fromRGB(240, 250, 255), material = Enum.Material.Glass, gravity = 0.2, bounce = true, damage = 1, modelName = "AirBallModel" },
-            water = { color = Color3.fromRGB(80, 150, 220), material = Enum.Material.Glass, gravity = 1.0, bounce = true, damage = 2, modelName = "WaterBallModel" }
+                        fire = { color = Color3.fromRGB(255, 100, 30), material = Enum.Material.Neon, gravity = 0.3, bounce = false, damage = 10, modelName = "FireBallModel" },
+            earth = { color = Color3.fromRGB(140, 90, 50), material = Enum.Material.Slate, gravity = 1.0, bounce = true, damage = 100, modelName = "EarthBallModel" },
+            air = { color = Color3.fromRGB(240, 250, 255), material = Enum.Material.Glass, gravity = 0.2, bounce = true, damage = 10000, modelName = "AirBallModel" },
+            water = { color = Color3.fromRGB(80, 150, 220), material = Enum.Material.Glass, gravity = 1.0, bounce = true, damage = 1000, modelName = "WaterBallModel" }
                 }
                 local ballCfg = SERVER_BALL_CONFIG[ballType] or SERVER_BALL_CONFIG.basic
 
