@@ -155,6 +155,7 @@ local hotbarPreview
 local hotbarNameLabel
 local hotbarCountLabel
 local invBtn
+local closeBuildBtn -- boton X para cerrar modo construccion
 local updateMobileBuildUI -- forward declaration (funcion definida mas abajo)
 
 -- Actualizar el hotbar inferior (slot con el bloque equipado + count)
@@ -162,10 +163,12 @@ local function updateHotbar()
         if not buildModeActive then
                 if hotbarSlot then hotbarSlot.Visible = false end
                 if invBtn then invBtn.Visible = false end
+                if closeBuildBtn then closeBuildBtn.Visible = false end
                 return
         end
-        -- Mostrar siempre el boton inventario cuando el modo esta activo
+        -- Mostrar siempre el boton inventario y el boton X cuando el modo esta activo
         if invBtn then invBtn.Visible = true end
+        if closeBuildBtn then closeBuildBtn.Visible = true end
         -- Siempre mostrar el slot cuando el modo esta activo (aunque este vacio)
         if not equippedBlockId or not blockInventory[equippedBlockId] or blockInventory[equippedBlockId] <= 0 then
                 -- Slot vacio: gris, sin bloque equipado
@@ -655,6 +658,43 @@ invBtnLabel.TextScaled = true
 invBtnLabel.Font = Enum.Font.GothamBold
 invBtnLabel.ZIndex = 51
 invBtnLabel.Parent = invBtn
+
+-- ============================================
+-- Boton X para cerrar modo construccion (a la izquierda del Inventario)
+-- ============================================
+closeBuildBtn = Instance.new("TextButton")
+closeBuildBtn.Name = "CloseBuildBtn"
+closeBuildBtn.Size = UDim2.new(0, 80, 0, 80)
+closeBuildBtn.Position = UDim2.new(0.5, -260, 1, -110) -- a la izquierda del invBtn (-160 - 100 = -260)
+closeBuildBtn.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
+closeBuildBtn.BackgroundTransparency = 0.1
+closeBuildBtn.BorderSizePixel = 0
+closeBuildBtn.Text = "X"
+closeBuildBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeBuildBtn.TextScaled = true
+closeBuildBtn.Font = Enum.Font.GothamBlack
+closeBuildBtn.Visible = false
+closeBuildBtn.ZIndex = 50
+closeBuildBtn.Parent = screenGui
+Instance.new("UICorner", closeBuildBtn).CornerRadius = UDim.new(0, 12)
+
+local closeBuildStroke = Instance.new("UIStroke")
+closeBuildStroke.Color = Color3.fromRGB(150, 40, 40)
+closeBuildStroke.Thickness = 2
+closeBuildStroke.Transparency = 0.2
+closeBuildStroke.Parent = closeBuildBtn
+
+-- Label "Cerrar" debajo de la X
+local closeBuildLabel = Instance.new("TextLabel")
+closeBuildLabel.Size = UDim2.new(1, 0, 0.2, 0)
+closeBuildLabel.Position = UDim2.new(0, 0, 0.75, 0)
+closeBuildLabel.BackgroundTransparency = 1
+closeBuildLabel.Text = "Salir"
+closeBuildLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeBuildLabel.TextScaled = true
+closeBuildLabel.Font = Enum.Font.GothamBold
+closeBuildLabel.ZIndex = 51
+closeBuildLabel.Parent = closeBuildBtn
 
 local hotbarStroke = Instance.new("UIStroke")
 hotbarStroke.Color = Color3.fromRGB(255, 180, 80)
@@ -1255,6 +1295,15 @@ invBtn.MouseButton1Click:Connect(function()
         updateInventarioTab()
 end)
 
+-- Boton X para cerrar modo construccion
+closeBuildBtn.MouseButton1Click:Connect(function()
+        if buildModeActive then
+                deactivateBuildMode()
+        elseif buildPanelOpen then
+                closeBuildPanel()
+        end
+end)
+
 -- Cuando se abre mochila o musica, cerrar todo de build
 backpackBtn.MouseButton1Click:Connect(function()
         if backpackPanel.Visible then
@@ -1574,6 +1623,92 @@ UpdateInventoryEvent.OnClientEvent:Connect(function(inventoryData)
         -- Solo actualizamos el hotbar para que refleje el count actualizado.
 end)
 
+-- ============================================
+-- BOTON E DE ZONA DE CONSTRUCCION (posicion 49.588, 4.1, -3.355)
+-- Al acercarse aparece el boton E, al hacer click activa modo construccion
+-- ============================================
+local CONSTRUCTION_ZONE_POSITION = Vector3.new(49.588, 4.1, -3.355)
+local CONSTRUCTION_ZONE_DISTANCE = 30 -- studs para mostrar la E
+
+-- Crear Part ancla invisible
+local constructionZonePart = Instance.new("Part")
+constructionZonePart.Name = "ConstructionZoneAnchor"
+constructionZonePart.Anchored = true
+constructionZonePart.CanCollide = false
+constructionZonePart.CanQuery = false
+constructionZonePart.CanTouch = false
+constructionZonePart.Transparency = 1
+constructionZonePart.Size = Vector3.new(0.1, 0.1, 0.1)
+constructionZonePart.Position = CONSTRUCTION_ZONE_POSITION
+constructionZonePart.Parent = Workspace
+
+-- Boton clickable en ScreenGui (sigue la zona en pantalla)
+local camera = Workspace.CurrentCamera
+local constructionZoneBtn = Instance.new("TextButton")
+constructionZoneBtn.Name = "ConstructionZoneBtn"
+constructionZoneBtn.Size = UDim2.new(0, 100, 0, 100)
+constructionZoneBtn.Position = UDim2.new(0.5, -50, 0.5, -50)
+constructionZoneBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+constructionZoneBtn.BackgroundTransparency = 1
+constructionZoneBtn.BorderSizePixel = 0
+constructionZoneBtn.Text = ""
+constructionZoneBtn.Visible = false
+constructionZoneBtn.ZIndex = 100
+constructionZoneBtn.Parent = screenGui
+
+local constructionZoneEImage = Instance.new("ImageLabel")
+constructionZoneEImage.Size = UDim2.new(1, 0, 1, 0)
+constructionZoneEImage.BackgroundTransparency = 1
+constructionZoneEImage.Image = "rbxassetid://78972021775884"
+constructionZoneEImage.ScaleType = Enum.ScaleType.Fit
+constructionZoneEImage.Parent = constructionZoneBtn
+
+-- Estado de proximidad
+local nearConstructionZone = false
+
+-- Handler del boton
+constructionZoneBtn.MouseButton1Click:Connect(function()
+        if nearConstructionZone then
+                toggleBuild()
+        end
+end)
+
+-- Loop para detectar proximidad y posicionar el boton
+RunService.Heartbeat:Connect(function()
+        if not constructionZonePart or not constructionZonePart.Parent then return end
+        local char = player.Character
+        if not char then return end
+        local root = char:FindFirstChild("HumanoidRootPart")
+        if not root then return end
+
+        local dist = (root.Position - constructionZonePart.Position).Magnitude
+        nearConstructionZone = dist < CONSTRUCTION_ZONE_DISTANCE
+
+        -- Posicionar y mostrar/ocultar el boton
+        if nearConstructionZone and not buildModeActive and not buildPanelOpen then
+                local screenPos, onScreen = camera:WorldToViewportPoint(constructionZonePart.Position + Vector3.new(0, 3, 0))
+                if onScreen then
+                        constructionZoneBtn.Visible = true
+                        constructionZoneBtn.Position = UDim2.new(0, screenPos.X - 50, 0, screenPos.Y - 50)
+                else
+                        constructionZoneBtn.Visible = false
+                end
+        else
+                constructionZoneBtn.Visible = false
+        end
+end)
+
+-- Input E para activar modo construccion (PC)
+UserInputService.InputBegan:Connect(function(input, processed)
+        if processed then return end
+        if input.KeyCode == Enum.KeyCode.E then
+                if nearConstructionZone and not buildModeActive and not buildPanelOpen then
+                        toggleBuild()
+                end
+        end
+end)
+
+print("[BuildSystem] Zona de construccion creada en " .. tostring(CONSTRUCTION_ZONE_POSITION))
 
 end
 
