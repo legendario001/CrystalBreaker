@@ -1528,6 +1528,15 @@ local function restorePlayerProgress(player, savedData, base)
                                 end
 
                                 print("[Save] Dinero offline para " .. player.Name .. ": $" .. offlineEarnings .. " (" .. timeStr .. " fuera, rate/sec: " .. totalRatePerSecond .. ")")
+
+                                                                -- Enviar notificacion visual al cliente
+                                                                task.delay(4, function()
+                                                                        if isPlayerValid(player) then
+                                                                                pcall(function()
+                                                                                        Events.OfflineEarnings:FireClient(player, offlineEarnings, timeStr)
+                                                                                end)
+                                                                        end
+                                                                end)
                         end
                 end
         end
