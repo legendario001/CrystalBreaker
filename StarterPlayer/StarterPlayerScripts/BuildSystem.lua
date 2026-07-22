@@ -1165,6 +1165,14 @@ local function activateBuildMode()
         buildPanel.Visible = false
         buildModeActive = true
         buildBtn.BackgroundColor3 = Color3.fromRGB(80, 220, 100)
+        -- RE-INICIALIZAR crosshairPos al centro exacto de la pantalla ACTUAL
+        -- Esto asegura que la mira aparezca en el centro sin importar el dispositivo
+        -- (tableta, celular, pantalla rotada, etc.)
+        local currentViewport = camera.ViewportSize
+        crosshairPos = Vector2.new(currentViewport.X / 2, currentViewport.Y / 2)
+        if mobileCrosshair then
+                mobileCrosshair.Position = UDim2.new(0, crosshairPos.X - 40, 0, crosshairPos.Y - 40)
+        end
         -- Crear grid (solo si el jugador esta cerca de su parcela)
         local parcel = findPlayerParcel()
         createGridVisual(parcel)
