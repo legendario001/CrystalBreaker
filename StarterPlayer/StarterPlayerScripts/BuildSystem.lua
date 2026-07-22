@@ -1159,25 +1159,30 @@ end
 
 local function activateBuildMode()
         -- Permitir activar modo construccion aunque no haya bloques equipados.
-        -- Si no hay bloque equipado, el hotbar aparecera vacio y al intentar colocar
-        -- se le avisara al jugador que compre/equipe bloques.
         buildPanelOpen = false
         buildPanel.Visible = false
         buildModeActive = true
         buildBtn.BackgroundColor3 = Color3.fromRGB(80, 220, 100)
         -- RE-INICIALIZAR crosshairPos al centro exacto de la pantalla ACTUAL
-        -- Esto asegura que la mira aparezca en el centro sin importar el dispositivo
-        -- (tableta, celular, pantalla rotada, etc.)
+        -- Usar UDim2 con Scale (0.5) para que siempre quede centrado en cualquier dispositivo
         local currentViewport = camera.ViewportSize
         crosshairPos = Vector2.new(currentViewport.X / 2, currentViewport.Y / 2)
+        -- Resetear estado de arrastre (evita que un touch del boton mueva la mira)
+        crosshairDragging = false
+        crosshairTouchOffset = Vector2.new(0, 0)
+        -- Posicionar mira en el centro usando Scale (mas confiable que Offset)
         if mobileCrosshair then
-                mobileCrosshair.Position = UDim2.new(0, crosshairPos.X - 40, 0, crosshairPos.Y - 40)
+                mobileCrosshair.Position = UDim2.new(0.5, -40, 0.5, -40)
         end
+        -- Bloquear arrastre de la mira por 0.5s para evitar que el touch del boton la mueva
+        crosshairLocked = true
+        task.delay(0.5, function()
+                crosshairLocked = false
+        end)
         -- Crear grid (solo si el jugador esta cerca de su parcela)
         local parcel = findPlayerParcel()
         createGridVisual(parcel)
         -- Crear beam guia si el jugador esta lejos de su parcela (>40 studs)
-        -- Si ya esta a 40 o menos, no se crea (no hace falta guiarlo)
         local assignedParcel, distToParcel = getPlayerAssignedParcel()
         if assignedParcel and distToParcel and distToParcel > 40 then
                 createGuideBeam(assignedParcel)
@@ -1413,6 +1418,7 @@ local mobileCrosshair, mobilePlaceBtn, mobileRemoveBtn
 -- Estado de arrastre de la mira
 local crosshairDragging = false
 local crosshairTouchOffset = Vector2.new(0, 0) -- offset entre el touch y el centro de la mira al iniciar arrastre
+local crosshairLocked = false -- cuando es true, la mira no acepta arrastre (evita que el touch del boton la mueva)
 
 if isMobileBuild then
         -- Mira central (icono de dedo) - TextButton para poder arrastrarla
@@ -1454,6 +1460,7 @@ if isMobileBuild then
         -- Detectar touch sobre la mira para iniciar arrastre
         UserInputService.InputBegan:Connect(function(input, processed)
                 if not buildModeActive then return end
+                if crosshairLocked then return end -- ignorar toques durante el lock inicial
                 if input.UserInputType ~= Enum.UserInputType.Touch then return end
                 -- Verificar si el touch empezo sobre la mira
                 local touchPos = input.Position
@@ -1470,6 +1477,7 @@ if isMobileBuild then
         -- Mover la mira al arrastrar
         UserInputService.TouchMoved:Connect(function(input, processed)
                 if not buildModeActive then return end
+                if crosshairLocked then return end -- ignorar movimiento durante el lock inicial
                 if not crosshairDragging then return end
                 if input.UserInputType ~= Enum.UserInputType.Touch then return end
                 local touchPos = input.Position
