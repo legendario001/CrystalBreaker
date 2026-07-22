@@ -1450,22 +1450,13 @@ local function restorePlayerProgress(player, savedData, base)
                 end
         end)
 
-        -- Restaurar pelotas desbloqueadas
+        -- Restaurar pelotas desbloqueadas (ya se envio al cliente en PlayerAdded, aqui solo aseguramos data)
         if savedData.unlockedBalls then
                 local data = playerData[player.UserId]
                 if data then
                         data.unlockedBalls = savedData.unlockedBalls
-                        -- Asegurar que basic siempre este desbloqueada
                         data.unlockedBalls["basic"] = true
                         print("[Save] Pelotas desbloqueadas restauradas para " .. player.Name)
-                        -- Enviar las pelotas desbloqueadas al cliente
-                        task.delay(2, function()
-                                if isPlayerValid(player) then
-                                        pcall(function()
-                                                Events.BallsRestored:FireClient(player, data.unlockedBalls)
-                                        end)
-                                end
-                        end)
                 end
         end
 
@@ -1562,6 +1553,25 @@ Players.PlayerAdded:Connect(function(player)
                 print("[Save] Datos encontrados para " .. player.Name)
         else
                 print("[Save] Sin datos guardados para " .. player.Name .. " (jugador nuevo)")
+        end
+
+        -- Restaurar pelotas desbloqueadas INMEDIATAMENTE (sin esperar a que se asigne la base)
+        -- Esto evita que el jugador vea las pelotas como "no compradas" al abrir la mochila
+        if savedData and savedData.unlockedBalls then
+                local data = playerData[player.UserId]
+                if data then
+                        data.unlockedBalls = savedData.unlockedBalls
+                        data.unlockedBalls["basic"] = true
+                        -- Enviar al cliente con un delay corto (1s) para que el BallThrower ya este cargado
+                        task.delay(1, function()
+                                if isPlayerValid(player) then
+                                        pcall(function()
+                                                Events.BallsRestored:FireClient(player, data.unlockedBalls)
+                                        end)
+                                        print("[Save] Pelotas desbloqueadas enviadas a " .. player.Name)
+                                end
+                        end)
+                end
         end
 
         task.delay(1, function()
