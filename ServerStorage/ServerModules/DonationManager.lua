@@ -23,14 +23,22 @@ local donationStore = DataStoreService:GetDataStore("DonationLeaderboard_v1")
 -- Cache en memoria: { [userId] = robuxDonated }
 local allDonations = {}
 
--- Top 3 cacheado (lista ordenada de mayor a menor)
-local top3 = {}
+-- Top 20 cacheado (lista ordenada de mayor a menor)
+local top20 = {}
 
 -- Configuracion de pedestales (posiciones de los Top#Spawn dentro de TablaDonadores)
+-- Estas son las posiciones EXACTAS de los Part Top#Spawn en el Workspace.
+-- El personaje aparece parado sobre el pedestal (se suma un offset en Y para que
+-- el HumanoidRootPart quede al centro del cuerpo del personaje, no en los pies).
+local PEDESTAL_SPAWN_POSITIONS = {
+        [1] = Vector3.new(146, 3.9, 73.4),   -- Top1Spawn
+        [2] = Vector3.new(146, 3.0, 79.4),   -- Top2Spawn
+        [3] = Vector3.new(146, 1.9, 85.4),   -- Top3Spawn
+}
 local PEDESTAL_SPAWN_NAMES = {
-        [1] = "Top1Spawn",  -- position 146, 6.1, 73.4
-        [2] = "Top2Spawn",  -- position 146, 5.1, 79.4
-        [3] = "Top3Spawn",  -- position 146, 4.1, 85.4
+        [1] = "Top1Spawn",
+        [2] = "Top2Spawn",
+        [3] = "Top3Spawn",
 }
 local DANCE_ANIMATION_ID = "rbxassetid://127874881693302"
 
@@ -84,14 +92,23 @@ function DonationManager.recalculateTop()
         end
         table.sort(sorted, function(a, b) return a.amount > b.amount end)
 
-        top3 = {}
-        for i = 1, math.min(3, #sorted) do
-                table.insert(top3, sorted[i])
+        top20 = {}
+        for i = 1, math.min(20, #sorted) do
+                table.insert(top20, sorted[i])
         end
 end
 
+function DonationManager.getTop20()
+        return top20
+end
+
+-- Mantener alias getTop3 para compatibilidad (devuelve los primeros 3 del top20)
 function DonationManager.getTop3()
-        return top3
+        local result = {}
+        for i = 1, math.min(3, #top20) do
+                table.insert(result, top20[i])
+        end
+        return result
 end
 
 -- ============================================
@@ -126,13 +143,19 @@ local function spawnTopCharacter(rank, userId)
         local tablaModel = Workspace:FindFirstChild("TablaDonadores")
         if not tablaModel then return nil end
 
-        -- Buscar el Part Top#Spawn dentro del modelo
+        -- Buscar el Part Top#Spawn dentro del modelo (fallback a posicion hardcoded)
         local spawnPart = tablaModel:FindFirstChild(PEDESTAL_SPAWN_NAMES[rank], true)
-        if not spawnPart then
-                warn("[DonationManager] No se encontro " .. PEDESTAL_SPAWN_NAMES[rank] .. " en TablaDonadores")
-                return nil
+        local position
+        if spawnPart then
+                position = spawnPart.Position
+        else
+                -- Fallback: usar posicion hardcoded
+                position = PEDESTAL_SPAWN_POSITIONS[rank]
+                if not position then
+                        warn("[DonationManager] No se encontro " .. PEDESTAL_SPAWN_NAMES[rank] .. " ni posicion fallback")
+                        return nil
+                end
         end
-        local position = spawnPart.Position
 
         -- Crear modelo del avatar del jugador
         local success, model = pcall(function()
@@ -167,8 +190,10 @@ local function spawnTopCharacter(rank, userId)
                 end
         end
 
-        -- Posicionar: sumar offset en Y para que se pare encima del pedestal
-        local spawnPosition = position + Vector3.new(0, 5, 0)
+        -- Posicionar: sumar offset en Y para que el HumanoidRootPart quede al centro del cuerpo.
+        -- El HumanoidRootPart esta a ~3 studs de los pies (en R15), asi que sumamos 3 para que
+        -- los pies toquen la posicion del pedestal (sin flotar).
+        local spawnPosition = position + Vector3.new(0, 3, 0)
         local spawnCFrame = CFrame.new(spawnPosition) * CFrame.Angles(0, math.rad(90), 0)
         model:PivotTo(spawnCFrame)
 
@@ -253,8 +278,8 @@ end
 function DonationManager.updateTop3Characters()
         clearSpawnedCharacters()
         for rank = 1, 3 do
-                if top3[rank] then
-                        local model = spawnTopCharacter(rank, top3[rank].userId)
+                if top20[rank] then
+                        local model = spawnTopCharacter(rank, top20[rank].userId)
                         if model then
                                 table.insert(spawnedCharacters, model)
                         end
