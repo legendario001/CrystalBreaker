@@ -252,9 +252,13 @@ function DonationLeaderboardSystem.init(deps)
         -- Mostrar pagina actual (10 entradas)
         -- ============================================
         local function showPage(pageNum)
-                -- Limpiar entradas anteriores
+                -- Limpiar entradas anteriores (TODOS los hijos excepto UIListLayout)
+                -- Antes solo se eliminaban Frames, pero el TextLabel "No hay mas donadores"
+                -- de la pagina 2 vacia se quedaba ahi y tapaba las entradas al volver a pag 1.
                 for _, child in ipairs(entriesContainer:GetChildren()) do
-                        if child:IsA("Frame") then child:Destroy() end
+                        if child ~= listLayout then
+                                child:Destroy()
+                        end
                 end
 
                 local startIndex = (pageNum - 1) * 10 + 1
