@@ -118,6 +118,27 @@ if not ok_lb or not LeaderboardManager then
 else
         print("[OK] LeaderboardManager cargado correctamente")
 end
+
+-- ============================================
+-- Cargar DonationManager (top 3 donadores)
+-- ============================================
+local DonationManager
+local ok_don = pcall(function()
+        DonationManager = require(ServerStorage.ServerModules.DonationManager)
+end)
+if not ok_don or not DonationManager then
+        warn("[CRITICAL] DonationManager no se pudo cargar: " .. tostring(ok_don))
+        DonationManager = {
+                loadAll = function() end,
+                saveAll = function() end,
+                addDonation = function() end,
+                recalculateTop = function() end,
+                getTop3 = function() return {} end,
+                updateTop3Characters = function() end,
+        }
+else
+        print("[OK] DonationManager cargado correctamente")
+end
 -- Conectar BankManager con LeaderboardManager: cuando cambia el saldo, actualizar leaderboard
 if BankManager and LeaderboardManager then
         BankManager.onBalanceChanged = function(userId, newBalance)
@@ -2506,6 +2527,96 @@ task.spawn(function()
                 sendLeaderboardToAll()
                 -- Actualizar personajes del Top 3
                 LeaderboardManager.updateTop3Characters()
+        end
+end)
+
+-- ============================================
+-- SISTEMA DE DONACIONES (Top 3 Donadores)
+-- ============================================
+
+-- Configuracion de productos de donacion (Developer Products).
+-- Para crearlos: https://create.roblox.com/dashboard/creations/experiences/<PLACE_ID>/monetization/products
+-- Anota el Product ID de cada uno y reemplazalo aqui:
+local DONATION_PRODUCTS = {
+        { productId = 0, robux = 10,   name = "Donacion pequena (10 R$)" },
+        { productId = 0, robux = 50,   name = "Donacion mediana (50 R$)" },
+        { productId = 0, robux = 100,  name = "Donacion grande (100 R$)" },
+        { productId = 0, robux = 500,  name = "Donacion mega (500 R$)" },
+        { productId = 0, robux = 1000, name = "Donacion legendaria (1000 R$)" },
+}
+
+-- Helper: enviar leaderboard de donadores a todos los clientes
+local function sendDonationLeaderboardToAll()
+        local top = DonationManager.getTop3()
+        local data = {}
+        for i, entry in ipairs(top) do
+                table.insert(data, {
+                        rank = i,
+                        userId = entry.userId,
+                        name = getPlayerName(entry.userId),
+                        amount = entry.amount,
+                })
+        end
+        for _, player in ipairs(Players:GetPlayers()) do
+                pcall(function()
+                        Events.DonationLeaderboardUpdate:FireClient(player, data)
+                end)
+        end
+end
+
+-- Cliente pide la lista de productos de donacion
+Events.RequestDonationProducts.OnServerEvent:Connect(function(player)
+        local products = {}
+        for _, p in ipairs(DONATION_PRODUCTS) do
+                if p.productId and p.productId > 0 then
+                        table.insert(products, { productId = p.productId, robux = p.robux, name = p.name })
+                end
+        end
+        Events.DonationProductsResponse:FireClient(player, products)
+end)
+
+-- Procesar compras de Developer Products (donaciones)
+local MarketplaceService = game:GetService("MarketplaceService")
+MarketplaceService.ProcessReceipt = function(receiptInfo)
+        local playerId = receiptInfo.PlayerId
+        local productId = receiptInfo.ProductId
+        -- Buscar el producto en la configuracion
+        local robuxAmount = 0
+        for _, p in ipairs(DONATION_PRODUCTS) do
+                if p.productId == productId then
+                        robuxAmount = p.robux
+                        break
+                end
+        end
+        if robuxAmount > 0 then
+                -- Registrar la donacion
+                DonationManager.addDonation(playerId, robuxAmount)
+                DonationManager.recalculateTop()
+                DonationManager.saveAll()
+                sendDonationLeaderboardToAll()
+                DonationManager.updateTop3Characters()
+                print("[Donation] PlayerId " .. playerId .. " dono " .. robuxAmount .. " R$")
+        end
+        return Enum.ProductPurchaseDecision.PurchaseGranted
+end
+
+-- Cargar leaderboard de donadores al iniciar el servidor
+task.spawn(function()
+        task.wait(5)  -- esperar un poco mas que el leaderboard normal
+        DonationManager.loadAll()
+        sendDonationLeaderboardToAll()
+        DonationManager.updateTop3Characters()
+        print("[Donation] Sistema de donaciones iniciado")
+end)
+
+-- Auto-update del leaderboard de donadores cada 60 segundos
+task.spawn(function()
+        while true do
+                task.wait(60)
+                DonationManager.recalculateTop()
+                DonationManager.saveAll()
+                sendDonationLeaderboardToAll()
+                DonationManager.updateTop3Characters()
         end
 end)
 
