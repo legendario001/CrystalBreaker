@@ -28,6 +28,9 @@ function BuildSystem.init(dependencies)
         -- Posicion de la mira en pantalla (Vector2 en pixels). Inicia en el centro.
         -- Se actualiza al arrastrar el dedo sobre la mira.
         local crosshairPos = nil -- se inicializa en el centro cuando se activa el modo
+        -- Forward declaration: updateCrosshairVisual se define mas abajo (en el bloque isMobileBuild)
+        -- pero activateBuildMode necesita poder llamarla. La declaramos como funcion vacia por defecto.
+        local updateCrosshairVisual = function() end
 
         -- Eventos
         local PlaceBlockEvent = deps.PlaceBlockEvent
@@ -1174,9 +1177,14 @@ local function activateBuildMode()
         if mobileCrosshair then
                 mobileCrosshair.Position = UDim2.new(0.5, -40, 0.5, -40)
         end
-        -- Bloquear arrastre de la mira por 0.5s para evitar que el touch del boton la mueva
+        -- Forzar actualizacion visual de la mira al centro (usa crosshairPos que acabamos de setear)
+        -- Esto asegura que la mira se vea en el centro inmediatamente, sin esperar al primer TouchMoved
+        updateCrosshairVisual()
+        -- Bloquear arrastre de la mira por 1s para evitar que el touch del boton la mueva a la esquina
+        -- (antes era 0.5s, pero no era suficiente: el touch del boton del martillo se registraba como
+        --  un movimiento de la mira justo despues de activar el modo, mandandola a la esquina superior izquierda)
         crosshairLocked = true
-        task.delay(0.5, function()
+        task.delay(1, function()
                 crosshairLocked = false
         end)
         -- Crear grid (solo si el jugador esta cerca de su parcela)
@@ -1450,7 +1458,8 @@ if isMobileBuild then
         crosshairPos = Vector2.new(initViewport.X / 2, initViewport.Y / 2)
 
         -- Funcion para actualizar la posicion visual de la mira
-        local function updateCrosshairVisual()
+        -- Asigna a la variable forward-declared (no crea una nueva local)
+        updateCrosshairVisual = function()
                 if mobileCrosshair and crosshairPos then
                         mobileCrosshair.Position = UDim2.new(0, crosshairPos.X - 40, 0, crosshairPos.Y - 40)
                 end
