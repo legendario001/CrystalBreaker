@@ -37,7 +37,10 @@ local eventNames = {
         "BuyBall",
         "BallPurchased",
         "BallsRestored",
-        "OfflineEarnings"
+        "OfflineEarnings",
+        "DonationLeaderboardUpdate",  -- Servidor -> Cliente: top 3 donadores
+        "RequestDonationProducts",    -- Cliente -> Servidor: pedir lista de productos
+        "DonationProductsResponse",   -- Servidor -> Cliente: respuesta con productos
 }
 
 for _, name in ipairs(eventNames) do
