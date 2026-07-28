@@ -2547,7 +2547,7 @@ local DONATION_PRODUCTS = {
 
 -- Helper: enviar leaderboard de donadores a todos los clientes
 local function sendDonationLeaderboardToAll()
-        local top = DonationManager.getTop3()
+        local top = DonationManager.getTop20()
         local data = {}
         for i, entry in ipairs(top) do
                 table.insert(data, {
