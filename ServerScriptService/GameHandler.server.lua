@@ -2538,11 +2538,11 @@ end)
 -- Para crearlos: https://create.roblox.com/dashboard/creations/experiences/<PLACE_ID>/monetization/products
 -- Anota el Product ID de cada uno y reemplazalo aqui:
 local DONATION_PRODUCTS = {
-        { productId = 0, robux = 10,   name = "Donacion pequena (10 R$)" },
-        { productId = 0, robux = 50,   name = "Donacion mediana (50 R$)" },
-        { productId = 0, robux = 100,  name = "Donacion grande (100 R$)" },
-        { productId = 0, robux = 500,  name = "Donacion mega (500 R$)" },
-        { productId = 0, robux = 1000, name = "Donacion legendaria (1000 R$)" },
+        { productId = 3611038646, robux = 10,   name = "Donacion pequena (10 R$)" },
+        { productId = 3612115503, robux = 50,   name = "Donacion mediana (50 R$)" },
+        { productId = 3612115619, robux = 100,  name = "Donacion grande (100 R$)" },
+        { productId = 3612115738, robux = 500,  name = "Donacion mega (500 R$)" },
+        { productId = 3612115944, robux = 1000, name = "Donacion legendaria (1000 R$)" },
 }
 
 -- Helper: enviar leaderboard de donadores a todos los clientes
