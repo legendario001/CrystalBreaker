@@ -41,6 +41,7 @@ local eventNames = {
         "DonationLeaderboardUpdate",  -- Servidor -> Cliente: top 3 donadores
         "RequestDonationProducts",    -- Cliente -> Servidor: pedir lista de productos
         "DonationProductsResponse",   -- Servidor -> Cliente: respuesta con productos
+        "BoostUpdate",                  -- Servidor -> Cliente: nivel de boost actualizado
 }
 
 for _, name in ipairs(eventNames) do
