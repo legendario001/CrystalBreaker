@@ -2647,6 +2647,38 @@ else
 end
 
 -- ============================================
+-- SISTEMA DE LEADERBOARD DE DONADORES (ModuleScript DonationLeaderboardSystem)
+-- ============================================
+local DonationLeaderboardSystem = require(script.Parent:WaitForChild("DonationLeaderboardSystem", 10))
+if DonationLeaderboardSystem then
+        DonationLeaderboardSystem.init({
+                player = player,
+                screenGui = screenGui,
+                Workspace = Workspace,
+                ReplicatedStorage = ReplicatedStorage,
+        })
+        print("Sistema de leaderboard de donadores cargado!")
+else
+        warn("[DonationLB] No se pudo cargar DonationLeaderboardSystem ModuleScript")
+end
+
+-- ============================================
+-- SISTEMA DE PROMPT DE DONACION (ModuleScript DonationPromptSystem)
+-- ============================================
+local DonationPromptSystem = require(script.Parent:WaitForChild("DonationPromptSystem", 10))
+if DonationPromptSystem then
+        DonationPromptSystem.init({
+                player = player,
+                screenGui = screenGui,
+                Workspace = Workspace,
+                ReplicatedStorage = ReplicatedStorage,
+        })
+        print("Sistema de prompt de donacion cargado!")
+else
+        warn("[DonationPrompt] No se pudo cargar DonationPromptSystem ModuleScript")
+end
+
+-- ============================================
 -- SISTEMA DE TIENDA (ModuleScript ShopSystem)
 -- ============================================
 local ShopSystem = require(script.Parent:WaitForChild("ShopSystem", 10))
