@@ -1240,6 +1240,12 @@ task.spawn(function()
                                         local lvl = (levelTag and levelTag.Value) or 1
                                         local fLvl = (fusionLevelTag and fusionLevelTag.Value) or 0
                                         local rate = ModelManager.getMoneyRate(rarityTag.Value, lvl, fLvl)
+                                        -- APLICAR BOOST DE GANANCIAS (si el jugador tiene boostLevel > 0)
+                                        -- Cada boostLevel da +20% de ganancias (max 5 = +100%)
+                                        local pData = playerData[playerEntry.userId]
+                                        if pData and pData.boostLevel and pData.boostLevel > 0 then
+                                                rate = rate * (1 + pData.boostLevel * 0.20)
+                                        end
                                         mv.Value = mv.Value + rate
 
                                         -- Actualizar UI del MoneyPile para que se vea el dinero acumulado
@@ -1286,7 +1292,7 @@ local function savePlayerProgress(player)
 
         print("[Save] Guardando " .. player.Name .. ": money=" .. (data.money or 0) .. ", bankBalance=" .. bankBalance .. ", blocksFolder=" .. (blocksFolder and "si" or "no"))
 
-        local success = SaveManager.savePlayerData(player.UserId, data, baseLevel, blockInventory, blocksFolder, bankBalance, parcelCenter, data.unlockedBalls)
+        local success = SaveManager.savePlayerData(player.UserId, data, baseLevel, blockInventory, blocksFolder, bankBalance, parcelCenter, data.unlockedBalls, data.boostLevel or 0)
         if success then
                 print("[Save] Datos guardados para " .. player.Name)
         else
@@ -1477,6 +1483,11 @@ local function restorePlayerProgress(player, savedData, base)
                 if data then
                         data.unlockedBalls = savedData.unlockedBalls
                         data.unlockedBalls["basic"] = true
+                        -- Cargar nivel de boost (mejora de ganancias 20% cada uno, max 5)
+                        if savedData.boostLevel then
+                                data.boostLevel = savedData.boostLevel
+                                print("[Save] Boost level cargado: " .. data.boostLevel .. " (+" .. (data.boostLevel * 20) .. "% ganancias)")
+                        end
                         print("[Save] Pelotas desbloqueadas restauradas para " .. player.Name)
                 end
         end
@@ -1559,7 +1570,7 @@ end
 -- PLAYERS
 Players.PlayerAdded:Connect(function(player)
         print(player.Name.." se unio")
-        playerData[player.UserId] = {characters={}, carrying=nil, money=0, unlockedBalls={["basic"]=true}}
+        playerData[player.UserId] = {characters={}, carrying=nil, money=0, unlockedBalls={["basic"]=true}, boostLevel=0}
 
         local leaderstats = Instance.new("Folder")
         leaderstats.Name = "leaderstats"
@@ -1583,6 +1594,11 @@ Players.PlayerAdded:Connect(function(player)
                 if data then
                         data.unlockedBalls = savedData.unlockedBalls
                         data.unlockedBalls["basic"] = true
+                        -- Cargar nivel de boost (mejora de ganancias 20% cada uno, max 5)
+                        if savedData.boostLevel then
+                                data.boostLevel = savedData.boostLevel
+                                print("[Save] Boost level cargado: " .. data.boostLevel .. " (+" .. (data.boostLevel * 20) .. "% ganancias)")
+                        end
                         -- Enviar al cliente con un delay corto (1s) para que el BallThrower ya este cargado
                         task.delay(1, function()
                                 if isPlayerValid(player) then
@@ -2458,6 +2474,98 @@ Events.WithdrawMoney.OnServerEvent:Connect(function(player, amount)
         end)
         if not ok then warn("Error WithdrawMoney: "..tostring(err)) end
 end)
+
+-- ============================================
+-- SISTEMA DE BOOST DE GANANCIAS (GamePass + Developer Product)
+-- ============================================
+-- GamePass: "Boost 20% Ganancias" (99 R$) - se compra 1 vez, permanente
+-- Developer Product: "Mejora 20% (In-Game)" (1 trillon dinero) - se compra multiple veces, max 5 total
+-- Cada nivel da +20% de ganancias en todos los personajes en pedestales
+
+local BOOST_GAMEPASS_ID = 0  -- ⚠️ REEMPLAZAR con el ID real del GamePass
+local BOOST_DEVPRODUCT_ID = 0  -- ⚠️ REEMPLAZAR con el ID real del Developer Product (mejora con dinero)
+local BOOST_COST_MONEY = 1000000000000000  -- 1 trillon (1e15)
+local MAX_BOOST_LEVEL = 5
+
+-- RemoteEvent para pedir compra de boost con dinero del juego
+local BuyBoostWithMoneyEvent = Instance.new("RemoteEvent")
+BuyBoostWithMoneyEvent.Name = "BuyBoostWithMoney"
+BuyBoostWithMoneyEvent.Parent = ReplicatedStorage
+
+-- Verificar si el jugador tiene el GamePass (y otorgar boostLevel=1 si lo tiene)
+local function checkBoostGamePass(player)
+        if BOOST_GAMEPASS_ID == 0 then return end  -- no configurado
+        local MarketplaceService = game:GetService("MarketplaceService")
+        local ok, hasPass = pcall(function()
+                return MarketplaceService:UserOwnsGamePassAsync(player.UserId, BOOST_GAMEPASS_ID)
+        end)
+        if ok and hasPass then
+                local data = playerData[player.UserId]
+                if data and (data.boostLevel or 0) < 1 then
+                        data.boostLevel = 1
+                        print("[Boost] " .. player.Name .. " tiene GamePass, boostLevel=1")
+                end
+        end
+end
+
+-- Comprar boost con dinero del juego (Developer Product alternativo)
+BuyBoostWithMoneyEvent.OnServerEvent:Connect(function(player)
+        local data = playerData[player.UserId]
+        if not data then return end
+        local currentLevel = data.boostLevel or 0
+        if currentLevel >= MAX_BOOST_LEVEL then
+                warn("[Boost] " .. player.Name .. " ya tiene el nivel maximo (" .. MAX_BOOST_LEVEL .. ")")
+                return
+        end
+        -- Verificar si tiene el dinero suficiente (en el banco)
+        local bankBalance = BankManager.getBalance(player.UserId)
+        if bankBalance < BOOST_COST_MONEY then
+                warn("[Boost] " .. player.Name .. " no tiene dinero suficiente (" .. bankBalance .. " < " .. BOOST_COST_MONEY .. ")")
+                return
+        end
+        -- Cobrar el dinero y subir el boost
+        BankManager.withdraw(player.UserId, BOOST_COST_MONEY)
+        data.boostLevel = currentLevel + 1
+        print("[Boost] " .. player.Name .. " compro boost con dinero, nuevo nivel: " .. data.boostLevel)
+        -- Actualizar UI del cliente (opcional, se puede agregar un evento)
+end)
+
+-- Verificar GamePass cuando el jugador entra
+Players.PlayerAdded:Connect(function(player)
+        task.wait(5)  -- esperar a que carguen los datos
+        checkBoostGamePass(player)
+end)
+
+-- Procesar compra del Developer Product (mejora con Robux, alternativa al dinero del juego)
+-- Esto se integra con el ProcessReceipt existente de donaciones
+local MarketplaceService = game:GetService("MarketplaceService")
+local existingProcessReceipt = MarketplaceService.ProcessReceipt
+MarketplaceService.ProcessReceipt = function(receiptInfo)
+        local playerId = receiptInfo.PlayerId
+        local productId = receiptInfo.ProductId
+        -- Si es el producto de boost con Robux
+        if productId == BOOST_DEVPRODUCT_ID and BOOST_DEVPRODUCT_ID > 0 then
+                local data = playerData[playerId]
+                if data then
+                        local currentLevel = data.boostLevel or 0
+                        if currentLevel < MAX_BOOST_LEVEL then
+                                data.boostLevel = currentLevel + 1
+                                print("[Boost] PlayerId " .. playerId .. " compro boost con Robux, nivel: " .. data.boostLevel)
+                                return Enum.ProductPurchaseDecision.PurchaseGranted
+                        else
+                                -- Ya tiene el maximo, no se puede comprar mas
+                                -- Devolver PurchaseGranted para que no se reembolse (pero no sube nivel)
+                                warn("[Boost] PlayerId " .. playerId .. " ya tiene nivel maximo, no se subio")
+                                return Enum.ProductPurchaseDecision.PurchaseGranted
+                        end
+                end
+        end
+        -- Si no es el producto de boost, delegar al ProcessReceipt existente (donaciones)
+        if existingProcessReceipt then
+                return existingProcessReceipt(receiptInfo)
+        end
+        return Enum.ProductPurchaseDecision.NotProcessedYet
+end
 
 print("=== GameHandler iniciado ===")
 
