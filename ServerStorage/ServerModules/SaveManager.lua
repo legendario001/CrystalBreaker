@@ -139,8 +139,8 @@ end
 
 -- Guardar datos del jugador en DataStore
 -- Parametros:
---   userId, playerData, baseLevel, blockInventory, blocksFolder, bankBalance, parcelCenter, unlockedBalls
-function SaveManager.savePlayerData(userId, playerData, baseLevel, blockInventory, blocksFolder, bankBalance, parcelCenter, unlockedBalls)
+--   userId, playerData, baseLevel, blockInventory, blocksFolder, bankBalance, parcelCenter, unlockedBalls, boostLevel
+function SaveManager.savePlayerData(userId, playerData, baseLevel, blockInventory, blocksFolder, bankBalance, parcelCenter, unlockedBalls, boostLevel)
         -- Construir la tabla de datos a guardar
         local dataToSave = {
                 money = 0,
@@ -150,6 +150,7 @@ function SaveManager.savePlayerData(userId, playerData, baseLevel, blockInventor
                 placedBlocks = {},
                 bankBalance = bankBalance or 0,
                 unlockedBalls = unlockedBalls or {}, -- pelotas desbloqueadas
+                boostLevel = boostLevel or 0, -- nivel de boost de ganancias (0-5)
                 lastSaveTimestamp = os.time(), -- timestamp del ultimo guardado (para dinero offline)
                 version = 1, -- version del formato de guardado
         }
