@@ -2517,14 +2517,27 @@ BuyBoostWithMoneyEvent.OnServerEvent:Connect(function(player)
                 warn("[Boost] " .. player.Name .. " ya tiene el nivel maximo (" .. MAX_BOOST_LEVEL .. ")")
                 return
         end
-        -- Verificar si tiene el dinero suficiente (en el banco)
+        -- Verificar si tiene el dinero suficiente (banco + dinero en mano)
         local bankBalance = BankManager.getBalance(player.UserId)
-        if bankBalance < BOOST_COST_MONEY then
-                warn("[Boost] " .. player.Name .. " no tiene dinero suficiente (" .. bankBalance .. " < " .. BOOST_COST_MONEY .. ")")
+        local handMoney = data.money or 0
+        local totalMoney = bankBalance + handMoney
+        if totalMoney < BOOST_COST_MONEY then
+                warn("[Boost] " .. player.Name .. " no tiene dinero suficiente (total=" .. totalMoney .. " < " .. BOOST_COST_MONEY .. ")")
                 return
         end
-        -- Cobrar el dinero y subir el boost
-        BankManager.withdraw(player.UserId, BOOST_COST_MONEY)
+        -- Cobrar: primero del banco, luego de la mano si hace falta
+        local remaining = BOOST_COST_MONEY
+        if bankBalance >= remaining then
+                BankManager.withdraw(player.UserId, remaining)
+                remaining = 0
+        else
+                -- Sacar todo del banco
+                remaining = remaining - bankBalance
+                BankManager.withdraw(player.UserId, bankBalance)
+                -- El resto del dinero en mano
+                data.money = math.max(0, handMoney - remaining)
+                remaining = 0
+        end
         data.boostLevel = currentLevel + 1
         print("[Boost] " .. player.Name .. " compro boost con dinero, nuevo nivel: " .. data.boostLevel)
         -- Actualizar UI del cliente (opcional, se puede agregar un evento)
@@ -2536,14 +2549,14 @@ Players.PlayerAdded:Connect(function(player)
         checkBoostGamePass(player)
 end)
 
--- Procesar compra del Developer Product (mejora con Robux, alternativa al dinero del juego)
--- Esto se integra con el ProcessReceipt existente de donaciones
+-- ProcessReceipt UNIFICADO: maneja donaciones Y boost con Robux
+-- (reemplaza al ProcessReceipt de donaciones que estaba antes)
 local MarketplaceService = game:GetService("MarketplaceService")
-local existingProcessReceipt = MarketplaceService.ProcessReceipt
 MarketplaceService.ProcessReceipt = function(receiptInfo)
         local playerId = receiptInfo.PlayerId
         local productId = receiptInfo.ProductId
-        -- Si es el producto de boost con Robux
+
+        -- 1. Si es el DevProduct de boost con Robux
         if productId == BOOST_DEVPRODUCT_ID and BOOST_DEVPRODUCT_ID > 0 then
                 local data = playerData[playerId]
                 if data then
@@ -2551,19 +2564,33 @@ MarketplaceService.ProcessReceipt = function(receiptInfo)
                         if currentLevel < MAX_BOOST_LEVEL then
                                 data.boostLevel = currentLevel + 1
                                 print("[Boost] PlayerId " .. playerId .. " compro boost con Robux, nivel: " .. data.boostLevel)
-                                return Enum.ProductPurchaseDecision.PurchaseGranted
                         else
-                                -- Ya tiene el maximo, no se puede comprar mas
-                                -- Devolver PurchaseGranted para que no se reembolse (pero no sube nivel)
-                                warn("[Boost] PlayerId " .. playerId .. " ya tiene nivel maximo, no se subio")
-                                return Enum.ProductPurchaseDecision.PurchaseGranted
+                                warn("[Boost] PlayerId " .. playerId .. " ya tiene nivel maximo")
                         end
                 end
+                return Enum.ProductPurchaseDecision.PurchaseGranted
         end
-        -- Si no es el producto de boost, delegar al ProcessReceipt existente (donaciones)
-        if existingProcessReceipt then
-                return existingProcessReceipt(receiptInfo)
+
+        -- 2. Si es un producto de donacion (buscar en DONATION_PRODUCTS)
+        local robuxAmount = 0
+        for _, p in ipairs(DONATION_PRODUCTS) do
+                if p.productId == productId then
+                        robuxAmount = p.robux
+                        break
+                end
         end
+        if robuxAmount > 0 then
+                DonationManager.addDonation(playerId, robuxAmount)
+                DonationManager.recalculateTop()
+                DonationManager.saveAll()
+                sendDonationLeaderboardToAll()
+                DonationManager.updateTop3Characters()
+                print("[Donation] PlayerId " .. playerId .. " dono " .. robuxAmount .. " R$")
+                return Enum.ProductPurchaseDecision.PurchaseGranted
+        end
+
+        -- 3. Producto no reconocido
+        warn("[ProcessReceipt] ProductId " .. productId .. " no reconocido")
         return Enum.ProductPurchaseDecision.NotProcessedYet
 end
 
@@ -2683,30 +2710,7 @@ Events.RequestDonationProducts.OnServerEvent:Connect(function(player)
         Events.DonationProductsResponse:FireClient(player, products)
 end)
 
--- Procesar compras de Developer Products (donaciones)
-local MarketplaceService = game:GetService("MarketplaceService")
-MarketplaceService.ProcessReceipt = function(receiptInfo)
-        local playerId = receiptInfo.PlayerId
-        local productId = receiptInfo.ProductId
-        -- Buscar el producto en la configuracion
-        local robuxAmount = 0
-        for _, p in ipairs(DONATION_PRODUCTS) do
-                if p.productId == productId then
-                        robuxAmount = p.robux
-                        break
-                end
-        end
-        if robuxAmount > 0 then
-                -- Registrar la donacion
-                DonationManager.addDonation(playerId, robuxAmount)
-                DonationManager.recalculateTop()
-                DonationManager.saveAll()
-                sendDonationLeaderboardToAll()
-                DonationManager.updateTop3Characters()
-                print("[Donation] PlayerId " .. playerId .. " dono " .. robuxAmount .. " R$")
-        end
-        return Enum.ProductPurchaseDecision.PurchaseGranted
-end
+-- (ProcessReceipt de donaciones movido al bloque unificado de boost arriba)
 
 -- Cargar leaderboard de donadores al iniciar el servidor
 task.spawn(function()
