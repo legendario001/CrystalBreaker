@@ -2482,7 +2482,7 @@ end)
 -- Developer Product: "Mejora 20% (In-Game)" (1 trillon dinero) - se compra multiple veces, max 5 total
 -- Cada nivel da +20% de ganancias en todos los personajes en pedestales
 
-local BOOST_GAMEPASS_ID = 0  -- ⚠️ REEMPLAZAR con el ID real del GamePass
+local BOOST_GAMEPASS_ID = 3612156466  -- Boost 20% Ganancias (99 R$)
 local BOOST_DEVPRODUCT_ID = 0  -- ⚠️ REEMPLAZAR con el ID real del Developer Product (mejora con dinero)
 local BOOST_COST_MONEY = 1000000000000000  -- 1 trillon (1e15)
 local MAX_BOOST_LEVEL = 5
