@@ -1,7 +1,7 @@
 -- ============================================
 -- ShopSystem (ModuleScript) - StarterPlayer/StarterPlayerScripts
--- Sistema de tienda: detecta proximidad, muestra boton E, abre la mochila
--- Funciona igual que BankSystem pero abre el panel de pelotas (backpackPanel)
+-- Boton "SHOP" en esquina inferior derecha con UIStroke grosor 10.
+-- Abre un panel con el Boost de Ganancias 20% (GamePass 99 R$ o 1 trillon dinero).
 -- ============================================
 
 local ShopSystem = {}
@@ -9,150 +9,210 @@ local ShopSystem = {}
 function ShopSystem.init(deps)
         local player = deps.player
         local screenGui = deps.screenGui
-        local UserInputService = deps.UserInputService
-        local RunService = deps.RunService
         local Workspace = deps.Workspace
         local ReplicatedStorage = deps.ReplicatedStorage
-        local backpackPanel = deps.backpackPanel
-        local openBackpack = deps.openBackpack -- funcion que abre la mochila (setVisible + updateBackpackUI)
-
-        -- Posicion de la tienda (donde aparece el boton E)
-        local SHOP_POSITION = Vector3.new(26.981, 3.368, -0.8)
-        local SHOP_INTERACT_DISTANCE = 18 -- studs para mostrar la E
-
-        -- Estado
-        local nearShop = false
-        local shopPanelOpen = false -- trackea si la mochila esta abierta por la tienda
+        local MarketplaceService = game:GetService("MarketplaceService")
+        local UserInputService = game:GetService("UserInputService")
 
         -- ============================================
-        -- Crear Part ancla en la posicion de la tienda
+        -- Configuracion
         -- ============================================
-        local shopPart = Instance.new("Part")
-        shopPart.Name = "ShopAnchor"
-        shopPart.Anchored = true
-        shopPart.CanCollide = false
-        shopPart.CanQuery = false
-        shopPart.CanTouch = false
-        shopPart.Transparency = 1
-        shopPart.Size = Vector3.new(0.1, 0.1, 0.1)
-        shopPart.Position = SHOP_POSITION
-        shopPart.Parent = Workspace
+        local BOOST_GAMEPASS_ID = 0  -- ⚠️ REEMPLAZAR con el ID real del GamePass (99 R$)
+        local BOOST_COST_MONEY = 1000000000000000  -- 1 trillon (1e15)
+        local MAX_BOOST_LEVEL = 5
 
-        -- BillboardGui con la imagen E (no se ve, solo referencia visual)
-        local shopBillboard = Instance.new("BillboardGui")
-        shopBillboard.Name = "ShopInteractGui"
-        shopBillboard.Size = UDim2.new(0, 80, 0, 80)
-        shopBillboard.StudsOffset = Vector3.new(0, -3, 0) -- 3 studs abajo
-        shopBillboard.AlwaysOnTop = true
-        shopBillboard.LightInfluence = 0
-        shopBillboard.MaxDistance = 40
-        shopBillboard.Enabled = false
-        shopBillboard.Parent = shopPart
-
-        local eImage = Instance.new("ImageLabel")
-        eImage.Size = UDim2.new(1, 0, 1, 0)
-        eImage.BackgroundTransparency = 1
-        eImage.Image = "rbxassetid://78972021775884"
-        eImage.ScaleType = Enum.ScaleType.Fit
-        eImage.Parent = shopBillboard
+        local BuyBoostWithMoneyEvent = ReplicatedStorage:WaitForChild("BuyBoostWithMoney", 15)
 
         -- ============================================
-        -- Boton clickable en ScreenGui (sigue a la tienda en pantalla)
-        -- BillboardGui no recibe touch en movil, por eso usamos ScreenGui
+        -- Boton "SHOP" (esquina inferior derecha)
         -- ============================================
-        local camera = Workspace.CurrentCamera
-        local shopClickBtn = Instance.new("TextButton")
-        shopClickBtn.Name = "ShopClickBtn"
-        shopClickBtn.Size = UDim2.new(0, 100, 0, 100)
-        shopClickBtn.Position = UDim2.new(0.5, -50, 0.5, -50)
-        shopClickBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-        shopClickBtn.BackgroundTransparency = 1
-        shopClickBtn.BorderSizePixel = 0
-        shopClickBtn.Text = ""
-        shopClickBtn.Visible = false
-        shopClickBtn.ZIndex = 100
-        shopClickBtn.Parent = screenGui
+        local shopButton = Instance.new("TextButton")
+        shopButton.Name = "ShopButton"
+        shopButton.Size = UDim2.new(0, 140, 0, 60)
+        shopButton.Position = UDim2.new(1, -160, 1, -80)  -- esquina inferior derecha
+        shopButton.BackgroundColor3 = Color3.fromRGB(255, 100, 50)  -- naranja/rojo
+        shopButton.BorderSizePixel = 0
+        shopButton.Text = "🛒 SHOP"
+        shopButton.Font = Enum.Font.GothamBlack
+        shopButton.TextSize = 22
+        shopButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        shopButton.Parent = screenGui
+        Instance.new("UICorner", shopButton).CornerRadius = UDim.new(0, 12)
 
-        local screenEImage = Instance.new("ImageLabel")
-        screenEImage.Size = UDim2.new(1, 0, 1, 0)
-        screenEImage.BackgroundTransparency = 1
-        screenEImage.Image = "rbxassetid://78972021775884"
-        screenEImage.ScaleType = Enum.ScaleType.Fit
-        screenEImage.Parent = shopClickBtn
+        -- UIStroke GRUESO (grosor 10 como pidio el usuario)
+        local shopStroke = Instance.new("UIStroke", shopButton)
+        shopStroke.Name = "ShopButtonStroke"
+        shopStroke.Color = Color3.fromRGB(0, 0, 0)  -- negro
+        shopStroke.Thickness = 10  -- grueso
+        shopStroke.Transparency = 0
+        shopStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
-        -- Funcion para abrir la mochila desde la tienda
-        local function openShopPanel()
-                if openBackpack then
-                        openBackpack()
-                elseif backpackPanel then
-                        backpackPanel.Visible = true
-                end
-                shopPanelOpen = true
+        -- ============================================
+        -- Panel de la Shop (modal)
+        -- ============================================
+        local shopPanel = Instance.new("Frame")
+        shopPanel.Name = "ShopPanel"
+        shopPanel.Size = UDim2.new(0, 450, 0, 550)
+        shopPanel.Position = UDim2.new(0.5, -225, 0.5, -275)
+        shopPanel.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+        shopPanel.BackgroundTransparency = 0.05
+        shopPanel.BorderSizePixel = 0
+        shopPanel.Visible = false
+        shopPanel.Parent = screenGui
+        Instance.new("UICorner", shopPanel).CornerRadius = UDim.new(0, 15)
+
+        local panelStroke = Instance.new("UIStroke", shopPanel)
+        panelStroke.Color = Color3.fromRGB(255, 100, 50)
+        panelStroke.Thickness = 4
+
+        -- Titulo
+        local titleLabel = Instance.new("TextLabel")
+        titleLabel.Size = UDim2.new(1, -40, 0, 70)
+        titleLabel.Position = UDim2.new(0, 20, 0, 15)
+        titleLabel.BackgroundTransparency = 1
+        titleLabel.Text = "🛒 TIENDA"
+        titleLabel.TextColor3 = Color3.fromRGB(255, 100, 50)
+        titleLabel.TextScaled = true
+        titleLabel.Font = Enum.Font.GothamBlack
+        titleLabel.Parent = shopPanel
+
+        -- Boton cerrar (X)
+        local closeBtn = Instance.new("TextButton")
+        closeBtn.Size = UDim2.new(0, 45, 0, 45)
+        closeBtn.Position = UDim2.new(1, -55, 0, 10)
+        closeBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+        closeBtn.Text = "X"
+        closeBtn.Font = Enum.Font.GothamBold
+        closeBtn.TextSize = 22
+        closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        closeBtn.BorderSizePixel = 0
+        closeBtn.Parent = shopPanel
+        Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 8)
+
+        -- ============================================
+        -- Item: Boost de Ganancias 20%
+        -- ============================================
+        local boostItem = Instance.new("Frame")
+        boostItem.Name = "BoostItem"
+        boostItem.Size = UDim2.new(1, -40, 0, 200)
+        boostItem.Position = UDim2.new(0, 20, 0, 100)
+        boostItem.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+        boostItem.BackgroundTransparency = 0.2
+        boostItem.BorderSizePixel = 0
+        boostItem.Parent = shopPanel
+        Instance.new("UICorner", boostItem).CornerRadius = UDim.new(0, 12)
+
+        local itemStroke = Instance.new("UIStroke", boostItem)
+        itemStroke.Color = Color3.fromRGB(255, 215, 0)  -- dorado
+        itemStroke.Thickness = 3
+
+        -- Titulo del item
+        local itemTitle = Instance.new("TextLabel")
+        itemTitle.Size = UDim2.new(1, -20, 0, 50)
+        itemTitle.Position = UDim2.new(0, 10, 0, 10)
+        itemTitle.BackgroundTransparency = 1
+        itemTitle.Text = "🚀 BOOST GANANCIAS +20%"
+        itemTitle.TextColor3 = Color3.fromRGB(255, 215, 0)
+        itemTitle.TextScaled = true
+        itemTitle.Font = Enum.Font.GothamBold
+        itemTitle.TextXAlignment = Enum.TextXAlignment.Left
+        itemTitle.Parent = boostItem
+
+        -- Descripcion
+        local itemDesc = Instance.new("TextLabel")
+        itemDesc.Size = UDim2.new(1, -20, 0, 60)
+        itemDesc.Position = UDim2.new(0, 10, 0, 60)
+        itemDesc.BackgroundTransparency = 1
+        itemDesc.Text = "Cada nivel da +20% de ganancias en todos tus personajes. Maximo 5 niveles (hasta +100%)."
+        itemDesc.TextColor3 = Color3.fromRGB(200, 200, 200)
+        itemDesc.TextWrapped = true
+        itemDesc.TextScaled = true
+        itemDesc.Font = Enum.Font.GothamMedium
+        itemDesc.TextXAlignment = Enum.TextXAlignment.Left
+        itemDesc.Parent = boostItem
+
+        -- Nivel actual
+        local levelLabel = Instance.new("TextLabel")
+        levelLabel.Name = "LevelLabel"
+        levelLabel.Size = UDim2.new(1, -20, 0, 30)
+        levelLabel.Position = UDim2.new(0, 10, 0, 125)
+        levelLabel.BackgroundTransparency = 1
+        levelLevel = levelLabel  -- referencia
+        levelLabel.Text = "Nivel actual: 0/5 (+0%)"
+        levelLabel.TextColor3 = Color3.fromRGB(100, 255, 150)
+        levelLabel.TextScaled = true
+        levelLabel.Font = Enum.Font.GothamBold
+        levelLabel.TextXAlignment = Enum.TextXAlignment.Left
+        levelLabel.Parent = boostItem
+
+        -- Boton comprar con Robux (GamePass)
+        local buyRobuxBtn = Instance.new("TextButton")
+        buyRobuxBtn.Name = "BuyWithRobux"
+        buyRobuxBtn.Size = UDim2.new(0.48, -5, 0, 45)
+        buyRobuxBtn.Position = UDim2.new(0, 10, 1, -55)
+        buyRobuxBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 0)
+        buyRobuxBtn.Text = "Comprar con Robux (99 R$)"
+        buyRobuxBtn.Font = Enum.Font.GothamBold
+        buyRobuxBtn.TextSize = 14
+        buyRobuxBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        buyRobuxBtn.BorderSizePixel = 0
+        buyRobuxBtn.Parent = boostItem
+        Instance.new("UICorner", buyRobuxBtn).CornerRadius = UDim.new(0, 8)
+
+        -- Boton comprar con dinero del juego
+        local buyMoneyBtn = Instance.new("TextButton")
+        buyMoneyBtn.Name = "BuyWithMoney"
+        buyMoneyBtn.Size = UDim2.new(0.48, -5, 0, 45)
+        buyMoneyBtn.Position = UDim2.new(0.52, 0, 1, -55)
+        buyMoneyBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
+        buyMoneyBtn.Text = "Comprar con $1T"
+        buyMoneyBtn.Font = Enum.Font.GothamBold
+        buyMoneyBtn.TextSize = 14
+        buyMoneyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        buyMoneyBtn.BorderSizePixel = 0
+        buyMoneyBtn.Parent = boostItem
+        Instance.new("UICorner", buyMoneyBtn).CornerRadius = UDim.new(0, 8)
+
+        -- ============================================
+        -- Logica
+        -- ============================================
+        local function openShop()
+                shopPanel.Visible = true
         end
 
-        shopClickBtn.MouseButton1Click:Connect(function()
-                if nearShop then
-                        if backpackPanel and backpackPanel.Visible then
-                                -- Si ya esta abierta, cerrarla
-                                backpackPanel.Visible = false
-                                shopPanelOpen = false
-                        else
-                                openShopPanel()
-                        end
-                end
-        end)
+        local function closeShop()
+                shopPanel.Visible = false
+        end
 
-        print("[ShopSystem] Part ancla de tienda creado en " .. tostring(SHOP_POSITION))
+        shopButton.MouseButton1Click:Connect(openShop)
+        closeBtn.MouseButton1Click:Connect(closeShop)
 
-        -- ============================================
-        -- Deteccion de proximidad + input E
-        -- ============================================
-
-        RunService.Heartbeat:Connect(function()
-                if not shopPart or not shopPart.Parent then return end
-                local char = player.Character
-                if not char then return end
-                local root = char:FindFirstChild("HumanoidRootPart")
-                if not root then return end
-
-                local dist = (root.Position - shopPart.Position).Magnitude
-                nearShop = dist < SHOP_INTERACT_DISTANCE
-
-                -- Ocultar billboard (usamos el boton ScreenGui)
-                if shopBillboard then
-                        shopBillboard.Enabled = false
-                end
-
-                -- Posicionar y mostrar/ocultar el boton ScreenGui
-                if nearShop and not (backpackPanel and backpackPanel.Visible) then
-                        local screenPos, onScreen = camera:WorldToViewportPoint(shopPart.Position + Vector3.new(0, 3, 0))
-                        if onScreen then
-                                shopClickBtn.Visible = true
-                                shopClickBtn.Position = UDim2.new(0, screenPos.X - 50, 0, screenPos.Y - 50)
-                        else
-                                shopClickBtn.Visible = false
-                        end
-                else
-                        shopClickBtn.Visible = false
-                end
-        end)
-
-        -- Input E para abrir tienda (PC)
         UserInputService.InputBegan:Connect(function(input, processed)
                 if processed then return end
-                if input.KeyCode == Enum.KeyCode.E then
-                        if nearShop then
-                                if backpackPanel and backpackPanel.Visible then
-                                        backpackPanel.Visible = false
-                                        shopPanelOpen = false
-                                else
-                                        openShopPanel()
-                                end
-                        end
+                if input.KeyCode == Enum.KeyCode.Escape and shopPanel.Visible then
+                        closeShop()
                 end
         end)
 
-        print("[ShopSystem] Sistema de tienda cargado!")
+        -- Comprar con Robux (GamePass)
+        buyRobuxBtn.MouseButton1Click:Connect(function()
+                if BOOST_GAMEPASS_ID > 0 then
+                        pcall(function()
+                                MarketplaceService:PromptGamePassPurchase(player, BOOST_GAMEPASS_ID)
+                        end)
+                else
+                        warn("[Shop] BOOST_GAMEPASS_ID no configurado (es 0)")
+                end
+        end)
+
+        -- Comprar con dinero del juego
+        buyMoneyBtn.MouseButton1Click:Connect(function()
+                if BuyBoostWithMoneyEvent then
+                        BuyBoostWithMoneyEvent:FireServer()
+                end
+        end)
+
+        print("[ShopSystem] Boton SHOP cargado (UIStroke grosor 10)")
 end
 
 return ShopSystem
