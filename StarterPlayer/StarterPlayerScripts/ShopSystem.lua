@@ -18,7 +18,7 @@ function ShopSystem.init(deps)
         -- Configuracion
         -- ============================================
         local BOOST_GAMEPASS_ID = 3612156466  -- GamePass: da nivel 1 permanente
-        local BOOST_DEVPRODUCT_ID = 0  -- ⚠️ CREAR Developer Product (99 R$) y poner su ID aqui
+        local BOOST_DEVPRODUCT_ID = 3612156466  -- Developer Product: Mejora Boost 20% (99 R$)
         local BOOST_COST_MONEY = 1000000000000  -- 1 trillon (1T = 1e12)
         local MAX_BOOST_LEVEL = 5
 
@@ -45,7 +45,7 @@ function ShopSystem.init(deps)
         shopIcon.Size = UDim2.new(0.7, 0, 0.7, 0)
         shopIcon.Position = UDim2.new(0.15, 0, 0.15, 0)
         shopIcon.BackgroundTransparency = 1
-        shopIcon.Image = "rbxassetid://3926305904"  -- icono de tienda default de Roblox
+        shopIcon.Image = "rbxassetid://8143125530"  -- icono de shop personalizado
         shopIcon.ScaleType = Enum.ScaleType.Fit
         shopIcon.Parent = shopButton
 
