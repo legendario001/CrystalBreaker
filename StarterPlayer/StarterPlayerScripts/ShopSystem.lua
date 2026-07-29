@@ -17,8 +17,9 @@ function ShopSystem.init(deps)
         -- ============================================
         -- Configuracion
         -- ============================================
-        local BOOST_GAMEPASS_ID = 3612156466  -- Boost 20% Ganancias (99 R$)
-        local BOOST_COST_MONEY = 1000000000000000  -- 1 trillon (1e15)
+        local BOOST_GAMEPASS_ID = 3612156466  -- GamePass: da nivel 1 permanente
+        local BOOST_DEVPRODUCT_ID = 0  -- ⚠️ CREAR Developer Product (99 R$) y poner su ID aqui
+        local BOOST_COST_MONEY = 1000000000000  -- 1 trillon (1T = 1e12)
         local MAX_BOOST_LEVEL = 5
 
         local BuyBoostWithMoneyEvent = ReplicatedStorage:WaitForChild("BuyBoostWithMoney", 15)
@@ -203,14 +204,14 @@ function ShopSystem.init(deps)
                 end
         end)
 
-        -- Comprar con Robux (GamePass)
+        -- Comprar con Robux (Developer Product - se puede comprar multiples veces)
         buyRobuxBtn.MouseButton1Click:Connect(function()
-                if BOOST_GAMEPASS_ID > 0 then
+                if BOOST_DEVPRODUCT_ID > 0 then
                         pcall(function()
-                                MarketplaceService:PromptGamePassPurchase(player, BOOST_GAMEPASS_ID)
+                                MarketplaceService:PromptProductPurchase(player, BOOST_DEVPRODUCT_ID)
                         end)
                 else
-                        warn("[Shop] BOOST_GAMEPASS_ID no configurado (es 0)")
+                        warn("[Shop] BOOST_DEVPRODUCT_ID no configurado (es 0). Crea un Developer Product de 99 R$.")
                 end
         end)
 
@@ -220,6 +221,22 @@ function ShopSystem.init(deps)
                         BuyBoostWithMoneyEvent:FireServer()
                 end
         end)
+
+        -- Escuchar actualizaciones de boost del servidor
+        local BoostUpdateEvent = ReplicatedStorage:WaitForChild("BoostUpdate", 10)
+        if BoostUpdateEvent then
+                BoostUpdateEvent.OnClientEvent:Connect(function(boostLevel)
+                        if levelLabel then
+                                levelLabel.Text = "Nivel actual: " .. boostLevel .. "/5 (+" .. (boostLevel * 20) .. "%)"
+                        end
+                        -- Desactivar botones si ya tiene el nivel maximo
+                        if boostLevel >= 5 then
+                                buyRobuxBtn.Visible = false
+                                buyMoneyBtn.Visible = false
+                                levelLabel.Text = "Nivel MAXIMO: 5/5 (+100%) 🎉"
+                        end
+                end)
+        end
 
         print("[ShopSystem] Boton SHOP cargado (UIStroke grosor 10)")
 end
