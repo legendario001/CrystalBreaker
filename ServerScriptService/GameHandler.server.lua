@@ -2484,7 +2484,7 @@ end)
 
 local BOOST_GAMEPASS_ID = 3612156466  -- Boost 20% Ganancias (99 R$)
 local BOOST_DEVPRODUCT_ID = 0  -- ⚠️ REEMPLAZAR con el ID real del Developer Product (mejora con dinero)
-local BOOST_COST_MONEY = 1000000000000000  -- 1 trillon (1e15)
+local BOOST_COST_MONEY = 1000000000000  -- 1 trillon (1T = 1e12, igual que el formato del juego)
 local MAX_BOOST_LEVEL = 5
 
 -- RemoteEvent para pedir compra de boost con dinero del juego
