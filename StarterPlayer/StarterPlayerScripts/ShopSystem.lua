@@ -17,7 +17,7 @@ function ShopSystem.init(deps)
         -- ============================================
         -- Configuracion
         -- ============================================
-        local BOOST_GAMEPASS_ID = 0  -- ⚠️ REEMPLAZAR con el ID real del GamePass (99 R$)
+        local BOOST_GAMEPASS_ID = 3612156466  -- Boost 20% Ganancias (99 R$)
         local BOOST_COST_MONEY = 1000000000000000  -- 1 trillon (1e15)
         local MAX_BOOST_LEVEL = 5
 
