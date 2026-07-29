@@ -24,20 +24,29 @@ function ShopSystem.init(deps)
         local BuyBoostWithMoneyEvent = ReplicatedStorage:WaitForChild("BuyBoostWithMoney", 15)
 
         -- ============================================
-        -- Boton "SHOP" (esquina inferior derecha)
+        -- Boton "SHOP" (esquina inferior izquierda, arriba del martillo de construccion)
+        -- El buildBtn esta en Position(0, 20, 1, -340) con size 60x60.
+        -- Ponemos el shop justo arriba: Position(0, 20, 1, -410) con size 60x60.
         -- ============================================
         local shopButton = Instance.new("TextButton")
         shopButton.Name = "ShopButton"
-        shopButton.Size = UDim2.new(0, 140, 0, 60)
-        shopButton.Position = UDim2.new(1, -160, 1, -80)  -- esquina inferior derecha
+        shopButton.Size = UDim2.new(0, 60, 0, 60)
+        shopButton.Position = UDim2.new(0, 20, 1, -410)  -- arriba del martillo
         shopButton.BackgroundColor3 = Color3.fromRGB(255, 100, 50)  -- naranja/rojo
         shopButton.BorderSizePixel = 0
-        shopButton.Text = "🛒 SHOP"
-        shopButton.Font = Enum.Font.GothamBlack
-        shopButton.TextSize = 22
-        shopButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        shopButton.Text = ""
         shopButton.Parent = screenGui
         Instance.new("UICorner", shopButton).CornerRadius = UDim.new(0, 12)
+
+        -- Icono de tienda (carrito de compras) usando ImageLabel
+        local shopIcon = Instance.new("ImageLabel")
+        shopIcon.Name = "ShopIcon"
+        shopIcon.Size = UDim2.new(0.7, 0, 0.7, 0)
+        shopIcon.Position = UDim2.new(0.15, 0, 0.15, 0)
+        shopIcon.BackgroundTransparency = 1
+        shopIcon.Image = "rbxassetid://3926305904"  -- icono de tienda default de Roblox
+        shopIcon.ScaleType = Enum.ScaleType.Fit
+        shopIcon.Parent = shopButton
 
         -- UIStroke GRUESO (grosor 10 como pidio el usuario)
         local shopStroke = Instance.new("UIStroke", shopButton)
