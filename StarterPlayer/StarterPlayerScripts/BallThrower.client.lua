@@ -2215,16 +2215,19 @@ end
 task.spawn(function()
         local RunService = game:GetService("RunService")
         RunService.RenderStepped:Connect(function()
-                mochilaCheckTimer = mochilaCheckTimer + 0.1
+                mochilaCheckTimer = (mochilaCheckTimer or 0) + 0.1
                 if mochilaCheckTimer < 0.5 then return end
                 mochilaCheckTimer = 0
 
                 local char = player.Character
                 if not char then return end
                 local hrp = char:FindFirstChild("HumanoidRootPart")
-                if not hrp then return end
+                if not hrp or not hrp.Parent then return end
 
-                local dist = (hrp.Position - MOCHILA_POS).Magnitude
+                local hrpPos = hrp.Position
+                if not hrpPos then return end
+
+                local dist = (hrpPos - MOCHILA_POS).Magnitude
                 if dist <= MOCHILA_INTERACT_DIST then
                         if not nearMochila then
                                 nearMochila = true
