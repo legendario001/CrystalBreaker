@@ -2210,38 +2210,6 @@ local function updateBackpackUI()
         end
 end
 
--- Deteccion de cercania a la mochila (en el RenderStepped principal)
--- (Se conecta despues para que backpackBtn ya exista)
-task.spawn(function()
-        local RunService = game:GetService("RunService")
-        RunService.RenderStepped:Connect(function()
-                mochilaCheckTimer = (mochilaCheckTimer or 0) + 0.1
-                if mochilaCheckTimer < 0.5 then return end
-                mochilaCheckTimer = 0
-
-                local char = player.Character
-                if not char then return end
-                local hrp = char:FindFirstChild("HumanoidRootPart")
-                if not hrp or not hrp.Parent then return end
-
-                local hrpPos = hrp.Position
-                if not hrpPos then return end
-
-                local dist = (hrpPos - MOCHILA_POS).Magnitude
-                if dist <= MOCHILA_INTERACT_DIST then
-                        if not nearMochila then
-                                nearMochila = true
-                                mochilaBillboard.Enabled = true
-                        end
-                else
-                        if nearMochila then
-                                nearMochila = false
-                                mochilaBillboard.Enabled = false
-                        end
-                end
-        end)
-end)
-
 -- Toggle mochila
 backpackBtn.MouseButton1Click:Connect(function()
         backpackPanel.Visible = not backpackPanel.Visible
