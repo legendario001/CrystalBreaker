@@ -326,13 +326,38 @@ function formatMoney(amount)
                 end
         end
 
-        -- Obtener cantidad del input
+        -- Obtener cantidad del input (soporta sufijos: K, M, B, T, Q)
+        -- Ej: "1T" = 1 trillon, "5B" = 5 billones, "100M" = 100 millones
         local function getAmount()
                 local text = amountInput.Text
-                local amount = tonumber(text)
+                if not text or text == "" then return nil end
+                text = string.gsub(text, "%s", "")  -- quitar espacios
+                text = string.upper(text)  -- a mayusculas
+                -- Extraer sufijo (ultima letra si es K/M/B/T/Q)
+                local suffix = string.sub(text, -1)
+                local numberPart = text
+                local multiplier = 1
+                if suffix == "K" then
+                        multiplier = 1e3
+                        numberPart = string.sub(text, 1, -2)
+                elseif suffix == "M" then
+                        multiplier = 1e6
+                        numberPart = string.sub(text, 1, -2)
+                elseif suffix == "B" then
+                        multiplier = 1e9
+                        numberPart = string.sub(text, 1, -2)
+                elseif suffix == "T" then
+                        multiplier = 1e12
+                        numberPart = string.sub(text, 1, -2)
+                elseif suffix == "Q" then
+                        multiplier = 1e15
+                        numberPart = string.sub(text, 1, -2)
+                end
+                local amount = tonumber(numberPart)
                 if not amount or amount <= 0 then
                         return nil
                 end
+                amount = amount * multiplier
                 return math.floor(amount)
         end
 
