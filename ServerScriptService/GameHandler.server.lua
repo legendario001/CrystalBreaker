@@ -2492,6 +2492,18 @@ local BuyBoostWithMoneyEvent = Instance.new("RemoteEvent")
 BuyBoostWithMoneyEvent.Name = "BuyBoostWithMoney"
 BuyBoostWithMoneyEvent.Parent = ReplicatedStorage
 
+-- RemoteEvent para notificar al cliente que su nivel de boost cambio
+local BoostUpdateEvent = Instance.new("RemoteEvent")
+BoostUpdateEvent.Name = "BoostUpdate"
+BoostUpdateEvent.Parent = ReplicatedStorage
+
+-- Helper: notificar al cliente su nuevo nivel de boost
+local function notifyBoostUpdate(player, boostLevel)
+        pcall(function()
+                BoostUpdateEvent:FireClient(player, boostLevel)
+        end)
+end
+
 -- Verificar si el jugador tiene el GamePass (y otorgar boostLevel=1 si lo tiene)
 local function checkBoostGamePass(player)
         if BOOST_GAMEPASS_ID == 0 then return end  -- no configurado
@@ -2504,6 +2516,7 @@ local function checkBoostGamePass(player)
                 if data and (data.boostLevel or 0) < 1 then
                         data.boostLevel = 1
                         print("[Boost] " .. player.Name .. " tiene GamePass, boostLevel=1")
+                        notifyBoostUpdate(player, 1)
                 end
         end
 end
@@ -2540,7 +2553,8 @@ BuyBoostWithMoneyEvent.OnServerEvent:Connect(function(player)
         end
         data.boostLevel = currentLevel + 1
         print("[Boost] " .. player.Name .. " compro boost con dinero, nuevo nivel: " .. data.boostLevel)
-        -- Actualizar UI del cliente (opcional, se puede agregar un evento)
+        -- Notificar al cliente para que actualice la UI
+        notifyBoostUpdate(player, data.boostLevel)
 end)
 
 -- Verificar GamePass cuando el jugador entra
@@ -2564,6 +2578,9 @@ MarketplaceService.ProcessReceipt = function(receiptInfo)
                         if currentLevel < MAX_BOOST_LEVEL then
                                 data.boostLevel = currentLevel + 1
                                 print("[Boost] PlayerId " .. playerId .. " compro boost con Robux, nivel: " .. data.boostLevel)
+                                -- Notificar al cliente (si esta online)
+                                local p = Players:GetPlayerByUserId(playerId)
+                                if p then notifyBoostUpdate(p, data.boostLevel) end
                         else
                                 warn("[Boost] PlayerId " .. playerId .. " ya tiene nivel maximo")
                         end
