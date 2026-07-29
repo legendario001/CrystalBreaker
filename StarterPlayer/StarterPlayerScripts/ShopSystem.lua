@@ -104,7 +104,7 @@ function ShopSystem.init(deps)
         -- ============================================
         local boostItem = Instance.new("Frame")
         boostItem.Name = "BoostItem"
-        boostItem.Size = UDim2.new(1, -40, 0, 200)
+        boostItem.Size = UDim2.new(1, -40, 0, 250)
         boostItem.Position = UDim2.new(0, 20, 0, 100)
         boostItem.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
         boostItem.BackgroundTransparency = 0.2
@@ -145,7 +145,7 @@ function ShopSystem.init(deps)
         local levelLabel = Instance.new("TextLabel")
         levelLabel.Name = "LevelLabel"
         levelLabel.Size = UDim2.new(1, -20, 0, 30)
-        levelLabel.Position = UDim2.new(0, 10, 0, 125)
+        levelLabel.Position = UDim2.new(0, 10, 0, 130)
         levelLabel.BackgroundTransparency = 1
         levelLevel = levelLabel  -- referencia
         levelLabel.Text = "Nivel actual: 0/5 (+0%)"
@@ -155,26 +155,44 @@ function ShopSystem.init(deps)
         levelLabel.TextXAlignment = Enum.TextXAlignment.Left
         levelLabel.Parent = boostItem
 
-        -- Boton comprar con Robux (GamePass)
+        -- Boton comprar con Robux (con icono)
         local buyRobuxBtn = Instance.new("TextButton")
         buyRobuxBtn.Name = "BuyWithRobux"
-        buyRobuxBtn.Size = UDim2.new(0.48, -5, 0, 45)
-        buyRobuxBtn.Position = UDim2.new(0, 10, 1, -55)
+        buyRobuxBtn.Size = UDim2.new(0.48, -5, 0, 50)
+        buyRobuxBtn.Position = UDim2.new(0, 10, 1, -60)
         buyRobuxBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 0)
-        buyRobuxBtn.Text = "Comprar con Robux (99 R$)"
-        buyRobuxBtn.Font = Enum.Font.GothamBold
-        buyRobuxBtn.TextSize = 14
-        buyRobuxBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        buyRobuxBtn.Text = ""
         buyRobuxBtn.BorderSizePixel = 0
         buyRobuxBtn.Parent = boostItem
         Instance.new("UICorner", buyRobuxBtn).CornerRadius = UDim.new(0, 8)
 
-        -- Boton comprar con dinero del juego
+        -- Texto "Comprar" dentro del boton
+        local robuxBtnText = Instance.new("TextLabel")
+        robuxBtnText.Size = UDim2.new(0.6, 0, 1, 0)
+        robuxBtnText.Position = UDim2.new(0, 5, 0, 0)
+        robuxBtnText.BackgroundTransparency = 1
+        robuxBtnText.Text = "Comprar"
+        robuxBtnText.Font = Enum.Font.GothamBold
+        robuxBtnText.TextSize = 16
+        robuxBtnText.TextColor3 = Color3.fromRGB(255, 255, 255)
+        robuxBtnText.TextXAlignment = Enum.TextXAlignment.Center
+        robuxBtnText.Parent = buyRobuxBtn
+
+        -- Icono de Robux dentro del boton
+        local robuxIcon = Instance.new("ImageLabel")
+        robuxIcon.Size = UDim2.new(0, 30, 0, 30)
+        robuxIcon.Position = UDim2.new(1, -38, 0.5, -15)
+        robuxIcon.BackgroundTransparency = 1
+        robuxIcon.Image = "rbxassetid://11560338816"
+        robuxIcon.ScaleType = Enum.ScaleType.Fit
+        robuxIcon.Parent = buyRobuxBtn
+
+        -- Boton comprar con dinero del juego (color verde dolar)
         local buyMoneyBtn = Instance.new("TextButton")
         buyMoneyBtn.Name = "BuyWithMoney"
-        buyMoneyBtn.Size = UDim2.new(0.48, -5, 0, 45)
-        buyMoneyBtn.Position = UDim2.new(0.52, 0, 1, -55)
-        buyMoneyBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
+        buyMoneyBtn.Size = UDim2.new(0.48, -5, 0, 50)
+        buyMoneyBtn.Position = UDim2.new(0.52, 0, 1, -60)
+        buyMoneyBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 50)  -- verde dolar
         buyMoneyBtn.Text = "Comprar con $1T"
         buyMoneyBtn.Font = Enum.Font.GothamBold
         buyMoneyBtn.TextSize = 14
@@ -224,19 +242,38 @@ function ShopSystem.init(deps)
 
         -- Escuchar actualizaciones de boost del servidor
         local BoostUpdateEvent = ReplicatedStorage:WaitForChild("BoostUpdate", 10)
-        if BoostUpdateEvent then
-                BoostUpdateEvent.OnClientEvent:Connect(function(boostLevel)
-                        if levelLabel then
-                                levelLabel.Text = "Nivel actual: " .. boostLevel .. "/5 (+" .. (boostLevel * 20) .. "%)"
-                        end
-                        -- Desactivar botones si ya tiene el nivel maximo
-                        if boostLevel >= 5 then
-                                buyRobuxBtn.Visible = false
-                                buyMoneyBtn.Visible = false
-                                levelLabel.Text = "Nivel MAXIMO: 5/5 (+100%) 🎉"
-                        end
-                end)
+        local function applyBoostLevel(boostLevel)
+                if levelLabel then
+                        levelLabel.Text = "Nivel actual: " .. boostLevel .. "/5 (+" .. (boostLevel * 20) .. "%)"
+                end
+                -- Desactivar botones si ya tiene el nivel maximo
+                if boostLevel >= 5 then
+                        buyRobuxBtn.Visible = false
+                        buyMoneyBtn.Visible = false
+                        levelLabel.Text = "Nivel MAXIMO: 5/5 (+100%) 🎉"
+                else
+                        buyRobuxBtn.Visible = true
+                        buyMoneyBtn.Visible = true
+                end
         end
+        if BoostUpdateEvent then
+                BoostUpdateEvent.OnClientEvent:Connect(applyBoostLevel)
+        end
+
+        -- Al entrar, pedir el nivel de boost actual al servidor (sincronizar UI)
+        task.spawn(function()
+                local RequestBoostLevel = ReplicatedStorage:FindFirstChild("RequestBoostLevel")
+                if RequestBoostLevel then
+                        task.wait(2)  -- esperar a que el servidor este listo
+                        local ok, level = pcall(function()
+                                return RequestBoostLevel:InvokeServer()
+                        end)
+                        if ok and level then
+                                applyBoostLevel(level)
+                                print("[Shop] Boost level sincronizado al entrar: " .. level)
+                        end
+                end
+        end)
 
         print("[ShopSystem] Boton SHOP cargado (UIStroke grosor 10)")
 end
