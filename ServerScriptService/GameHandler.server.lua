@@ -2504,6 +2504,18 @@ local function notifyBoostUpdate(player, boostLevel)
         end)
 end
 
+-- RemoteFunction para que el cliente pida su nivel de boost al entrar
+local RequestBoostLevel = Instance.new("RemoteFunction")
+RequestBoostLevel.Name = "RequestBoostLevel"
+RequestBoostLevel.Parent = ReplicatedStorage
+RequestBoostLevel.OnServerInvoke = function(player)
+        local data = playerData[player.UserId]
+        if data then
+                return data.boostLevel or 0
+        end
+        return 0
+end
+
 -- Verificar si el jugador tiene el GamePass (y otorgar boostLevel=1 si lo tiene)
 local function checkBoostGamePass(player)
         if BOOST_GAMEPASS_ID == 0 then return end  -- no configurado
