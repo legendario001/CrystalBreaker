@@ -187,19 +187,37 @@ function ShopSystem.init(deps)
         robuxIcon.ScaleType = Enum.ScaleType.Fit
         robuxIcon.Parent = buyRobuxBtn
 
-        -- Boton comprar con dinero del juego (color verde dolar)
+        -- Boton comprar con dinero del juego (verde dolar + icono billete)
         local buyMoneyBtn = Instance.new("TextButton")
         buyMoneyBtn.Name = "BuyWithMoney"
         buyMoneyBtn.Size = UDim2.new(0.48, -5, 0, 50)
         buyMoneyBtn.Position = UDim2.new(0.52, 0, 1, -60)
         buyMoneyBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 50)  -- verde dolar
-        buyMoneyBtn.Text = "Comprar con $1T"
-        buyMoneyBtn.Font = Enum.Font.GothamBold
-        buyMoneyBtn.TextSize = 14
-        buyMoneyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        buyMoneyBtn.Text = ""
         buyMoneyBtn.BorderSizePixel = 0
         buyMoneyBtn.Parent = boostItem
         Instance.new("UICorner", buyMoneyBtn).CornerRadius = UDim.new(0, 8)
+
+        -- Texto "$1T" dentro del boton
+        local moneyBtnText = Instance.new("TextLabel")
+        moneyBtnText.Size = UDim2.new(0.6, 0, 1, 0)
+        moneyBtnText.Position = UDim2.new(0, 5, 0, 0)
+        moneyBtnText.BackgroundTransparency = 1
+        moneyBtnText.Text = "$1T"
+        moneyBtnText.Font = Enum.Font.GothamBold
+        moneyBtnText.TextSize = 18
+        moneyBtnText.TextColor3 = Color3.fromRGB(255, 255, 255)
+        moneyBtnText.TextXAlignment = Enum.TextXAlignment.Center
+        moneyBtnText.Parent = buyMoneyBtn
+
+        -- Icono de billete dentro del boton
+        local moneyIcon = Instance.new("ImageLabel")
+        moneyIcon.Size = UDim2.new(0, 30, 0, 30)
+        moneyIcon.Position = UDim2.new(1, -38, 0.5, -15)
+        moneyIcon.BackgroundTransparency = 1
+        moneyIcon.Image = "rbxassetid://128422594736289"
+        moneyIcon.ScaleType = Enum.ScaleType.Fit
+        moneyIcon.Parent = buyMoneyBtn
 
         -- ============================================
         -- Logica
