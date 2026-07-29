@@ -2229,10 +2229,41 @@ RunService.Heartbeat:Connect(function()
         local dist = (root.Position - mochilaPart.Position).Magnitude
         nearMochila = dist < MOCHILA_INTERACT_DISTANCE
 
+        -- Mostrar/ocultar el boton ScreenGui (igual que el banco)
         if nearMochila and not backpackPanel.Visible then
-                mochilaBillboard.Enabled = true
+                local screenPos, onScreen = camera:WorldToViewportPoint(mochilaPart.Position + Vector3.new(0, 3, 0))
+                if onScreen then
+                        mochilaClickBtn.Visible = true
+                        mochilaClickBtn.Position = UDim2.new(0, screenPos.X - 50, 0, screenPos.Y - 50)
+                else
+                        mochilaClickBtn.Visible = false
+                end
         else
-                mochilaBillboard.Enabled = false
+                mochilaClickBtn.Visible = false
+        end
+end)
+
+-- Click en el boton E de la mochila (abrir/cerrar panel)
+mochilaClickBtn.MouseButton1Click:Connect(function()
+        if nearMochila then
+                backpackPanel.Visible = not backpackPanel.Visible
+                if backpackPanel.Visible then
+                        -- Cerrar musica si esta abierta
+                        musicPanel.Visible = false
+                end
+        end
+end)
+
+-- Input E para abrir mochila (PC)
+UserInputService.InputBegan:Connect(function(input, processed)
+        if processed then return end
+        if input.KeyCode == Enum.KeyCode.E then
+                if nearMochila then
+                        backpackPanel.Visible = not backpackPanel.Visible
+                        if backpackPanel.Visible then
+                                musicPanel.Visible = false
+                        end
+                end
         end
 end)
 
