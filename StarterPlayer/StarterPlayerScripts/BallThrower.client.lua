@@ -2218,6 +2218,24 @@ backpackBtn.MouseButton1Click:Connect(function()
         end
 end)
 
+-- Deteccion de proximidad a la mochila (mismo patron que el banco)
+RunService.Heartbeat:Connect(function()
+        if not mochilaPart or not mochilaPart.Parent then return end
+        local char = player.Character
+        if not char then return end
+        local root = char:FindFirstChild("HumanoidRootPart")
+        if not root then return end
+
+        local dist = (root.Position - mochilaPart.Position).Magnitude
+        nearMochila = dist < MOCHILA_INTERACT_DISTANCE
+
+        if nearMochila and not backpackPanel.Visible then
+                mochilaBillboard.Enabled = true
+        else
+                mochilaBillboard.Enabled = false
+        end
+end)
+
 -- Boton X para cerrar mochila (funciona con mouse y movil)
 bpCloseBtn.MouseButton1Click:Connect(function()
         backpackPanel.Visible = false
