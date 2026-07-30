@@ -2669,12 +2669,34 @@ local RebirthUpdateEvent = ReplicatedStorage:FindFirstChild("RebirthUpdate")
 -- charData tiene .rarity, .name, .level, etc.
 local function getPlayerCharacters(userId)
         local data = playerData[userId]
-        if not data or not data.characters then return {} end
+        if not data then
+                print("[Rebirth DEBUG] getPlayerCharacters: no data for userId " .. tostring(userId))
+                return {}
+        end
+        if not data.characters then
+                print("[Rebirth DEBUG] getPlayerCharacters: no data.characters for userId " .. tostring(userId))
+                return {}
+        end
         local result = {}
+        local count = 0
         for _, charData in pairs(data.characters) do
+                count = count + 1
                 if charData and charData.rarity then
                         table.insert(result, charData)
                 end
+        end
+        print("[Rebirth DEBUG] getPlayerCharacters: " .. count .. " characters found, " .. #result .. " with rarity")
+        if #result > 0 then
+                local rarities = {}
+                for _, c in ipairs(result) do
+                        local r = c.rarity or "unknown"
+                        rarities[r] = (rarities[r] or 0) + 1
+                end
+                local rarityStr = ""
+                for r, n in pairs(rarities) do
+                        rarityStr = rarityStr .. r .. "=" .. n .. " "
+                end
+                print("[Rebirth DEBUG] Rarities: " .. rarityStr)
         end
         return result
 end
@@ -2688,7 +2710,9 @@ if RebirthRequestEvent then
 
                 if action == "getCount" or action == "sync" then
                         -- Enviar conteo actual
-                        local count, requiredRarity = RebirthManager.countRequiredBrainrots(data.rebirthLevel or 0, getPlayerCharacters(userId))
+                        local chars = getPlayerCharacters(userId)
+                        local count, requiredRarity = RebirthManager.countRequiredBrainrots(data.rebirthLevel or 0, chars)
+                        print("[Rebirth DEBUG] getCount: rebirthLevel=" .. tostring(data.rebirthLevel) .. " count=" .. count .. " requiredRarity=" .. tostring(requiredRarity))
                         if RebirthUpdateEvent then
                                 RebirthUpdateEvent:FireClient(player, {
                                         type = action == "sync" and "sync" or "count",
