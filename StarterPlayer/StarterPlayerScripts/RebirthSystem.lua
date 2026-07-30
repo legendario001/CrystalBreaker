@@ -227,10 +227,20 @@ function RebirthSystem.init(deps)
 	-- ============================================
 	-- Funciones de UI
 	-- ============================================
+	-- Colores por rareza
+	local RARITY_COLORS = {
+		["Comun"] = Color3.fromRGB(220, 220, 220),
+		["Incomun"] = Color3.fromRGB(100, 200, 255),
+		["Raro"] = Color3.fromRGB(255, 215, 0),
+		["Epico"] = Color3.fromRGB(255, 80, 80),
+		["Mitico"] = Color3.fromRGB(180, 80, 255),
+	}
+
 	local function updateCountDisplay()
 		local count = brainrotCount
 		local max = 50
 		local rarity = requiredRarity or "?"
+		local rarityColor = RARITY_COLORS[rarity] or Color3.fromRGB(255, 255, 255)
 
 		-- Color del contador: rojo si < 50, verde si >= 50
 		if count >= max then
@@ -240,11 +250,11 @@ function RebirthSystem.init(deps)
 			doRebirthBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 			doRebirthBtn.Text = "🔄 RENACER AHORA"
 		else
-			countLabel.TextColor3 = Color3.fromRGB(255, 200, 100)
+			countLabel.TextColor3 = rarityColor
 			countLabel.Text = count .. " / " .. max .. " brainrots " .. rarity .. " requeridos"
 			doRebirthBtn.BackgroundColor3 = Color3.fromRGB(60, 30, 90)
 			doRebirthBtn.TextColor3 = Color3.fromRGB(150, 150, 150)
-			doRebirthBtn.Text = "NECESITAS 50 BRAINROTS"
+			doRebirthBtn.Text = "NECESITAS 50 BRAINROTS " .. rarity:upper()
 		end
 	end
 
