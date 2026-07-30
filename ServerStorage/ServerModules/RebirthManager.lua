@@ -11,12 +11,24 @@ local Workspace = game:GetService("Workspace")
 local RebirthManager = {}
 
 -- Rareza requerida para cada nivel de renacimiento
+-- IMPORTANTE: los nombres deben coincidir con los que usa CrystalSpawner.lua
+-- El juego guarda rarity = "Blanco", "Azul", "Amarillo", "Rojo", "Morado"
+-- (NO usa "Comun", "Incomun", etc.)
 local REBIRTH_RARITIES = {
-	[1] = "Comun",      -- blanco
-	[2] = "Incomun",    -- azul
-	[3] = "Raro",       -- amarillo
-	[4] = "Epico",      -- rojo
-	[5] = "Mitico",     -- morado
+	[1] = "Blanco",     -- COMUN
+	[2] = "Azul",       -- INCOMUN
+	[3] = "Amarillo",   -- RARO
+	[4] = "Rojo",       -- EPICO
+	[5] = "Morado",     -- MITICO
+}
+
+-- Nombres para mostrar al jugador (mas amigables)
+local REBIRTH_RARITY_DISPLAY = {
+	[1] = "Comun (Blanco)",
+	[2] = "Incomun (Azul)",
+	[3] = "Raro (Amarillo)",
+	[4] = "Epico (Rojo)",
+	[5] = "Mitico (Morado)",
 }
 
 local MAX_REBIRTH = 5
@@ -43,6 +55,12 @@ local REBIRTH_TITLES = {
 -- ============================================
 -- FUNCIONES DE CONSULTA
 -- ============================================
+
+-- Devuelve el nombre para mostrar de la rareza
+function RebirthManager.getRequiredRarityDisplay(rebirthLevel)
+	local nextLevel = (rebirthLevel or 0) + 1
+	return REBIRTH_RARITY_DISPLAY[nextLevel]
+end
 
 -- Devuelve la rareza requerida para el proximo renacimiento
 function RebirthManager.getRequiredRarity(rebirthLevel)
