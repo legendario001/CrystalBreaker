@@ -2664,22 +2664,18 @@ end
 local RebirthRequestEvent = ReplicatedStorage:FindFirstChild("RebirthRequest")
 local RebirthUpdateEvent = ReplicatedStorage:FindFirstChild("RebirthUpdate")
 
--- Helper: obtener personajes serializados de un jugador (para contar rarezas)
+-- Helper: obtener personajes de un jugador (para contar rarezas del rebirth)
+-- Usa la misma estructura que el resto del juego: data.characters[idx] = charData
+-- charData tiene .rarity, .name, .level, etc.
 local function getPlayerCharacters(userId)
         local data = playerData[userId]
         if not data or not data.characters then return {} end
-        -- Flatten la estructura de personajes
         local result = {}
-        local function flatten(charTable)
-                for _, charData in pairs(charTable) do
-                        if charData.rarity then
-                                table.insert(result, charData)
-                        elseif type(charData) == "table" then
-                                flatten(charData)
-                        end
+        for _, charData in pairs(data.characters) do
+                if charData and charData.rarity then
+                        table.insert(result, charData)
                 end
         end
-        flatten(data.characters)
         return result
 end
 
