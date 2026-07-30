@@ -143,11 +143,11 @@ function RebirthSystem.init(deps)
 	levelsLayout.Padding = UDim.new(0, 5)
 
 	local levelInfo = {
-		{rarity = "Comun", color = Color3.fromRGB(220, 220, 220)},
-		{rarity = "Incomun", color = Color3.fromRGB(100, 200, 255)},
-		{rarity = "Raro", color = Color3.fromRGB(255, 215, 0)},
-		{rarity = "Epico", color = Color3.fromRGB(255, 80, 80)},
-		{rarity = "Mitico", color = Color3.fromRGB(180, 80, 255)},
+		{rarity = "Comun (Blanco)", color = Color3.fromRGB(220, 220, 220)},
+		{rarity = "Incomun (Azul)", color = Color3.fromRGB(100, 200, 255)},
+		{rarity = "Raro (Amarillo)", color = Color3.fromRGB(255, 215, 0)},
+		{rarity = "Epico (Rojo)", color = Color3.fromRGB(255, 80, 80)},
+		{rarity = "Mitico (Morado)", color = Color3.fromRGB(180, 80, 255)},
 	}
 
 	for i, info in ipairs(levelInfo) do
@@ -228,33 +228,36 @@ function RebirthSystem.init(deps)
 	-- Funciones de UI
 	-- ============================================
 	-- Colores por rareza
-	local RARITY_COLORS = {
-		["Comun"] = Color3.fromRGB(220, 220, 220),
-		["Incomun"] = Color3.fromRGB(100, 200, 255),
-		["Raro"] = Color3.fromRGB(255, 215, 0),
-		["Epico"] = Color3.fromRGB(255, 80, 80),
-		["Mitico"] = Color3.fromRGB(180, 80, 255),
+	-- Mapeo de nombres reales del juego a nombres amigables y colores
+	local RARITY_INFO = {
+		["Blanco"] = {display = "Comun", color = Color3.fromRGB(220, 220, 220)},
+		["Azul"] = {display = "Incomun", color = Color3.fromRGB(100, 200, 255)},
+		["Amarillo"] = {display = "Raro", color = Color3.fromRGB(255, 215, 0)},
+		["Rojo"] = {display = "Epico", color = Color3.fromRGB(255, 80, 80)},
+		["Morado"] = {display = "Mitico", color = Color3.fromRGB(180, 80, 255)},
 	}
 
 	local function updateCountDisplay()
 		local count = brainrotCount
 		local max = 50
 		local rarity = requiredRarity or "?"
-		local rarityColor = RARITY_COLORS[rarity] or Color3.fromRGB(255, 255, 255)
+		local info = RARITY_INFO[rarity]
+		local displayName = info and info.display or rarity
+		local rarityColor = info and info.color or Color3.fromRGB(255, 255, 255)
 
 		-- Color del contador: rojo si < 50, verde si >= 50
 		if count >= max then
 			countLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
-			countLabel.Text = "✅ " .. count .. " / " .. max .. " brainrots " .. rarity .. " - LISTO PARA RENACER"
+			countLabel.Text = "✅ " .. count .. " / " .. max .. " brainrots " .. displayName .. " (" .. rarity .. ") - LISTO PARA RENACER"
 			doRebirthBtn.BackgroundColor3 = Color3.fromRGB(180, 80, 255)
 			doRebirthBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 			doRebirthBtn.Text = "🔄 RENACER AHORA"
 		else
 			countLabel.TextColor3 = rarityColor
-			countLabel.Text = count .. " / " .. max .. " brainrots " .. rarity .. " requeridos"
+			countLabel.Text = count .. " / " .. max .. " brainrots " .. displayName .. " (" .. rarity .. ") requeridos"
 			doRebirthBtn.BackgroundColor3 = Color3.fromRGB(60, 30, 90)
 			doRebirthBtn.TextColor3 = Color3.fromRGB(150, 150, 150)
-			doRebirthBtn.Text = "NECESITAS 50 BRAINROTS " .. rarity:upper()
+			doRebirthBtn.Text = "NECESITAS 50 BRAINROTS " .. displayName:upper()
 		end
 	end
 
