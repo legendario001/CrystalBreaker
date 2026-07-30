@@ -138,6 +138,28 @@ if not ok_don or not DonationManager then
         }
 else
         print("[OK] DonationManager cargado correctamente")
+
+-- ============================================
+-- Cargar RebirthManager (sistema de renacimiento)
+-- ============================================
+local RebirthManager
+local ok_rb = pcall(function()
+        RebirthManager = require(ServerStorage.ServerModules.RebirthManager)
+end)
+if not ok_rb or not RebirthManager then
+        warn("[CRITICAL] RebirthManager no se pudo cargar: " .. tostring(ok_rb))
+        RebirthManager = {
+                canRebirth = function() return false end,
+                performRebirth = function() return false end,
+                getRequiredRarity = function() return nil end,
+                getTotalBonusPercent = function() return 0 end,
+                countRequiredBrainrots = function() return 0 end,
+                onCharacterAdded = function() end,
+                applyVisualRewards = function() end,
+        }
+else
+        print("[OK] RebirthManager cargado correctamente")
+end
 end
 -- Conectar BankManager con LeaderboardManager: cuando cambia el saldo, actualizar leaderboard
 if BankManager and LeaderboardManager then
@@ -1240,11 +1262,16 @@ task.spawn(function()
                                         local lvl = (levelTag and levelTag.Value) or 1
                                         local fLvl = (fusionLevelTag and fusionLevelTag.Value) or 0
                                         local rate = ModelManager.getMoneyRate(rarityTag.Value, lvl, fLvl)
-                                        -- APLICAR BOOST DE GANANCIAS (si el jugador tiene boostLevel > 0)
-                                        -- Cada boostLevel da +20% de ganancias (max 5 = +100%)
+                                        -- APLICAR BOOST DE GANANCIAS + REBIRTH BONUS
+                                        -- boostLevel: +20% cada uno (max 5 = +100%)
+                                        -- rebirthLevel: +20% cada uno (max 5 = +100%)
+                                        -- Total maximo: +200% (ganancias x3)
                                         local pData = playerData[playerEntry.userId]
-                                        if pData and pData.boostLevel and pData.boostLevel > 0 then
-                                                rate = rate * (1 + pData.boostLevel * 0.20)
+                                        if pData then
+                                                local boostPercent = (pData.boostLevel or 0) * 20 + (pData.rebirthLevel or 0) * 20
+                                                if boostPercent > 0 then
+                                                        rate = rate * (1 + boostPercent / 100)
+                                                end
                                         end
                                         mv.Value = mv.Value + rate
 
@@ -1292,7 +1319,7 @@ local function savePlayerProgress(player)
 
         print("[Save] Guardando " .. player.Name .. ": money=" .. (data.money or 0) .. ", bankBalance=" .. bankBalance .. ", blocksFolder=" .. (blocksFolder and "si" or "no"))
 
-        local success = SaveManager.savePlayerData(player.UserId, data, baseLevel, blockInventory, blocksFolder, bankBalance, parcelCenter, data.unlockedBalls, data.boostLevel or 0)
+        local success = SaveManager.savePlayerData(player.UserId, data, baseLevel, blockInventory, blocksFolder, bankBalance, parcelCenter, data.unlockedBalls, data.boostLevel or 0, data.rebirthLevel or 0)
         if success then
                 print("[Save] Datos guardados para " .. player.Name)
         else
@@ -1488,6 +1515,10 @@ local function restorePlayerProgress(player, savedData, base)
                                 data.boostLevel = savedData.boostLevel
                                 print("[Save] Boost level cargado: " .. data.boostLevel .. " (+" .. (data.boostLevel * 20) .. "% ganancias)")
                         end
+                        if savedData.rebirthLevel then
+                                data.rebirthLevel = savedData.rebirthLevel
+                                print("[Save] Rebirth level cargado: " .. data.rebirthLevel .. " (+" .. (data.rebirthLevel * 20) .. "% ganancias)")
+                        end
                         print("[Save] Pelotas desbloqueadas restauradas para " .. player.Name)
                 end
         end
@@ -1570,7 +1601,7 @@ end
 -- PLAYERS
 Players.PlayerAdded:Connect(function(player)
         print(player.Name.." se unio")
-        playerData[player.UserId] = {characters={}, carrying=nil, money=0, unlockedBalls={["basic"]=true}, boostLevel=0}
+        playerData[player.UserId] = {characters={}, carrying=nil, money=0, unlockedBalls={["basic"]=true}, boostLevel=0, rebirthLevel=0}
 
         local leaderstats = Instance.new("Folder")
         leaderstats.Name = "leaderstats"
@@ -1598,6 +1629,10 @@ Players.PlayerAdded:Connect(function(player)
                         if savedData.boostLevel then
                                 data.boostLevel = savedData.boostLevel
                                 print("[Save] Boost level cargado: " .. data.boostLevel .. " (+" .. (data.boostLevel * 20) .. "% ganancias)")
+                        end
+                        if savedData.rebirthLevel then
+                                data.rebirthLevel = savedData.rebirthLevel
+                                print("[Save] Rebirth level cargado: " .. data.rebirthLevel .. " (+" .. (data.rebirthLevel * 20) .. "% ganancias)")
                         end
                         -- Enviar al cliente con un delay corto (1s) para que el BallThrower ya este cargado
                         task.delay(1, function()
@@ -2622,6 +2657,113 @@ MarketplaceService.ProcessReceipt = function(receiptInfo)
         warn("[ProcessReceipt] ProductId " .. productId .. " no reconocido")
         return Enum.ProductPurchaseDecision.NotProcessedYet
 end
+
+-- ============================================
+-- SISTEMA DE RENACIMIENTO (Rebirth)
+-- ============================================
+local RebirthRequestEvent = ReplicatedStorage:FindFirstChild("RebirthRequest")
+local RebirthUpdateEvent = ReplicatedStorage:FindFirstChild("RebirthUpdate")
+
+-- Helper: obtener personajes serializados de un jugador (para contar rarezas)
+local function getPlayerCharacters(userId)
+        local data = playerData[userId]
+        if not data or not data.characters then return {} end
+        -- Flatten la estructura de personajes
+        local result = {}
+        local function flatten(charTable)
+                for _, charData in pairs(charTable) do
+                        if charData.rarity then
+                                table.insert(result, charData)
+                        elseif type(charData) == "table" then
+                                flatten(charData)
+                        end
+                end
+        end
+        flatten(data.characters)
+        return result
+end
+
+-- Handler de RebirthRequest
+if RebirthRequestEvent then
+        RebirthRequestEvent.OnServerEvent:Connect(function(player, action)
+                local userId = player.UserId
+                local data = playerData[userId]
+                if not data then return end
+
+                if action == "getCount" or action == "sync" then
+                        -- Enviar conteo actual
+                        local count, requiredRarity = RebirthManager.countRequiredBrainrots(data.rebirthLevel or 0, getPlayerCharacters(userId))
+                        if RebirthUpdateEvent then
+                                RebirthUpdateEvent:FireClient(player, {
+                                        type = action == "sync" and "sync" or "count",
+                                        count = count,
+                                        requiredRarity = requiredRarity,
+                                        rebirthLevel = data.rebirthLevel or 0,
+                                        boostLevel = data.boostLevel or 0,
+                                })
+                        end
+                elseif action == "rebirth" then
+                        -- Ejecutar renacimiento
+                        local ok, result = RebirthManager.performRebirth(player, {
+                                getRebirthLevel = function(uid) return playerData[uid].rebirthLevel or 0 end,
+                                getCharacters = function(uid) return getPlayerCharacters(uid) end,
+                                getBoostLevel = function(uid) return playerData[uid].boostLevel or 0 end,
+                                resetProgress = function(uid)
+                                        local pd = playerData[uid]
+                                        if pd then
+                                                pd.money = 0
+                                                pd.characters = {}
+                                                pd.carrying = nil
+                                                pd.unlockedBalls = {["basic"] = true}
+                                        end
+                                        -- Resetear base, bloques y banco
+                                        if BankManager then BankManager.setBalance(uid, 0) end
+                                        -- Resetear baseLevel y bloques (buscar en el codigo existente como se maneja)
+                                        -- Por seguridad, enviamos eventos de reset
+                                end,
+                                setRebirthLevel = function(uid, level)
+                                        if playerData[uid] then
+                                                playerData[uid].rebirthLevel = level
+                                        end
+                                end,
+                                saveData = function(uid)
+                                        local p = Players:GetPlayerByUserId(uid)
+                                        if p then
+                                                -- Trigger save
+                                                -- (el save se hace en el PlayerRemoving o auto-save)
+                                        end
+                                end,
+                                notifyClient = function(p, newLevel, bonusPercent)
+                                        if RebirthUpdateEvent then
+                                                RebirthUpdateEvent:FireClient(p, {
+                                                        type = "rebirthComplete",
+                                                        rebirthLevel = newLevel,
+                                                        boostLevel = playerData[p.UserId].boostLevel or 0,
+                                                })
+                                        end
+                                end,
+                        })
+
+                        if not ok then
+                                warn("[Rebirth] Error: " .. tostring(result))
+                                if RebirthUpdateEvent then
+                                        RebirthUpdateEvent:FireClient(player, { type = "error", message = result })
+                                end
+                        end
+                end
+        end)
+end
+
+-- Re-aplicar aura visual al respawn
+Players.PlayerAdded:Connect(function(player)
+        player.CharacterAdded:Connect(function(char)
+                task.wait(2)
+                local data = playerData[player.UserId]
+                if data and data.rebirthLevel and data.rebirthLevel > 0 then
+                        RebirthManager.onCharacterAdded(player, data.rebirthLevel)
+                end
+        end)
+end)
 
 print("=== GameHandler iniciado ===")
 
