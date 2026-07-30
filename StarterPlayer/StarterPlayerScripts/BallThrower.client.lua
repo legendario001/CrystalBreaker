@@ -2701,6 +2701,21 @@ else
         warn("[Shop] No se pudo cargar ShopSystem ModuleScript")
 end
 
+-- ============================================
+-- SISTEMA DE RENACIMIENTO (ModuleScript RebirthSystem)
+-- ============================================
+local RebirthSystem = require(script.Parent:WaitForChild("RebirthSystem", 10))
+if RebirthSystem then
+        RebirthSystem.init({
+                player = player,
+                screenGui = screenGui,
+                ReplicatedStorage = ReplicatedStorage,
+        })
+        print("Sistema de renacimiento cargado!")
+else
+        warn("[Rebirth] No se pudo cargar RebirthSystem ModuleScript")
+end
+
 
 
 
