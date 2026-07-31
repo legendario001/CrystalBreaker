@@ -2715,6 +2715,50 @@ if RebirthRequestEvent then
                                                 pd.unlockedBalls = {["basic"] = true}
                                         end
                                         if BankManager then BankManager.setBalance(uid, 0) end
+                                        -- Limpiar pedestales visualmente (borrar brainrots colocados)
+                                        local base = BaseManager.getBase(uid)
+                                        if base then
+                                                -- Piso 1
+                                                local floor1Peds = base:FindFirstChild("Pedestals")
+                                                if floor1Peds then
+                                                        for _, ped in ipairs(floor1Peds:GetChildren()) do
+                                                                -- Remover MoneyPile
+                                                                local mp = ped:FindFirstChild("MoneyPile")
+                                                                if mp then mp:Destroy() end
+                                                                -- Remover labels, botones de mejora, etc
+                                                                for _, child in ipairs(ped:GetChildren()) do
+                                                                        if child.Name ~= "Name" and child.Name ~= "Top" and child.Name ~= "Bottom" then
+                                                                                if child:IsA("BillboardGui") or child:IsA("SurfaceGui") or child:IsA("ClickDetector") or child:IsA("ProximityPrompt") or child:IsA("Model") or child:IsA("Part") then
+                                                                                        child:Destroy()
+                                                                                end
+                                                                        end
+                                                                end
+                                                                -- Quitar atributo de personaje colocado
+                                                                ped:SetAttribute("CharacterName", nil)
+                                                        end
+                                                end
+                                                -- Pisos 2-5
+                                                for floorNum = 2, 5 do
+                                                        local floor = base:FindFirstChild("Floor" .. floorNum)
+                                                        if floor then
+                                                                local peds = floor:FindFirstChild("Pedestals" .. floorNum)
+                                                                if peds then
+                                                                        for _, ped in ipairs(peds:GetChildren()) do
+                                                                                local mp = ped:FindFirstChild("MoneyPile")
+                                                                                if mp then mp:Destroy() end
+                                                                                for _, child in ipairs(ped:GetChildren()) do
+                                                                                        if child.Name ~= "Name" and child.Name ~= "Top" and child.Name ~= "Bottom" then
+                                                                                                if child:IsA("BillboardGui") or child:IsA("SurfaceGui") or child:IsA("ClickDetector") or child:IsA("ProximityPrompt") or child:IsA("Model") or child:IsA("Part") then
+                                                                                                        child:Destroy()
+                                                                                                end
+                                                                                        end
+                                                                                end
+                                                                                ped:SetAttribute("CharacterName", nil)
+                                                                        end
+                                                                end
+                                                        end
+                                                end
+                                        end
                                 end,
                                 setRebirthLevel = function(uid, level)
                                         if playerData[uid] then playerData[uid].rebirthLevel = level end
