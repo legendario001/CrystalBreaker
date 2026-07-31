@@ -2238,6 +2238,8 @@ local MUSIC_LIST = {
         { name = "Mystical Harp",       soundId = "rbxassetid://110289082772686" },
         { name = "Tibetanos",           soundId = "rbxassetid://94670025666551" },
         { name = "Relaxing Game Loop",  soundId = "rbxassetid://84498576072067" },
+        { name = "Dopamine Clouds",     soundId = "rbxassetid://106277573951242" },
+        { name = "Whimsical Nap Time",  soundId = "rbxassetid://82945720216985" },
 }
 
 local MUSIC_ICON = "rbxassetid://980810848"
