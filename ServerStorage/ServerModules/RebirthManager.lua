@@ -136,36 +136,107 @@ function RebirthManager.applyVisualRewards(player, rebirthLevel)
 	if not char then return end
 	local hrp = char:FindFirstChild("HumanoidRootPart")
 	if not hrp then return end
+	local root = char:FindFirstChild("HumanoidRootPart")
+	local torso = char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
 
 	-- Eliminar aura anterior si existe
-	local oldAura = hrp:FindFirstChild("RebirthAura")
+	local oldAura = hrp:FindFirstChild("RebirthAuraAttachment")
 	if oldAura then oldAura:Destroy() end
-
 	local oldTitle = char:FindFirstChild("RebirthTitle")
 	if oldTitle then oldTitle:Destroy() end
 
-	-- Crear nueva aura
 	local auraColor = AURA_COLORS[level] or Color3.fromRGB(255, 255, 255)
+
+	-- ============================================
+	-- AURA ESTILO SUPER SAIYAYIN
+	-- ============================================
+	-- 3 capas de particulas para efecto espectacular:
+	-- 1. Aura base (vertical, densa, alrededor del cuerpo)
+	-- 2. Chispas electricas (pequenas, rapidas, hacia arriba)
+	-- 3. Destellos brillantes (estrellas que aparecen y desaparecen)
+
 	local attachment = Instance.new("Attachment")
 	attachment.Name = "RebirthAuraAttachment"
 	attachment.Parent = hrp
 
-	local emitter = Instance.new("ParticleEmitter")
-	emitter.Name = "RebirthAura"
-	emitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
-	emitter.Color = ColorSequence.new(auraColor)
-	emitter.Size = NumberSequence.new(0.5, 1.2)
-	emitter.Lifetime = NumberRange.new(0.5, 1.0)
-	emitter.Rate = 15
-	emitter.Speed = NumberRange.new(1, 2)
-	emitter.SpreadAngle = Vector2.new(180, 180)
-	emitter.Parent = attachment
+	-- 1. Aura base (vertical, como flamas de ki)
+	local auraEmitter = Instance.new("ParticleEmitter")
+	auraEmitter.Name = "RebirthAuraBase"
+	auraEmitter.Texture = "rbxasset://textures/particles/fire_base.dds"
+	auraEmitter.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, auraColor),
+		ColorSequenceKeypoint.new(0.5, auraColor),
+		ColorSequenceKeypoint.new(1, Color3.new(1, 1, 1)),
+	})
+	auraEmitter.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1.5),
+		NumberSequenceKeypoint.new(0.5, 2.5),
+		NumberSequenceKeypoint.new(1, 0),
+	})
+	auraEmitter.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.3),
+		NumberSequenceKeypoint.new(0.5, 0.5),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	auraEmitter.Lifetime = NumberRange.new(0.4, 0.7)
+	auraEmitter.Rate = 40
+	auraEmitter.Speed = NumberRange.new(3, 5)
+	auraEmitter.SpreadAngle = Vector2.new(15, 15)
+	auraEmitter.Rotation = NumberRange.new(0, 360)
+	auraEmitter.RotSpeed = NumberRange.new(-180, 180)
+	auraEmitter.Acceleration = Vector3.new(0, 8, 0)  -- sube hacia arriba
+	auraEmitter.LightEmission = 0.8
+	auraEmitter.Parent = attachment
+
+	-- 2. Chispas electricas
+	local sparkEmitter = Instance.new("ParticleEmitter")
+	sparkEmitter.Name = "RebirthSparks"
+	sparkEmitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	sparkEmitter.Color = ColorSequence.new(Color3.new(1, 1, 1))
+	sparkEmitter.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.3),
+		NumberSequenceKeypoint.new(1, 0),
+	})
+	sparkEmitter.Transparency = NumberSequence.new(0.2)
+	sparkEmitter.Lifetime = NumberRange.new(0.15, 0.3)
+	sparkEmitter.Rate = 30
+	sparkEmitter.Speed = NumberRange.new(5, 10)
+	sparkEmitter.SpreadAngle = Vector2.new(180, 180)
+	sparkEmitter.Acceleration = Vector3.new(0, 5, 0)
+	sparkEmitter.LightEmission = 1
+	sparkEmitter.Parent = attachment
+
+	-- 3. Destellos brillantes (estrellas)
+	local glowEmitter = Instance.new("ParticleEmitter")
+	glowEmitter.Name = "RebirthGlow"
+	glowEmitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	glowEmitter.Color = ColorSequence.new(auraColor)
+	glowEmitter.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1.5),
+		NumberSequenceKeypoint.new(0.5, 2),
+		NumberSequenceKeypoint.new(1, 0),
+	})
+	glowEmitter.Transparency = NumberSequence.new(0)
+	glowEmitter.Lifetime = NumberRange.new(0.5, 1.0)
+	glowEmitter.Rate = 8
+	glowEmitter.Speed = NumberRange.new(0, 1)
+	glowEmitter.SpreadAngle = Vector2.new(360, 360)
+	glowEmitter.LightEmission = 1
+	glowEmitter.Parent = attachment
+
+	-- 4. PointLight para iluminar al personaje
+	local light = Instance.new("PointLight")
+	light.Name = "RebirthLight"
+	light.Color = auraColor
+	light.Range = 12
+	light.Brightness = 3
+	light.Parent = hrp
 
 	-- Crear titulo sobre la cabeza
 	local titleGui = Instance.new("BillboardGui")
 	titleGui.Name = "RebirthTitle"
-	titleGui.Size = UDim2.new(0, 200, 0, 40)
-	titleGui.StudsOffset = Vector3.new(0, 3, 0)
+	titleGui.Size = UDim2.new(0, 250, 0, 50)
+	titleGui.StudsOffset = Vector3.new(0, 3.5, 0)
 	titleGui.AlwaysOnTop = true
 	titleGui.Parent = char
 
@@ -176,7 +247,8 @@ function RebirthManager.applyVisualRewards(player, rebirthLevel)
 	titleLabel.TextColor3 = auraColor
 	titleLabel.TextScaled = true
 	titleLabel.Font = Enum.Font.GothamBlack
-	titleLabel.TextStrokeTransparency = 0.3
+	titleLabel.TextStrokeTransparency = 0
+	titleLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
 	titleLabel.Parent = titleGui
 end
 
