@@ -136,107 +136,155 @@ function RebirthManager.applyVisualRewards(player, rebirthLevel)
 	if not char then return end
 	local hrp = char:FindFirstChild("HumanoidRootPart")
 	if not hrp then return end
-	local root = char:FindFirstChild("HumanoidRootPart")
-	local torso = char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
 
-	-- Eliminar aura anterior si existe
-	local oldAura = hrp:FindFirstChild("RebirthAuraAttachment")
-	if oldAura then oldAura:Destroy() end
+	-- Limpiar auras anteriores
+	for _, part in ipairs(char:GetDescendants()) do
+		if part.Name == "RebirthAuraAttachment" or part.Name == "RebirthTitle" or part.Name == "RebirthLight" then
+			part:Destroy()
+		end
+	end
+	local oldAtt = hrp:FindFirstChild("RebirthAuraAttachment")
+	if oldAtt then oldAtt:Destroy() end
 	local oldTitle = char:FindFirstChild("RebirthTitle")
 	if oldTitle then oldTitle:Destroy() end
 
 	local auraColor = AURA_COLORS[level] or Color3.fromRGB(255, 255, 255)
+	local isMaxLevel = level >= 5
 
 	-- ============================================
-	-- AURA ESTILO SUPER SAIYAYIN
+	-- AURA ULTRA ESPECTACULAR (5 capas + luz)
 	-- ============================================
-	-- 3 capas de particulas para efecto espectacular:
-	-- 1. Aura base (vertical, densa, alrededor del cuerpo)
-	-- 2. Chispas electricas (pequenas, rapidas, hacia arriba)
-	-- 3. Destellos brillantes (estrellas que aparecen y desaparecen)
 
 	local attachment = Instance.new("Attachment")
 	attachment.Name = "RebirthAuraAttachment"
 	attachment.Parent = hrp
 
-	-- 1. Aura base (vertical, como flamas de ki)
-	local auraEmitter = Instance.new("ParticleEmitter")
-	auraEmitter.Name = "RebirthAuraBase"
-	auraEmitter.Texture = "rbxasset://textures/particles/fire_base.dds"
-	auraEmitter.Color = ColorSequence.new({
+	-- 1. LLAMARADA PRINCIPAL (ki flame subiendo)
+	local flameEmitter = Instance.new("ParticleEmitter")
+	flameEmitter.Name = "RebirthFlame"
+	flameEmitter.Texture = "rbxasset://textures/particles/fire_base.dds"
+	flameEmitter.Color = ColorSequence.new({
 		ColorSequenceKeypoint.new(0, auraColor),
-		ColorSequenceKeypoint.new(0.5, auraColor),
+		ColorSequenceKeypoint.new(0.3, auraColor),
+		ColorSequenceKeypoint.new(0.7, Color3.new(1, 1, 1)),
 		ColorSequenceKeypoint.new(1, Color3.new(1, 1, 1)),
 	})
-	auraEmitter.Size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 1.5),
-		NumberSequenceKeypoint.new(0.5, 2.5),
+	flameEmitter.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, isMaxLevel and 4 or 3),
+		NumberSequenceKeypoint.new(0.4, isMaxLevel and 5 or 3.5),
 		NumberSequenceKeypoint.new(1, 0),
 	})
-	auraEmitter.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.3),
-		NumberSequenceKeypoint.new(0.5, 0.5),
+	flameEmitter.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.1),
+		NumberSequenceKeypoint.new(0.5, 0.3),
 		NumberSequenceKeypoint.new(1, 1),
 	})
-	auraEmitter.Lifetime = NumberRange.new(0.4, 0.7)
-	auraEmitter.Rate = 40
-	auraEmitter.Speed = NumberRange.new(3, 5)
-	auraEmitter.SpreadAngle = Vector2.new(15, 15)
-	auraEmitter.Rotation = NumberRange.new(0, 360)
-	auraEmitter.RotSpeed = NumberRange.new(-180, 180)
-	auraEmitter.Acceleration = Vector3.new(0, 8, 0)  -- sube hacia arriba
-	auraEmitter.LightEmission = 0.8
-	auraEmitter.Parent = attachment
+	flameEmitter.Lifetime = NumberRange.new(0.3, 0.5)
+	flameEmitter.Rate = isMaxLevel and 80 or 60
+	flameEmitter.Speed = NumberRange.new(4, 7)
+	flameEmitter.SpreadAngle = Vector2.new(10, 10)
+	flameEmitter.Rotation = NumberRange.new(0, 360)
+	flameEmitter.RotSpeed = NumberRange.new(-360, 360)
+	flameEmitter.Acceleration = Vector3.new(0, 12, 0)
+	flameEmitter.LightEmission = 1
+	flameEmitter.LightInfluence = 0
+	flameEmitter.Parent = attachment
 
-	-- 2. Chispas electricas
-	local sparkEmitter = Instance.new("ParticleEmitter")
-	sparkEmitter.Name = "RebirthSparks"
-	sparkEmitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
-	sparkEmitter.Color = ColorSequence.new(Color3.new(1, 1, 1))
-	sparkEmitter.Size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.3),
+	-- 2. RAYOS ELECTRICOS (chispas violentas en todas direcciones)
+	local electricEmitter = Instance.new("ParticleEmitter")
+	electricEmitter.Name = "RebirthElectric"
+	electricEmitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	electricEmitter.Color = ColorSequence.new(Color3.new(1, 1, 1))
+	electricEmitter.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.5),
 		NumberSequenceKeypoint.new(1, 0),
 	})
-	sparkEmitter.Transparency = NumberSequence.new(0.2)
-	sparkEmitter.Lifetime = NumberRange.new(0.15, 0.3)
-	sparkEmitter.Rate = 30
-	sparkEmitter.Speed = NumberRange.new(5, 10)
-	sparkEmitter.SpreadAngle = Vector2.new(180, 180)
-	sparkEmitter.Acceleration = Vector3.new(0, 5, 0)
-	sparkEmitter.LightEmission = 1
-	sparkEmitter.Parent = attachment
+	electricEmitter.Transparency = NumberSequence.new(0)
+	electricEmitter.Lifetime = NumberRange.new(0.1, 0.2)
+	electricEmitter.Rate = isMaxLevel and 60 or 40
+	electricEmitter.Speed = NumberRange.new(8, 15)
+	electricEmitter.SpreadAngle = Vector2.new(360, 360)
+	electricEmitter.Acceleration = Vector3.new(0, 8, 0)
+	electricEmitter.LightEmission = 1
+	electricEmitter.LightInfluence = 0
+	electricEmitter.Parent = attachment
 
-	-- 3. Destellos brillantes (estrellas)
-	local glowEmitter = Instance.new("ParticleEmitter")
-	glowEmitter.Name = "RebirthGlow"
-	glowEmitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
-	glowEmitter.Color = ColorSequence.new(auraColor)
-	glowEmitter.Size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 1.5),
-		NumberSequenceKeypoint.new(0.5, 2),
+	-- 3. ANILLO DE ENERGIA (particulas que orbitan)
+	local ringEmitter = Instance.new("ParticleEmitter")
+	ringEmitter.Name = "RebirthRing"
+	ringEmitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	ringEmitter.Color = ColorSequence.new(auraColor)
+	ringEmitter.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, isMaxLevel and 3 or 2),
 		NumberSequenceKeypoint.new(1, 0),
 	})
-	glowEmitter.Transparency = NumberSequence.new(0)
-	glowEmitter.Lifetime = NumberRange.new(0.5, 1.0)
-	glowEmitter.Rate = 8
-	glowEmitter.Speed = NumberRange.new(0, 1)
-	glowEmitter.SpreadAngle = Vector2.new(360, 360)
-	glowEmitter.LightEmission = 1
-	glowEmitter.Parent = attachment
+	ringEmitter.Transparency = NumberSequence.new(0.2)
+	ringEmitter.Lifetime = NumberRange.new(0.8, 1.2)
+	ringEmitter.Rate = isMaxLevel and 20 or 15
+	ringEmitter.Speed = NumberRange.new(2, 4)
+	ringEmitter.SpreadAngle = Vector2.new(180, 0)
+	ringEmitter.Rotation = NumberRange.new(0, 360)
+	ringEmitter.RotSpeed = NumberRange.new(180, 360)
+	ringEmitter.LightEmission = 1
+	ringEmitter.Parent = attachment
 
-	-- 4. PointLight para iluminar al personaje
-	local light = Instance.new("PointLight")
-	light.Name = "RebirthLight"
-	light.Color = auraColor
-	light.Range = 12
-	light.Brightness = 3
-	light.Parent = hrp
+	-- 4. EXPLOSIONES DE DESTELLOS (estrellas grandes que aparecen y desaparecen)
+	local starEmitter = Instance.new("ParticleEmitter")
+	starEmitter.Name = "RebirthStars"
+	starEmitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	starEmitter.Color = ColorSequence.new(auraColor)
+	starEmitter.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0),
+		NumberSequenceKeypoint.new(0.2, isMaxLevel and 4 or 3),
+		NumberSequenceKeypoint.new(0.8, isMaxLevel and 3 or 2),
+		NumberSequenceKeypoint.new(1, 0),
+	})
+	starEmitter.Transparency = NumberSequence.new(0)
+	starEmitter.Lifetime = NumberRange.new(1, 1.5)
+	starEmitter.Rate = isMaxLevel and 12 or 8
+	starEmitter.Speed = NumberRange.new(0, 1)
+	starEmitter.SpreadAngle = Vector2.new(360, 360)
+	starEmitter.LightEmission = 1
+	starEmitter.Parent = attachment
 
-	-- Crear titulo sobre la cabeza
+	-- 5. HUMO/NEBLINA DE ENERGIA (base del aura)
+	local smokeEmitter = Instance.new("ParticleEmitter")
+	smokeEmitter.Name = "RebirthSmoke"
+	smokeEmitter.Texture = "rbxasset://textures/particles/smoke_main.dds"
+	smokeEmitter.Color = ColorSequence.new(auraColor)
+	smokeEmitter.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 2),
+		NumberSequenceKeypoint.new(1, 5),
+	})
+	smokeEmitter.Transparency = NumberSequence.new(0.6)
+	smokeEmitter.Lifetime = NumberRange.new(1, 1.5)
+	smokeEmitter.Rate = isMaxLevel and 15 or 10
+	smokeEmitter.Speed = NumberRange.new(1, 2)
+	smokeEmitter.SpreadAngle = Vector2.new(45, 45)
+	smokeEmitter.Acceleration = Vector3.new(0, 3, 0)
+	smokeEmitter.LightEmission = 0.5
+	smokeEmitter.Parent = attachment
+
+	-- 6. DOBLES LUCES (para mas efecto)
+	local light1 = Instance.new("PointLight")
+	light1.Name = "RebirthLight"
+	light1.Color = auraColor
+	light1.Range = isMaxLevel and 20 or 15
+	light1.Brightness = isMaxLevel and 5 or 4
+	light1.Parent = hrp
+
+	local light2 = Instance.new("PointLight")
+	light2.Name = "RebirthLight2"
+	light2.Color = Color3.new(1, 1, 1)
+	light2.Range = isMaxLevel and 10 or 8
+	light2.Brightness = 3
+	light2.Parent = hrp
+
+	-- TITULO GIGANTE sobre la cabeza
 	local titleGui = Instance.new("BillboardGui")
 	titleGui.Name = "RebirthTitle"
-	titleGui.Size = UDim2.new(0, 250, 0, 50)
-	titleGui.StudsOffset = Vector3.new(0, 3.5, 0)
+	titleGui.Size = UDim2.new(0, isMaxLevel and 350 or 280, 0, isMaxLevel and 70 or 55)
+	titleGui.StudsOffset = Vector3.new(0, 4, 0)
 	titleGui.AlwaysOnTop = true
 	titleGui.Parent = char
 
