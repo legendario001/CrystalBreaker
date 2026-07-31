@@ -144,9 +144,35 @@ else
 -- ============================================
 local RebirthManager
 local ok_rb, err_rb = pcall(function()
-        local mod = ServerStorage.ServerModules:WaitForChild("RebirthManager", 10)
+        -- Buscar el modulo por nombre (puede llamarse "RebirthManager" o "RebirthManager.lua")
+        local modules = ServerStorage:FindFirstChild("ServerModules")
+        if not modules then
+                warn("[Rebirth] No se encontro ServerStorage/ServerModules")
+                return
+        end
+        -- Buscar por nombre exacto o con extension
+        local mod = modules:FindFirstChild("RebirthManager")
+        if not mod then
+                mod = modules:FindFirstChild("RebirthManager.lua")
+        end
+        -- Si no se encuentra por nombre, buscar todos los ModuleScripts
+        if not mod then
+                for _, child in ipairs(modules:GetChildren()) do
+                        if child:IsA("ModuleScript") and string.find(string.lower(child.Name), "rebirth") then
+                                mod = child
+                                break
+                        end
+                end
+        end
         if mod then
+                print("[Rebirth] Modulo encontrado: " .. mod.Name .. " (tipo: " .. mod.ClassName .. ")")
                 RebirthManager = require(mod)
+        else
+                warn("[Rebirth] No se encontro ningun modulo con 'rebirth' en el nombre")
+                -- Listar todos los hijos para debug
+                for _, child in ipairs(modules:GetChildren()) do
+                        print("[Rebirth] ServerModules tiene: " .. child.Name .. " (" .. child.ClassName .. ")")
+                end
         end
 end)
 if not ok_rb or not RebirthManager then
