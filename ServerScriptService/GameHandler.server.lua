@@ -163,7 +163,6 @@ if not ok_rb or not RebirthManager then
 else
         print("[OK] RebirthManager cargado correctamente")
 end
-end
 -- Conectar BankManager con LeaderboardManager: cuando cambia el saldo, actualizar leaderboard
 if BankManager and LeaderboardManager then
         BankManager.onBalanceChanged = function(userId, newBalance)
@@ -1265,10 +1264,8 @@ task.spawn(function()
                                         local lvl = (levelTag and levelTag.Value) or 1
                                         local fLvl = (fusionLevelTag and fusionLevelTag.Value) or 0
                                         local rate = ModelManager.getMoneyRate(rarityTag.Value, lvl, fLvl)
-                                        -- APLICAR BOOST DE GANANCIAS + REBIRTH BONUS
-                                        -- boostLevel: +20% cada uno (max 5 = +100%)
-                                        -- rebirthLevel: +20% cada uno (max 5 = +100%)
-                                        -- Total maximo: +200% (ganancias x3)
+                                        -- APLICAR BOOST DE GANANCIAS (si el jugador tiene boostLevel > 0)
+                                        -- Cada boostLevel da +20% de ganancias (max 5 = +100%)
                                         local pData = playerData[playerEntry.userId]
                                         if pData then
                                                 local boostPercent = (pData.boostLevel or 0) * 20 + (pData.rebirthLevel or 0) * 20
@@ -1604,7 +1601,7 @@ end
 -- PLAYERS
 Players.PlayerAdded:Connect(function(player)
         print(player.Name.." se unio")
-        playerData[player.UserId] = {characters={}, carrying=nil, money=0, unlockedBalls={["basic"]=true}, boostLevel=0, rebirthLevel=0}
+        playerData[player.UserId] = {characters={}, carrying=nil, money=0, unlockedBalls={["basic"]=true}, boostLevel=0}
 
         local leaderstats = Instance.new("Folder")
         leaderstats.Name = "leaderstats"
@@ -2667,39 +2664,15 @@ end
 local RebirthRequestEvent = ReplicatedStorage:FindFirstChild("RebirthRequest")
 local RebirthUpdateEvent = ReplicatedStorage:FindFirstChild("RebirthUpdate")
 
--- Helper: obtener personajes de un jugador (para contar rarezas del rebirth)
--- Usa la misma estructura que el resto del juego: data.characters[idx] = charData
--- charData tiene .rarity, .name, .level, etc.
+-- Helper: obtener personajes de un jugador
 local function getPlayerCharacters(userId)
         local data = playerData[userId]
-        if not data then
-                print("[Rebirth DEBUG] getPlayerCharacters: no data for userId " .. tostring(userId))
-                return {}
-        end
-        if not data.characters then
-                print("[Rebirth DEBUG] getPlayerCharacters: no data.characters for userId " .. tostring(userId))
-                return {}
-        end
+        if not data or not data.characters then return {} end
         local result = {}
-        local count = 0
         for _, charData in pairs(data.characters) do
-                count = count + 1
                 if charData and charData.rarity then
                         table.insert(result, charData)
                 end
-        end
-        print("[Rebirth DEBUG] getPlayerCharacters: " .. count .. " characters found, " .. #result .. " with rarity")
-        if #result > 0 then
-                local rarities = {}
-                for _, c in ipairs(result) do
-                        local r = c.rarity or "unknown"
-                        rarities[r] = (rarities[r] or 0) + 1
-                end
-                local rarityStr = ""
-                for r, n in pairs(rarities) do
-                        rarityStr = rarityStr .. r .. "=" .. n .. " "
-                end
-                print("[Rebirth DEBUG] Rarities: " .. rarityStr)
         end
         return result
 end
@@ -2712,16 +2685,12 @@ if RebirthRequestEvent then
                 if not data then return end
 
                 if action == "getCount" or action == "sync" then
-                        -- Enviar conteo actual
                         local chars = getPlayerCharacters(userId)
                         local count = 0
                         local requiredRarity = "Blanco"
                         if RebirthManager and RebirthManager.countRequiredBrainrots then
                                 count, requiredRarity = RebirthManager.countRequiredBrainrots(data.rebirthLevel or 0, chars)
-                        else
-                                warn("[Rebirth] RebirthManager no disponible, usando fallback")
                         end
-                        print("[Rebirth DEBUG] getCount: rebirthLevel=" .. tostring(data.rebirthLevel) .. " count=" .. count .. " requiredRarity=" .. tostring(requiredRarity))
                         if RebirthUpdateEvent then
                                 RebirthUpdateEvent:FireClient(player, {
                                         type = action == "sync" and "sync" or "count",
@@ -2732,14 +2701,7 @@ if RebirthRequestEvent then
                                 })
                         end
                 elseif action == "rebirth" then
-                        -- Ejecutar renacimiento
-                        if not RebirthManager or not RebirthManager.performRebirth then
-                                warn("[Rebirth] RebirthManager no disponible")
-                                if RebirthUpdateEvent then
-                                        RebirthUpdateEvent:FireClient(player, { type = "error", message = "Modulo no cargado" })
-                                end
-                                return
-                        end
+                        if not RebirthManager or not RebirthManager.performRebirth then return end
                         local ok, result = RebirthManager.performRebirth(player, {
                                 getRebirthLevel = function(uid) return playerData[uid].rebirthLevel or 0 end,
                                 getCharacters = function(uid) return getPlayerCharacters(uid) end,
@@ -2752,23 +2714,12 @@ if RebirthRequestEvent then
                                                 pd.carrying = nil
                                                 pd.unlockedBalls = {["basic"] = true}
                                         end
-                                        -- Resetear base, bloques y banco
                                         if BankManager then BankManager.setBalance(uid, 0) end
-                                        -- Resetear baseLevel y bloques (buscar en el codigo existente como se maneja)
-                                        -- Por seguridad, enviamos eventos de reset
                                 end,
                                 setRebirthLevel = function(uid, level)
-                                        if playerData[uid] then
-                                                playerData[uid].rebirthLevel = level
-                                        end
+                                        if playerData[uid] then playerData[uid].rebirthLevel = level end
                                 end,
-                                saveData = function(uid)
-                                        local p = Players:GetPlayerByUserId(uid)
-                                        if p then
-                                                -- Trigger save
-                                                -- (el save se hace en el PlayerRemoving o auto-save)
-                                        end
-                                end,
+                                saveData = function(uid) end,
                                 notifyClient = function(p, newLevel, bonusPercent)
                                         if RebirthUpdateEvent then
                                                 RebirthUpdateEvent:FireClient(p, {
@@ -2779,7 +2730,6 @@ if RebirthRequestEvent then
                                         end
                                 end,
                         })
-
                         if not ok then
                                 warn("[Rebirth] Error: " .. tostring(result))
                                 if RebirthUpdateEvent then
@@ -2790,13 +2740,15 @@ if RebirthRequestEvent then
         end)
 end
 
--- Re-aplicar aura visual al respawn
+-- Re-aplicar aura al respawn
 Players.PlayerAdded:Connect(function(player)
         player.CharacterAdded:Connect(function(char)
                 task.wait(2)
                 local data = playerData[player.UserId]
                 if data and data.rebirthLevel and data.rebirthLevel > 0 then
-                        RebirthManager.onCharacterAdded(player, data.rebirthLevel)
+                        if RebirthManager and RebirthManager.onCharacterAdded then
+                                RebirthManager.onCharacterAdded(player, data.rebirthLevel)
+                        end
                 end
         end)
 end)
