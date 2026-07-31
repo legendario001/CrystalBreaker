@@ -143,40 +143,15 @@ else
 -- Cargar RebirthManager (sistema de renacimiento)
 -- ============================================
 local RebirthManager
+-- Usar WaitForChild SIN timeout para garantizar que el modulo se encuentre
+-- Si el modulo no existe, esto bloqueara el script, pero es mejor que fallback
 local ok_rb, err_rb = pcall(function()
-        -- Buscar el modulo por nombre (puede llamarse "RebirthManager" o "RebirthManager.lua")
-        local modules = ServerStorage:FindFirstChild("ServerModules")
-        if not modules then
-                warn("[Rebirth] No se encontro ServerStorage/ServerModules")
-                return
-        end
-        -- Buscar por nombre exacto o con extension
-        local mod = modules:FindFirstChild("RebirthManager")
-        if not mod then
-                mod = modules:FindFirstChild("RebirthManager.lua")
-        end
-        -- Si no se encuentra por nombre, buscar todos los ModuleScripts
-        if not mod then
-                for _, child in ipairs(modules:GetChildren()) do
-                        if child:IsA("ModuleScript") and string.find(string.lower(child.Name), "rebirth") then
-                                mod = child
-                                break
-                        end
-                end
-        end
-        if mod then
-                print("[Rebirth] Modulo encontrado: " .. mod.Name .. " (tipo: " .. mod.ClassName .. ")")
-                RebirthManager = require(mod)
-        else
-                warn("[Rebirth] No se encontro ningun modulo con 'rebirth' en el nombre")
-                -- Listar todos los hijos para debug
-                for _, child in ipairs(modules:GetChildren()) do
-                        print("[Rebirth] ServerModules tiene: " .. child.Name .. " (" .. child.ClassName .. ")")
-                end
-        end
+        local mod = ServerStorage.ServerModules:WaitForChild("RebirthManager")
+        RebirthManager = require(mod)
 end)
 if not ok_rb or not RebirthManager then
         warn("[CRITICAL] RebirthManager no se pudo cargar: " .. tostring(err_rb))
+        warn("[Rebirth] Asegurate de que existe un ModuleScript llamado 'RebirthManager' en ServerStorage/ServerModules/")
         -- Fallback con todas las funciones necesarias
         RebirthManager = {
                 canRebirth = function() return false, 0, nil end,
