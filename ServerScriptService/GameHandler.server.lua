@@ -1601,7 +1601,7 @@ end
 -- PLAYERS
 Players.PlayerAdded:Connect(function(player)
         print(player.Name.." se unio")
-        playerData[player.UserId] = {characters={}, carrying=nil, money=0, unlockedBalls={["basic"]=true}, boostLevel=0}
+        playerData[player.UserId] = {characters={}, carrying=nil, money=0, unlockedBalls={["basic"]=true}, boostLevel=0, rebirthLevel=0}
 
         local leaderstats = Instance.new("Folder")
         leaderstats.Name = "leaderstats"
