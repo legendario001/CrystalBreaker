@@ -344,11 +344,22 @@ function RebirthSystem.init(deps)
 		end)
 	end
 
-	-- Pedir sincronizacion al entrar
+	-- Pedir sincronizacion al entrar + polling continuo
+	-- El cliente pide el conteo cada 3s para que se actualice en tiempo real
+	-- cuando el jugador coloca brainrots en los pedestales
 	task.spawn(function()
 		task.wait(3)
 		if RebirthRequest then
 			RebirthRequest:FireServer("sync")
+		end
+		-- Polling cada 3s mientras el panel este abierto
+		while true do
+			task.wait(3)
+			if rebirthPanel.Visible then
+				if RebirthRequest then
+					RebirthRequest:FireServer("getCount")
+				end
+			end
 		end
 	end)
 
