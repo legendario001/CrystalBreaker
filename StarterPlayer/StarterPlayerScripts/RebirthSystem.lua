@@ -28,7 +28,7 @@ function RebirthSystem.init(deps)
 	local bonusLabel = Instance.new("TextLabel")
 	bonusLabel.Name = "RebirthBonusLabel"
 	bonusLabel.Size = UDim2.new(0, 200, 0, 40)
-	bonusLabel.Position = UDim2.new(1, -220, 0, 20)  -- esquina superior derecha
+	bonusLabel.Position = UDim2.new(1, -220, 0, 80)  -- debajo del contador de dinero
 	bonusLabel.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
 	bonusLabel.BackgroundTransparency = 0.3
 	bonusLabel.BorderSizePixel = 0
