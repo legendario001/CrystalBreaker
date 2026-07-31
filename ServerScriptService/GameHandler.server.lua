@@ -143,17 +143,22 @@ else
 -- Cargar RebirthManager (sistema de renacimiento)
 -- ============================================
 local RebirthManager
-local ok_rb = pcall(function()
-        RebirthManager = require(ServerStorage.ServerModules.RebirthManager)
+local ok_rb, err_rb = pcall(function()
+        local mod = ServerStorage.ServerModules:WaitForChild("RebirthManager", 10)
+        if mod then
+                RebirthManager = require(mod)
+        end
 end)
 if not ok_rb or not RebirthManager then
-        warn("[CRITICAL] RebirthManager no se pudo cargar: " .. tostring(ok_rb))
+        warn("[CRITICAL] RebirthManager no se pudo cargar: " .. tostring(err_rb))
+        -- Fallback con todas las funciones necesarias
         RebirthManager = {
-                canRebirth = function() return false end,
-                performRebirth = function() return false end,
-                getRequiredRarity = function() return nil end,
+                canRebirth = function() return false, 0, nil end,
+                performRebirth = function() return false, "modulo no cargado" end,
+                getRequiredRarity = function() return "Blanco" end,
+                getRequiredRarityDisplay = function() return "Comun (Blanco)" end,
                 getTotalBonusPercent = function() return 0 end,
-                countRequiredBrainrots = function() return 0 end,
+                countRequiredBrainrots = function() return 0, "Blanco" end,
                 onCharacterAdded = function() end,
                 applyVisualRewards = function() end,
         }
@@ -2711,7 +2716,13 @@ if RebirthRequestEvent then
                 if action == "getCount" or action == "sync" then
                         -- Enviar conteo actual
                         local chars = getPlayerCharacters(userId)
-                        local count, requiredRarity = RebirthManager.countRequiredBrainrots(data.rebirthLevel or 0, chars)
+                        local count = 0
+                        local requiredRarity = "Blanco"
+                        if RebirthManager and RebirthManager.countRequiredBrainrots then
+                                count, requiredRarity = RebirthManager.countRequiredBrainrots(data.rebirthLevel or 0, chars)
+                        else
+                                warn("[Rebirth] RebirthManager no disponible, usando fallback")
+                        end
                         print("[Rebirth DEBUG] getCount: rebirthLevel=" .. tostring(data.rebirthLevel) .. " count=" .. count .. " requiredRarity=" .. tostring(requiredRarity))
                         if RebirthUpdateEvent then
                                 RebirthUpdateEvent:FireClient(player, {
@@ -2724,6 +2735,13 @@ if RebirthRequestEvent then
                         end
                 elseif action == "rebirth" then
                         -- Ejecutar renacimiento
+                        if not RebirthManager or not RebirthManager.performRebirth then
+                                warn("[Rebirth] RebirthManager no disponible")
+                                if RebirthUpdateEvent then
+                                        RebirthUpdateEvent:FireClient(player, { type = "error", message = "Modulo no cargado" })
+                                end
+                                return
+                        end
                         local ok, result = RebirthManager.performRebirth(player, {
                                 getRebirthLevel = function(uid) return playerData[uid].rebirthLevel or 0 end,
                                 getCharacters = function(uid) return getPlayerCharacters(uid) end,
