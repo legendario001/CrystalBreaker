@@ -138,21 +138,18 @@ if not ok_don or not DonationManager then
         }
 else
         print("[OK] DonationManager cargado correctamente")
+end
 
 -- ============================================
 -- Cargar RebirthManager (sistema de renacimiento)
 -- ============================================
 local RebirthManager
--- Usar WaitForChild SIN timeout para garantizar que el modulo se encuentre
--- Si el modulo no existe, esto bloqueara el script, pero es mejor que fallback
 local ok_rb, err_rb = pcall(function()
-        local mod = ServerStorage.ServerModules:WaitForChild("RebirthManager")
+        local mod = ServerStorage.ServerModules:WaitForChild("RebirthManager", 10)
         RebirthManager = require(mod)
 end)
 if not ok_rb or not RebirthManager then
         warn("[CRITICAL] RebirthManager no se pudo cargar: " .. tostring(err_rb))
-        warn("[Rebirth] Asegurate de que existe un ModuleScript llamado 'RebirthManager' en ServerStorage/ServerModules/")
-        -- Fallback con todas las funciones necesarias
         RebirthManager = {
                 canRebirth = function() return false, 0, nil end,
                 performRebirth = function() return false, "modulo no cargado" end,
