@@ -76,8 +76,10 @@ function RebirthSystem.init(deps)
 	-- ============================================
 	local rebirthPanel = Instance.new("Frame")
 	rebirthPanel.Name = "RebirthPanel"
-	rebirthPanel.Size = UDim2.new(0, 500, 0, 600)
-	rebirthPanel.Position = UDim2.new(0.5, -250, 0.5, -300)
+	-- Tamano responsive: 90% del ancho y 85% del alto de la pantalla
+	-- En PC se ve grande, en movil se ajusta automaticamente
+	rebirthPanel.Size = UDim2.new(0.9, 0, 0.85, 0)
+	rebirthPanel.Position = UDim2.new(0.05, 0, 0.075, 0)
 	rebirthPanel.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
 	rebirthPanel.BackgroundTransparency = 0.05
 	rebirthPanel.BorderSizePixel = 0
