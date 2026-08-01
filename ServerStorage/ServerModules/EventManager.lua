@@ -263,17 +263,15 @@ function EventManager.startEvent()
         
         print("[EventManager] === " .. EVENT_NAME .. " INICIADO ===")
         
-        -- Cambiar ambiente a morado
+        -- Cambiar ambiente a morado con ColorCorrectionEffect (mas visible)
         local Lighting = game:GetService("Lighting")
-        local originalAmbient = Lighting.Ambient
-        local originalOutdoor = Lighting.OutdoorAmbient
-        local originalFog = Lighting.FogColor
-        local originalClockTime = Lighting.ClockTime
-        
-        Lighting.Ambient = Color3.fromRGB(60, 20, 80)
-        Lighting.OutdoorAmbient = Color3.fromRGB(80, 30, 100)
-        Lighting.FogColor = Color3.fromRGB(40, 10, 60)
-        Lighting.FogEnd = 300
+        local colorCorrection = Instance.new("ColorCorrectionEffect")
+        colorCorrection.Name = "EventAmbient"
+        colorCorrection.TintColor = Color3.fromRGB(180, 100, 220)  -- tinte morado
+        colorCorrection.Brightness = -0.1  -- un poco mas oscuro
+        colorCorrection.Contrast = 0.2
+        colorCorrection.Saturation = 0.3
+        colorCorrection.Parent = Lighting
         
         sendAnnouncement("⚠️ " .. EVENT_NAME .. " ⚠️", "¡Los cristales estan siendo destruidos! Recoge los cofres", 5)
         
@@ -290,12 +288,10 @@ function EventManager.startEvent()
         
         if rainEffect then rainEffect:Destroy() end
         
-        -- Restaurar ambiente original
+        -- Restaurar ambiente original (eliminar ColorCorrectionEffect)
         local Lighting = game:GetService("Lighting")
-        Lighting.Ambient = originalAmbient
-        Lighting.OutdoorAmbient = originalOutdoor
-        Lighting.FogColor = originalFog
-        Lighting.FogEnd = 100000
+        local cc = Lighting:FindFirstChild("EventAmbient")
+        if cc then cc:Destroy() end
         
         isEventActive = false
         timeUntilEvent = EVENT_INTERVAL
