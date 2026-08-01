@@ -75,8 +75,8 @@ announcementFrame.Parent = screenGui
 Instance.new("UICorner", announcementFrame).CornerRadius = UDim.new(0, 15)
 
 local annStroke = Instance.new("UIStroke", announcementFrame)
-annStroke.Color = Color3.fromRGB(255, 100, 50)
-annStroke.Thickness = 5
+annStroke.Color = Color3.fromRGB(0, 0, 0)
+annStroke.Thickness = 8
 
 local titleLabel = Instance.new("TextLabel")
 titleLabel.Size = UDim2.new(1, -20, 0, 60)
@@ -91,7 +91,7 @@ titleLabel.Parent = announcementFrame
 
 local titleStroke = Instance.new("UIStroke", titleLabel)
 titleStroke.Color = Color3.fromRGB(0, 0, 0)
-titleStroke.Thickness = 3
+titleStroke.Thickness = 4
 
 local msgLabel = Instance.new("TextLabel")
 msgLabel.Size = UDim2.new(1, -20, 0, 70)
@@ -107,7 +107,7 @@ msgLabel.Parent = announcementFrame
 
 local msgStroke = Instance.new("UIStroke", msgLabel)
 msgStroke.Color = Color3.fromRGB(0, 0, 0)
-msgStroke.Thickness = 2
+msgStroke.Thickness = 4
 
 -- ============================================
 -- Escuchar eventos del servidor
@@ -120,10 +120,12 @@ if EventAnnouncement then
                                 timerLabel.Text = data.eventName .. " | Proximo en: " .. formatTime(data.timeLeft)
                                 timerLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
                                 timerStroke.Color = Color3.fromRGB(255, 100, 50)
+                                timerFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
                         elseif data.state == "active" then
                                 timerLabel.Text = "EVENTO ACTIVO | Termina en: " .. formatTime(data.timeLeft)
                                 timerLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
                                 timerStroke.Color = Color3.fromRGB(100, 255, 100)
+                                timerFrame.BackgroundColor3 = Color3.fromRGB(20, 50, 20)
                         end
                 elseif data.type == "announcement" then
                         -- Mostrar anuncio grande
