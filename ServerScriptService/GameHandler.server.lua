@@ -273,7 +273,7 @@ local function createCrystalBreakEffect(position, color)
                 return
         end
 
-        local NUM_SHARDS = 10 -- numero de fragmentos a clonar (ligero)
+        local NUM_SHARDS = 5 -- reducido de 10 a 5 para optimizar evento
         for i = 1, NUM_SHARDS do
                 local shard = shardTemplate:Clone()
                 shard.Name = "CrystalShardEffect"
@@ -301,7 +301,7 @@ local function createCrystalBreakEffect(position, color)
                 -- Configurar todas las partes del modelo clonado
                 for _, desc in ipairs(shard:GetDescendants()) do
                         if desc:IsA("BasePart") then
-                                desc.Anchored = false
+                                desc.Anchored = true -- optimizado: sin fisica
                                 desc.CanCollide = false
                                 desc.CanQuery = false
                                 desc.Massless = true
@@ -320,7 +320,7 @@ local function createCrystalBreakEffect(position, color)
                 -- Si el propio template es una Part (no un Model)
                 if shard:IsA("BasePart") then
                         shard.Position = spawnPos
-                        shard.Anchored = false
+                        shard.Anchored = true
                         shard.CanCollide = false
                         shard.CanQuery = false
                         shard.Massless = true
@@ -345,23 +345,8 @@ local function createCrystalBreakEffect(position, color)
                         mainPart = shard.PrimaryPart or shard:FindFirstChildWhichIsA("BasePart")
                 end
 
-                if mainPart then
-                        -- Velocidad: outward (horizontal) mas amplia para que se expandan
-                        -- Salto bajo para que caigan desde la altura del cristal hacia el cofre
-                        local velocity = Vector3.new(
-                                math.random(-25, 25), -- mas expansion horizontal
-                                math.random(2, 8), -- salto muy bajo, casi solo caen
-                                math.random(-25, 25) -- mas expansion horizontal
-                        )
-                        mainPart.AssemblyLinearVelocity = velocity
-
-                        -- Velocidad angular para que giren
-                        mainPart.AssemblyAngularVelocity = Vector3.new(
-                                math.random(-10, 10),
-                                math.random(-10, 10),
-                                math.random(-10, 10)
-                        )
-                end
+                -- Fragmentos Anchored: no necesitan velocidad fisica
+                -- Se quedan flotando en su posicion aleatoria y desaparecen con Debris
 
                 -- Auto-eliminar despues de 2 segundos (sin lag)
                 Debris:AddItem(shard, 2)
@@ -799,7 +784,10 @@ Events.PickupChest.OnServerEvent:Connect(function(player)
 
                 -- Buscar cofre cercano (que no este abriendo ya)
                 local nearest, nearDist = nil, 15
-                for _, obj in ipairs(workspace:GetChildren()) do
+                -- Buscar solo en la carpeta Chests (optimizado)
+                local chestsFolder = workspace:FindFirstChild("Chests")
+                local searchList = chestsFolder and chestsFolder:GetChildren() or workspace:GetChildren()
+                for _, obj in ipairs(searchList) do
                         if obj.Name == "Chest" then
                                 -- Ignorar cofres que ya se estan abriendo
                                 local opening = obj:FindFirstChild("Opening")
