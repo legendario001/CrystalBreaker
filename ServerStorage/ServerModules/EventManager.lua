@@ -11,9 +11,41 @@ local EventManager = {}
 
 -- TEMPORAL PARA TESTEAR: 60s evento, 60s cooldown
 local EVENT_INTERVAL = 60    -- 1 minuto entre eventos (TEST)
-local EVENT_DURATION = 60    -- 1 minuto de evento (TEST)
+local EVENT_DURATION = 120   -- 2 minutos de evento
 local WAVE_INTERVAL = 5      -- cada 5s se rompen los cristales
 local EVENT_NAME = "Evento del Magnate de la Podredumbre"
+
+-- Sonidos de cristal rompiendose (mismos que usa el GameHandler)
+local CRYSTAL_BREAK_SOUNDS = {
+        "rbxassetid://124054125419097",
+        "rbxassetid://138817960173178",
+        "rbxassetid://129395018150183",
+        "rbxassetid://92650188901933"
+}
+
+-- Helper: reproducir sonido en una posicion (optimizado, se destruye solo)
+local function playSoundAt(soundId, position)
+        local sound = Instance.new("Sound")
+        sound.SoundId = soundId
+        sound.Volume = 0.5
+        sound.Parent = Workspace
+        -- Mover un Part temporal para posicionar el sonido 3D
+        local anchor = Instance.new("Part")
+        anchor.Anchored = true
+        anchor.CanCollide = false
+        anchor.CanQuery = false
+        anchor.CanTouch = false
+        anchor.Transparency = 1
+        anchor.Size = Vector3.new(0.1, 0.1, 0.1)
+        anchor.Position = position
+        anchor.Parent = Workspace
+        sound.Parent = anchor
+        sound:Play()
+        -- Limpiar despues de que termine (optimizacion de memoria)
+        task.delay(3, function()
+                if anchor and anchor.Parent then anchor:Destroy() end
+        end)
+end
 
 local isEventActive = false
 local timeUntilEvent = EVENT_INTERVAL
@@ -77,10 +109,13 @@ local function breakWave()
                 crystals[i], crystals[j] = crystals[j], crystals[i]
         end
         
+        local crystalCount = #crystals
         for i, crystal in ipairs(crystals) do
                 task.spawn(function()
-                        -- Delay aleatorio entre 0 y 3 segundos para simular impacto aleatorio
-                        task.wait(math.random() * 3)
+                        -- Delay aleatorio entre 0 y 10 segundos para simular lluvia golpeando al azar
+                        -- Optimizado: si hay pocos cristales, el delay se reparte entre ellos
+                        local maxDelay = math.min(10, crystalCount * 0.4)
+                        task.wait(math.random() * maxDelay)
                         
                         if not crystal or not crystal.Parent then return end
                         
@@ -88,6 +123,10 @@ local function breakWave()
                         local rarity = rt and rt.Value or "Blanco"
                         local pos = crystal.Position
                         local crystalColor = crystal.Color
+                        
+                        -- Sonido de cristal rompiendose
+                        local snd = CRYSTAL_BREAK_SOUNDS[math.random(#CRYSTAL_BREAK_SOUNDS)]
+                        playSoundAt(snd, pos)
                         
                         -- Crear efecto visual de impacto (rayo de luz cayendo)
                         local impactPart = Instance.new("Part")
