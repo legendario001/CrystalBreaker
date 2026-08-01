@@ -114,7 +114,7 @@ local function breakWave()
                 task.spawn(function()
                         -- Delay aleatorio entre 0 y 10 segundos para simular lluvia golpeando al azar
                         -- Optimizado: si hay pocos cristales, el delay se reparte entre ellos
-                        local maxDelay = math.min(10, crystalCount * 0.4)
+                        local maxDelay = math.min(30, crystalCount * 1.2)
                         task.wait(math.random() * maxDelay)
                         
                         if not crystal or not crystal.Parent then return end
@@ -263,6 +263,18 @@ function EventManager.startEvent()
         
         print("[EventManager] === " .. EVENT_NAME .. " INICIADO ===")
         
+        -- Cambiar ambiente a morado
+        local Lighting = game:GetService("Lighting")
+        local originalAmbient = Lighting.Ambient
+        local originalOutdoor = Lighting.OutdoorAmbient
+        local originalFog = Lighting.FogColor
+        local originalClockTime = Lighting.ClockTime
+        
+        Lighting.Ambient = Color3.fromRGB(60, 20, 80)
+        Lighting.OutdoorAmbient = Color3.fromRGB(80, 30, 100)
+        Lighting.FogColor = Color3.fromRGB(40, 10, 60)
+        Lighting.FogEnd = 300
+        
         sendAnnouncement("⚠️ " .. EVENT_NAME .. " ⚠️", "¡Los cristales estan siendo destruidos! Recoge los cofres", 5)
         
         local rainEffect = createRainEffect()
@@ -277,6 +289,13 @@ function EventManager.startEvent()
         end
         
         if rainEffect then rainEffect:Destroy() end
+        
+        -- Restaurar ambiente original
+        local Lighting = game:GetService("Lighting")
+        Lighting.Ambient = originalAmbient
+        Lighting.OutdoorAmbient = originalOutdoor
+        Lighting.FogColor = originalFog
+        Lighting.FogEnd = 100000
         
         isEventActive = false
         timeUntilEvent = EVENT_INTERVAL
