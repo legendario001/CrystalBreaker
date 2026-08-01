@@ -32,7 +32,9 @@ function EventManager.init(deps)
                         if not isEventActive then
                                 timeUntilEvent = timeUntilEvent - 1
                                 if timeUntilEvent <= 0 then
-                                        EventManager.startEvent()
+                                        task.spawn(function()
+                                                EventManager.startEvent()
+                                        end)
                                 else
                                         EventManager.sendTimerUpdate("waiting", timeUntilEvent)
                                 end
