@@ -70,19 +70,56 @@ local function breakWave()
         local players = Players:GetPlayers()
         local randomPlayer = #players > 0 and players[math.random(#players)] or nil
         
-        for _, crystal in ipairs(crystals) do
-                local rt = crystal:FindFirstChild("Rarity")
-                local rarity = rt and rt.Value or "Blanco"
-                local pos = crystal.Position
-                local crystalColor = crystal.Color
-                crystal:Destroy()
-                if CrystalSpawner then
-                        pcall(function()
-                                CrystalSpawner.spawnChest(pos, {color=crystalColor, name=rarity}, randomPlayer)
-                        end)
-                end
+        -- Romper cristales uno por uno con delay aleatorio (simula lluvia cayendo)
+        -- Mezclar orden aleatorio
+        for i = #crystals, 2, -1 do
+                local j = math.random(i)
+                crystals[i], crystals[j] = crystals[j], crystals[i]
         end
-        print("[EventManager] Oleada: " .. #crystals .. " cristales rotos")
+        
+        for i, crystal in ipairs(crystals) do
+                task.spawn(function()
+                        -- Delay aleatorio entre 0 y 3 segundos para simular impacto aleatorio
+                        task.wait(math.random() * 3)
+                        
+                        if not crystal or not crystal.Parent then return end
+                        
+                        local rt = crystal:FindFirstChild("Rarity")
+                        local rarity = rt and rt.Value or "Blanco"
+                        local pos = crystal.Position
+                        local crystalColor = crystal.Color
+                        
+                        -- Crear efecto visual de impacto (rayo de luz cayendo)
+                        local impactPart = Instance.new("Part")
+                        impactPart.Name = "RainImpact"
+                        impactPart.Anchored = true
+                        impactPart.CanCollide = false
+                        impactPart.CanQuery = false
+                        impactPart.CanTouch = false
+                        impactPart.Material = Enum.Material.Neon
+                        impactPart.Color = Color3.fromRGB(255, 255, 255)
+                        impactPart.Size = Vector3.new(0.5, 50, 0.5)
+                        impactPart.Position = Vector3.new(pos.X, pos.Y + 30, pos.Z)
+                        impactPart.Transparency = 0.2
+                        impactPart.Parent = Workspace
+                        
+                        -- Desaparecer el rayo rapidamente
+                        task.delay(0.15, function()
+                                if impactPart and impactPart.Parent then
+                                        impactPart:Destroy()
+                                end
+                        end)
+                        
+                        crystal:Destroy()
+                        
+                        if CrystalSpawner then
+                                pcall(function()
+                                        CrystalSpawner.spawnChest(pos, {color=crystalColor, name=rarity}, randomPlayer)
+                                end)
+                        end
+                end)
+        end
+        print("[EventManager] Oleada: " .. #crystals .. " cristales programados para romperse")
 end
 
 local function createRainEffect()
@@ -102,22 +139,46 @@ local function createRainEffect()
         rainPart.Position = Vector3.new(zonePos.X, zonePos.Y + 80, zonePos.Z)
         rainPart.Parent = Workspace
         
+        -- Lluvia de pelotas visuales (particulas grandes y brillantes)
         local emitter = Instance.new("ParticleEmitter")
         emitter.Name = "RainEmitter"
         emitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
         emitter.Color = ColorSequence.new({
                 ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
-                ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 200, 255)),
+                ColorSequenceKeypoint.new(0.5, Color3.fromRGB(200, 200, 255)),
+                ColorSequenceKeypoint.new(1, Color3.fromRGB(150, 150, 255)),
         })
-        emitter.Size = NumberSequence.new(2, 3)
-        emitter.Transparency = NumberSequence.new(0.2)
-        emitter.Lifetime = NumberRange.new(2, 3)
-        emitter.Rate = 200
-        emitter.Speed = NumberRange.new(40, 60)
-        emitter.SpreadAngle = Vector2.new(15, 15)
-        emitter.Acceleration = Vector3.new(0, -20, 0)
-        emitter.LightEmission = 0.5
+        emitter.Size = NumberSequence.new({
+                NumberSequenceKeypoint.new(0, 3),
+                NumberSequenceKeypoint.new(0.5, 4),
+                NumberSequenceKeypoint.new(1, 2),
+        })
+        emitter.Transparency = NumberSequence.new(0)
+        emitter.Lifetime = NumberRange.new(1.5, 2.5)
+        emitter.Rate = 500 -- mas particulas
+        emitter.Speed = NumberRange.new(50, 80)
+        emitter.SpreadAngle = Vector2.new(25, 25)
+        emitter.Acceleration = Vector3.new(0, -30, 0)
+        emitter.LightEmission = 1
+        emitter.LightInfluence = 0
         emitter.Parent = rainPart
+        
+        -- Segundo emitter para pelotas mas grandes (efecto de lluvia densa)
+        local bigEmitter = Instance.new("ParticleEmitter")
+        bigEmitter.Name = "BigRainEmitter"
+        bigEmitter.Texture = "rbxasset://textures/particles/fire_base.dds"
+        bigEmitter.Color = ColorSequence.new(Color3.fromRGB(255, 255, 255))
+        bigEmitter.Size = NumberSequence.new(5, 2)
+        bigEmitter.Transparency = NumberSequence.new(0.3)
+        bigEmitter.Lifetime = NumberRange.new(1, 2)
+        bigEmitter.Rate = 100
+        bigEmitter.Speed = NumberRange.new(60, 90)
+        bigEmitter.SpreadAngle = Vector2.new(20, 20)
+        bigEmitter.Acceleration = Vector3.new(0, -35, 0)
+        bigEmitter.LightEmission = 1
+        bigEmitter.LightInfluence = 0
+        bigEmitter.Parent = rainPart
+        
         return rainPart
 end
 
