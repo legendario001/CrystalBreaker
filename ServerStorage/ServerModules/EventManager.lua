@@ -15,6 +15,14 @@ local EVENT_DURATION = 120   -- 2 minutos de evento
 local WAVE_INTERVAL = 5      -- cada 5s se rompen los cristales
 local EVENT_NAME = "Evento del Magnate de la Podredumbre"
 
+-- Musica del evento (2 temas que se alternan en cada evento)
+local EVENT_MUSIC = {
+        { name = "Magnate de la Podredumbre", soundId = "rbxassetid://130094886005121" },
+        { name = "Brain Rot Tycoon (Mystic Mix)", soundId = "rbxassetid://100045289136245" },
+}
+local eventMusicIndex = 1  -- alterna entre 1 y 2
+local eventSound = nil  -- referencia al sonido activo del evento
+
 -- Sonidos de cristal rompiendose (mismos que usa el GameHandler)
 local CRYSTAL_BREAK_SOUNDS = {
         "rbxassetid://124054125419097",
@@ -273,6 +281,27 @@ function EventManager.startEvent()
         colorCorrection.Saturation = 0.3
         colorCorrection.Parent = Lighting
         
+        -- Pausar musica del cliente (boton de musica) y reproducir musica del evento
+        local pauseMusicEvent = ReplicatedStorage:FindFirstChild("PauseMusicForEvent")
+        if pauseMusicEvent then
+                for _, p in ipairs(Players:GetPlayers()) do
+                        pcall(function() pauseMusicEvent:FireClient(p) end)
+                end
+        end
+        
+        -- Crear y reproducir musica del evento
+        if eventSound then eventSound:Destroy() end
+        local track = EVENT_MUSIC[eventMusicIndex]
+        eventMusicIndex = eventMusicIndex == 1 and 2 or 1  -- alternar para el proximo evento
+        eventSound = Instance.new("Sound")
+        eventSound.Name = "EventMusic"
+        eventSound.SoundId = track.soundId
+        eventSound.Volume = 0.6
+        eventSound.Looped = true
+        eventSound.Parent = Workspace
+        eventSound:Play()
+        print("[EventManager] Reproduciendo: " .. track.name)
+        
         sendAnnouncement("⚠️ " .. EVENT_NAME .. " ⚠️", "¡Los cristales estan siendo destruidos! Recoge los cofres", 5)
         
         local rainEffect = createRainEffect()
@@ -287,6 +316,21 @@ function EventManager.startEvent()
         end
         
         if rainEffect then rainEffect:Destroy() end
+        
+        -- Detener musica del evento
+        if eventSound then
+                eventSound:Stop()
+                eventSound:Destroy()
+                eventSound = nil
+        end
+        
+        -- Reanudar musica del cliente
+        local resumeMusicEvent = ReplicatedStorage:FindFirstChild("ResumeMusicAfterEvent")
+        if resumeMusicEvent then
+                for _, p in ipairs(Players:GetPlayers()) do
+                        pcall(function() resumeMusicEvent:FireClient(p) end)
+                end
+        end
         
         -- Restaurar ambiente original (eliminar ColorCorrectionEffect)
         local Lighting = game:GetService("Lighting")
