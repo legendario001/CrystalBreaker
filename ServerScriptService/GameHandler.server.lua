@@ -163,6 +163,29 @@ if not ok_rb or not RebirthManager then
 else
         print("[OK] RebirthManager cargado correctamente")
 end
+
+-- ============================================
+-- Cargar EventManager (evento del magnate)
+-- ============================================
+local EventManager
+local ok_evt, err_evt = pcall(function()
+        local mod = ServerStorage.ServerModules:WaitForChild("EventManager", 10)
+        EventManager = require(mod)
+end)
+if not ok_evt or not EventManager then
+        warn("[CRITICAL] EventManager no se pudo cargar: " .. tostring(err_evt))
+        EventManager = {
+                init = function() end,
+                startEvent = function() end,
+                forceStart = function() end,
+        }
+else
+        print("[OK] EventManager cargado correctamente")
+        -- Inicializar el EventManager con las dependencias
+        EventManager.init({
+                CrystalSpawner = CrystalSpawner,
+        })
+end
 -- Conectar BankManager con LeaderboardManager: cuando cambia el saldo, actualizar leaderboard
 if BankManager and LeaderboardManager then
         BankManager.onBalanceChanged = function(userId, newBalance)
