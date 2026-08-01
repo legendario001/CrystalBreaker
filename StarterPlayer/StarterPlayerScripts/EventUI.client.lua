@@ -119,12 +119,12 @@ if EventAnnouncement then
                         if data.state == "waiting" then
                                 timerLabel.Text = data.eventName .. " | Proximo en: " .. formatTime(data.timeLeft)
                                 timerLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-                                timerStroke.Color = Color3.fromRGB(255, 100, 50)
+                                timerStroke.Color = Color3.fromRGB(0, 0, 0)
                                 timerFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
                         elseif data.state == "active" then
                                 timerLabel.Text = "EVENTO ACTIVO | Termina en: " .. formatTime(data.timeLeft)
                                 timerLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
-                                timerStroke.Color = Color3.fromRGB(100, 255, 100)
+                                timerStroke.Color = Color3.fromRGB(0, 0, 0)
                                 timerFrame.BackgroundColor3 = Color3.fromRGB(20, 50, 20)
                         end
                 elseif data.type == "announcement" then
