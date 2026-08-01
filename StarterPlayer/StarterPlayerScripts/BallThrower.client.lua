@@ -2252,6 +2252,35 @@ musicSound.Looped = true
 musicSound.Volume = 0.4
 musicSound.Parent = game:GetService("SoundService")
 
+-- ============================================
+-- Control de musica durante eventos
+-- ============================================
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local PauseMusicForEvent = ReplicatedStorage:WaitForChild("PauseMusicForEvent", 10)
+local ResumeMusicAfterEvent = ReplicatedStorage:WaitForChild("ResumeMusicAfterEvent", 10)
+
+local wasMusicPlayingBeforeEvent = false
+
+if PauseMusicForEvent then
+        PauseMusicForEvent.OnClientEvent:Connect(function()
+                -- Guardar si la musica estaba reproduciendose
+                wasMusicPlayingBeforeEvent = musicSound.IsPlaying
+                -- Pausar la musica del cliente
+                if musicSound.IsPlaying then
+                        musicSound:Pause()
+                end
+        end)
+end
+
+if ResumeMusicAfterEvent then
+        ResumeMusicAfterEvent.OnClientEvent:Connect(function()
+                -- Reanudar la musica del cliente solo si estaba reproduciendose antes del evento
+                if wasMusicPlayingBeforeEvent then
+                        musicSound:Play()
+                end
+        end)
+end
+
 local currentMusicIdx = 1
 local musicMuted = false
 
