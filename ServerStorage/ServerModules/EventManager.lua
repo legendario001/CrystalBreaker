@@ -132,11 +132,9 @@ local function breakWave()
                         local pos = crystal.Position
                         local crystalColor = crystal.Color
                         
-                        -- Sonido de cristal rompiendose
+                        -- Sonido + efecto visual combinados en 1 solo Part (optimizado)
                         local snd = CRYSTAL_BREAK_SOUNDS[math.random(#CRYSTAL_BREAK_SOUNDS)]
-                        playSoundAt(snd, pos)
                         
-                        -- Crear efecto visual de impacto (rayo de luz cayendo)
                         local impactPart = Instance.new("Part")
                         impactPart.Name = "RainImpact"
                         impactPart.Anchored = true
@@ -150,8 +148,15 @@ local function breakWave()
                         impactPart.Transparency = 0.2
                         impactPart.Parent = Workspace
                         
-                        -- Desaparecer el rayo rapidamente
-                        task.delay(0.15, function()
+                        -- Reproducir sonido directamente en el impactPart (1 solo objeto)
+                        local sound = Instance.new("Sound")
+                        sound.SoundId = snd
+                        sound.Volume = 0.5
+                        sound.Parent = impactPart
+                        sound:Play()
+                        
+                        -- Desaparecer el rayo + sonido rapidamente
+                        task.delay(0.3, function()
                                 if impactPart and impactPart.Parent then
                                         impactPart:Destroy()
                                 end
