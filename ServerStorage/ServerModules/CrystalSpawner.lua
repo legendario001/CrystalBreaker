@@ -197,7 +197,14 @@ function CrystalSpawner.spawnChest(position, crystalType, player)
                                 desc.Color = crystalType.color
                         end
                 end
-                chest.Parent = workspace
+                -- Parentar a carpeta de cofres para optimizar la busqueda
+        local chestsFolder = workspace:FindFirstChild("Chests")
+        if not chestsFolder then
+                chestsFolder = Instance.new("Folder")
+                chestsFolder.Name = "Chests"
+                chestsFolder.Parent = workspace
+        end
+        chest.Parent = chestsFolder
         else
                 -- Fallback: crear un Part simple si no existe CofreModel
                 chest = Instance.new("Part")
@@ -208,7 +215,14 @@ function CrystalSpawner.spawnChest(position, crystalType, player)
                 chest.CanCollide = false
                 chest.Position = position + Vector3.new(0, -1, 0)
                 chest.Color = crystalType.color
-                chest.Parent = workspace
+                -- Parentar a carpeta de cofres para optimizar la busqueda
+        local chestsFolder = workspace:FindFirstChild("Chests")
+        if not chestsFolder then
+                chestsFolder = Instance.new("Folder")
+                chestsFolder.Name = "Chests"
+                chestsFolder.Parent = workspace
+        end
+        chest.Parent = chestsFolder
         end
 
         -- Rareza del cofre
@@ -274,18 +288,24 @@ function CrystalSpawner.spawnChest(position, crystalType, player)
         timerLbl.Font = Enum.Font.GothamBold
         timerLbl.Parent = bg
 
-        -- Timer: si no se recoge, regenerar cristal
+        -- Timer optimizado: cachear la referencia del TimerLabel
         task.spawn(function()
+                -- Buscar el TimerLabel UNA sola vez
+                local cachedTimerLabel = nil
+                local bb = chest:FindFirstChild("BillboardGui")
+                if bb then
+                        local f = bb:FindFirstChild("Frame")
+                        if f then
+                                cachedTimerLabel = f:FindFirstChild("TimerLabel")
+                        end
+                end
+                
                 for i = CHEST_TIMEOUT, 1, -1 do
                         task.wait(1)
                         if not chest or not chest.Parent then return end
-                        local tl = chest:FindFirstChild("BillboardGui")
-                        if tl then
-                                local f = tl:FindFirstChild("Frame")
-                                if f then
-                                        local t = f:FindFirstChild("TimerLabel")
-                                        if t then t.Text = i .. "s" end
-                                end
+                        -- Usar la referencia cacheada (sin FindFirstChild cada segundo)
+                        if cachedTimerLabel and cachedTimerLabel.Parent then
+                                cachedTimerLabel.Text = i .. "s"
                         end
                 end
                 -- Tiempo agotado: regenerar cristal y borrar cofre
