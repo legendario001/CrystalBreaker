@@ -45,6 +45,8 @@ local eventNames = {
         "RebirthRequest",              -- Cliente -> Servidor: pedir conteo o renacer
         "RebirthUpdate",                -- Servidor -> Cliente: actualizar conteo/bonus
         "EventAnnouncement",            -- Servidor -> Cliente: anuncio de evento
+        "PauseMusicForEvent",          -- Servidor -> Cliente: pausar musica durante evento
+        "ResumeMusicAfterEvent",       -- Servidor -> Cliente: reanudar musica despues del evento
 }
 
 for _, name in ipairs(eventNames) do
