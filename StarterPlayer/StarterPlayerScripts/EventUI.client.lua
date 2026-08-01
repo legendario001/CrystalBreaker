@@ -33,8 +33,8 @@ timerFrame.Parent = screenGui
 Instance.new("UICorner", timerFrame).CornerRadius = UDim.new(0, 10)
 
 local timerStroke = Instance.new("UIStroke", timerFrame)
-timerStroke.Color = Color3.fromRGB(255, 100, 50)
-timerStroke.Thickness = 3
+timerStroke.Color = Color3.fromRGB(0, 0, 0)
+timerStroke.Thickness = 8
 
 local timerLabel = Instance.new("TextLabel")
 timerLabel.Size = UDim2.new(1, -10, 1, 0)
@@ -48,7 +48,7 @@ timerLabel.Parent = timerFrame
 
 local timerTextStroke = Instance.new("UIStroke", timerLabel)
 timerTextStroke.Color = Color3.fromRGB(0, 0, 0)
-timerTextStroke.Thickness = 2
+timerTextStroke.Thickness = 4
 
 -- ============================================
 -- Formatear segundos a M:SS
