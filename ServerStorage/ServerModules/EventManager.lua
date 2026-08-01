@@ -10,7 +10,7 @@ local Players = game:GetService("Players")
 local EventManager = {}
 
 -- TEMPORAL PARA TESTEAR: 60s evento, 60s cooldown
-local EVENT_INTERVAL = 60    -- 1 minuto entre eventos (TEST)
+local EVENT_INTERVAL = 300   -- 5 minutos entre eventos (300 segundos)
 local EVENT_DURATION = 120   -- 2 minutos de evento
 local WAVE_INTERVAL = 5      -- cada 5s se rompen los cristales
 local EVENT_NAME = "Evento del Magnate de la Podredumbre"
