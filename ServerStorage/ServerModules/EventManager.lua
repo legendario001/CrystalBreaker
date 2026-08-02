@@ -19,6 +19,8 @@ local EVENT_NAME = "Evento del Magnate de la Podredumbre"
 local EVENT_MUSIC = {
         { name = "Magnate de la Podredumbre", soundId = "rbxassetid://130094886005121" },
         { name = "Brain Rot Tycoon (Mystic Mix)", soundId = "rbxassetid://100045289136245" },
+        { name = "Harp Hero Tycoon (Retro Game)", soundId = "rbxassetid://86498434699930" },
+        { name = "Mystic Retro", soundId = "rbxassetid://117592700598857" },
 }
 local eventMusicIndex = 1  -- alterna entre 1 y 2
 local eventSound = nil  -- referencia al sonido activo del evento
