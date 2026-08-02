@@ -1241,7 +1241,18 @@ if isMobile then
 
                         -- 1. Verificar cofres cerca (solo si no esta cargando)
                         if not isCarrying then
+                                -- Buscar en workspace.Chests (optimizado) Y workspace (fallback)
+                                local chestsFolder = workspace:FindFirstChild("Chests")
+                                local searchList = {}
+                                if chestsFolder then
+                                        for _, obj in ipairs(chestsFolder:GetChildren()) do
+                                                table.insert(searchList, obj)
+                                        end
+                                end
                                 for _, obj in ipairs(workspace:GetChildren()) do
+                                        table.insert(searchList, obj)
+                                end
+                                for _, obj in ipairs(searchList) do
                                         if obj.Name == "Chest" then
                                                 local owner = obj:FindFirstChild("Owner")
                                                 if owner and owner.Value == player then
