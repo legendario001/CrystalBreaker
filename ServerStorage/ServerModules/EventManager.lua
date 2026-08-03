@@ -29,6 +29,7 @@ local eventCount = 0 -- contador de eventos (se reinicia si el server esta vacio
 local playerLeftTimer = 0    -- cuenta cuanto tiempo el server ha estado vacio
 
 local isEventActive = false
+local eventCooldown = 0  -- cooldown para evitar race condition al terminar evento
 local timeUntilEvent = 60  -- primer evento en 1 minuto
 local timeRemaining = 0
 
@@ -75,6 +76,7 @@ local function playSoundAt(soundId, position)
 end
 
 local isEventActive = false
+local eventCooldown = 0  -- cooldown para evitar race condition al terminar evento
 local timeUntilEvent = 60  -- primer evento en 1 minuto
 local timeRemaining = 0
 
@@ -103,12 +105,14 @@ function EventManager.init(deps)
                         end
                         
                         if not isEventActive then
-                                timeUntilEvent = timeUntilEvent - 1
-                                if timeUntilEvent <= 0 then
+                                if eventCooldown > 0 then
+                                        eventCooldown = eventCooldown - 1
+                                elseif timeUntilEvent <= 0 then
                                         task.spawn(function()
                                                 EventManager.startEvent()
                                         end)
                                 else
+                                        timeUntilEvent = timeUntilEvent - 1
                                         EventManager.sendTimerUpdate("waiting", timeUntilEvent)
                                 end
                         else
