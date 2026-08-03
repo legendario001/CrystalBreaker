@@ -10,10 +10,27 @@ local Players = game:GetService("Players")
 local EventManager = {}
 
 -- TEMPORAL PARA TESTEAR: 60s evento, 60s cooldown
-local EVENT_INTERVAL = 300   -- 5 minutos entre eventos (300 segundos)
-local EVENT_DURATION = 120   -- 2 minutos de evento
-local WAVE_INTERVAL = 5      -- cada 5s se rompen los cristales
 local EVENT_NAME = "Evento del Magnate de la Podredumbre"
+
+-- Sistema progresivo de eventos (para servidores vacios o con pocos jugadores)
+-- Escala: intervalo y duracion aumentan gradualmente hasta llegar al maximo
+local PROGRESSIVE_SCALE = {
+        { interval = 60,  duration = 30,  msg = "El proximo evento sera mas largo!" },
+        { interval = 120, duration = 60,  msg = "El proximo evento sera mas largo!" },
+        { interval = 180, duration = 90,  msg = "El proximo evento sera mas largo!" },
+        { interval = 240, duration = 120, msg = "El proximo evento sera mas largo!" },
+}
+local FINAL_INTERVAL = 300   -- 5 minutos (intervalo final repetitivo)
+local FINAL_DURATION = 180   -- 3 minutos (duracion final repetitiva)
+local WAVE_INTERVAL = 5      -- cada 5s se rompen los cristales
+local CRYSTAL_BREAK_TIME = 50 -- los cristales tardan hasta 50s en romperse todos
+
+local eventCount = 0 -- contador de eventos (se reinicia si el server esta vacio)
+local playerLeftTimer = 0    -- cuenta cuanto tiempo el server ha estado vacio
+
+local isEventActive = false
+local timeUntilEvent = 60  -- primer evento en 1 minuto
+local timeRemaining = 0
 
 -- Musica del evento (2 temas que se alternan en cada evento)
 local EVENT_MUSIC = {
@@ -71,6 +88,20 @@ function EventManager.init(deps)
         task.spawn(function()
                 while true do
                         task.wait(1)
+                        
+                        -- Detectar si el server esta vacio para reiniciar la progresion
+                        if #Players:GetPlayers() == 0 then
+                                playerLeftTimer = playerLeftTimer + 1
+                                if playerLeftTimer >= 30 then
+                                        -- Server vacio por 30s: reiniciar progresion
+                                        eventCount = 0
+                                        timeUntilEvent = 60
+                                        playerLeftTimer = 0
+                                end
+                        else
+                                playerLeftTimer = 0
+                        end
+                        
                         if not isEventActive then
                                 timeUntilEvent = timeUntilEvent - 1
                                 if timeUntilEvent <= 0 then
@@ -124,7 +155,7 @@ local function breakWave()
                 task.spawn(function()
                         -- Delay aleatorio entre 0 y 10 segundos para simular lluvia golpeando al azar
                         -- Optimizado: si hay pocos cristales, el delay se reparte entre ellos
-                        local maxDelay = math.min(30, crystalCount * 1.2)
+                        local maxDelay = math.min(CRYSTAL_BREAK_TIME, crystalCount * (CRYSTAL_BREAK_TIME / 25))
                         task.wait(math.random() * maxDelay)
                         
                         if not crystal or not crystal.Parent then return end
@@ -274,7 +305,23 @@ end
 function EventManager.startEvent()
         if isEventActive then return end
         isEventActive = true
-        timeRemaining = EVENT_DURATION
+        eventCount = eventCount + 1
+        
+        -- Calcular duracion e intervalo segun el numero de evento
+        local currentDuration, currentInterval, nextMsg
+        if eventCount <= #PROGRESSIVE_SCALE then
+                local scale = PROGRESSIVE_SCALE[eventCount]
+                currentDuration = scale.duration
+                currentInterval = scale.interval
+                nextMsg = scale.msg
+        else
+                currentDuration = FINAL_DURATION
+                currentInterval = FINAL_INTERVAL
+                nextMsg = nil
+        end
+        
+        timeRemaining = currentDuration
+        timeUntilEvent = currentInterval
         
         print("[EventManager] === " .. EVENT_NAME .. " INICIADO ===")
         
@@ -312,14 +359,18 @@ function EventManager.startEvent()
         eventSound:Play()
         print("[EventManager] Reproduciendo: " .. track.name)
         
-        sendAnnouncement("⚠️ " .. EVENT_NAME .. " ⚠️", "¡Los cristales estan siendo destruidos! Recoge los cofres", 5)
+        local announceMsg = "¡Los cristales estan siendo destruidos! Recoge los cofres"
+        if nextMsg then
+                announceMsg = announceMsg .. "\n" .. nextMsg
+        end
+        sendAnnouncement("⚠️ " .. EVENT_NAME .. " ⚠️", announceMsg, 5)
         
         local rainEffect = createRainEffect()
         
         local startTime = os.clock()
         local waveCount = 0
         
-        while os.clock() - startTime < EVENT_DURATION do
+        while os.clock() - startTime < currentDuration do
                 waveCount = waveCount + 1
                 breakWave()
                 task.wait(WAVE_INTERVAL)
@@ -350,7 +401,13 @@ function EventManager.startEvent()
         isEventActive = false
         timeUntilEvent = EVENT_INTERVAL
         print("[EventManager] === EVENTO FINALIZADO === (" .. waveCount .. " oleadas)")
-        sendAnnouncement("✅ EVENTO FINALIZADO", "Proximo evento en " .. EVENT_INTERVAL .. " segundos", 5)
+        local nextIntervalStr = ""
+        if eventCount < #PROGRESSIVE_SCALE then
+                nextIntervalStr = "Proximo evento en " .. PROGRESSIVE_SCALE[eventCount + 1].interval .. "s"
+        else
+                nextIntervalStr = "Proximo evento en 5 minutos"
+        end
+        sendAnnouncement("✅ EVENTO FINALIZADO", nextIntervalStr, 5)
 end
 
 function EventManager.forceStart()
