@@ -82,7 +82,7 @@ local function breakWave()
         
         for i, crystal in ipairs(crystals) do
                 task.spawn(function()
-                        local maxDelay = math.min(CRYSTAL_BREAK_TIME, crystalCount * (CRYSTAL_BREAK_TIME / 25))
+                        local maxDelay = math.min(CRYSTAL_BREAK_TIME, #crystals * (CRYSTAL_BREAK_TIME / 25))
                         task.wait(math.random() * maxDelay)
                         
                         if not crystal or not crystal.Parent then return end
