@@ -75,7 +75,7 @@ local function playSoundAt(soundId, position)
 end
 
 local isEventActive = false
-local timeUntilEvent = EVENT_INTERVAL
+local timeUntilEvent = 60  -- primer evento en 1 minuto
 local timeRemaining = 0
 
 local CrystalSpawner = nil
@@ -399,7 +399,7 @@ function EventManager.startEvent()
         if cc then cc:Destroy() end
         
         isEventActive = false
-        timeUntilEvent = EVENT_INTERVAL
+        -- timeUntilEvent ya fue asignado en startEvent con currentInterval
         print("[EventManager] === EVENTO FINALIZADO === (" .. waveCount .. " oleadas)")
         local nextIntervalStr = ""
         if eventCount < #PROGRESSIVE_SCALE then
