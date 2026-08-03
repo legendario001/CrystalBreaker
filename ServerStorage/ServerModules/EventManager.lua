@@ -299,7 +299,10 @@ function EventManager.startEvent()
         -- Crear y reproducir musica del evento
         if eventSound then eventSound:Destroy() end
         local track = EVENT_MUSIC[eventMusicIndex]
-        eventMusicIndex = eventMusicIndex == 1 and 2 or 1  -- alternar para el proximo evento
+        eventMusicIndex = eventMusicIndex + 1
+        if eventMusicIndex > #EVENT_MUSIC then
+                eventMusicIndex = 1
+        end
         eventSound = Instance.new("Sound")
         eventSound.Name = "EventMusic"
         eventSound.SoundId = track.soundId
