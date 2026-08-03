@@ -82,7 +82,7 @@ local CrystalSpawner = nil
 
 function EventManager.init(deps)
         CrystalSpawner = deps.CrystalSpawner
-        print("[EventManager] Inicializado. Evento cada " .. EVENT_INTERVAL .. "s (TEST)")
+        print("[EventManager] Inicializado. Primer evento en 60s, luego progresivo hasta 5min")
 
         -- Loop principal: envia timer a clientes cada segundo
         task.spawn(function()
