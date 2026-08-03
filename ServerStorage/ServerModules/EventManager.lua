@@ -321,7 +321,7 @@ function EventManager.startEvent()
         end
         
         timeRemaining = currentDuration
-        timeUntilEvent = currentInterval
+        -- timeUntilEvent se asignara AL FINAL del evento (no aqui)
         
         print("[EventManager] === " .. EVENT_NAME .. " INICIADO ===")
         
