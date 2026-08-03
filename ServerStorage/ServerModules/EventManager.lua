@@ -401,9 +401,12 @@ function EventManager.startEvent()
         isEventActive = false
         -- timeUntilEvent ya fue asignado en startEvent con currentInterval
         print("[EventManager] === EVENTO FINALIZADO === (" .. waveCount .. " oleadas)")
+        -- Mostrar el intervalo del PROXIMO evento (eventCount ya fue incrementado en startEvent)
+        -- Pero el proximo evento es eventCount + 1
+        local nextEventNum = eventCount + 1
         local nextIntervalStr = ""
-        if eventCount < #PROGRESSIVE_SCALE then
-                nextIntervalStr = "Proximo evento en " .. PROGRESSIVE_SCALE[eventCount + 1].interval .. "s"
+        if nextEventNum <= #PROGRESSIVE_SCALE then
+                nextIntervalStr = "Proximo evento en " .. math.floor(PROGRESSIVE_SCALE[nextEventNum].interval / 60) .. " minuto(s)"
         else
                 nextIntervalStr = "Proximo evento en 5 minutos"
         end
