@@ -579,7 +579,7 @@ function ModelManager.createMoneyPile(pedestal, rarity, level, fusionLevel, owne
         ownerTag.Value = ownerPlayer
         ownerTag.Parent = moneyPile
 
-        -- Crear CollectEvent ANTES del Touched para que setupMoneyPileEvents lo encuentre
+        -- CollectEvent eliminado: el dinero va directo al jugador
         local collectEvent = Instance.new("BindableEvent")
 
         -- Billboard: Solo dinero (verde)
