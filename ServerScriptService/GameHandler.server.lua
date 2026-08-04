@@ -1310,6 +1310,14 @@ local function savePlayerProgress(player)
         local data = playerData[player.UserId]
         if not data then return end
 
+        -- FIX CRITICO: No guardar si los datos no se han restaurado correctamente
+        -- Si _restored no es true, significa que restorePlayerProgress no termino
+        -- (o fallo). Guardar ahora sobrescribiria los datos buenos con estado vacio.
+        if not data._restored then
+                warn("[Save] NO se guarda " .. player.Name .. ": datos no restaurados (_restored=false). Evitando sobrescribir datos buenos con estado vacio.")
+                return
+        end
+
         local baseLevel = BaseManager.getBaseLevel(player.UserId)
         local blockInventory = BuildManager.getInventory(player.UserId)
         local parcel = ParcelManager.getParcel(player.UserId)
@@ -1672,6 +1680,13 @@ Players.PlayerAdded:Connect(function(player)
                         -- Restaurar progreso DESPUES de que la base y parcela esten asignadas
                         if savedData then
                                 restorePlayerProgress(player, savedData, base)
+                        else
+                                -- FIX: Jugador nuevo, no hay datos que restaurar.
+                                -- Marcar como restaurado para que savePlayerProgress funcione.
+                                local newData = playerData[player.UserId]
+                                if newData then
+                                        newData._restored = true
+                                end
                         end
                 else
                         task.delay(5, function()
@@ -1689,6 +1704,12 @@ Players.PlayerAdded:Connect(function(player)
                                         -- Restaurar progreso en el reintento tambien
                                         if savedData then
                                                 restorePlayerProgress(player, savedData, base)
+                                        else
+                                                -- FIX: Jugador nuevo, marcar como restaurado
+                                                local newData = playerData[player.UserId]
+                                                if newData then
+                                                        newData._restored = true
+                                                end
                                         end
                                 end
                         end)
@@ -1734,7 +1755,9 @@ Players.PlayerRemoving:Connect(function(player)
                 end
         end
 
-        playerData[userId] = nil
+        -- FIX CRITICO: NO borrar playerData[userId] antes de savePlayerProgress
+        -- Antes se borraba aqui y savePlayerProgress leia nil, por lo que NUNCA guardaba al salir
+        -- Ahora se borra DESPUES de guardar (mas abajo)
         upgradeCooldowns[userId] = nil
         throwCooldowns[userId] = nil
         pickupCooldowns[userId] = nil
@@ -1766,6 +1789,7 @@ Players.PlayerRemoving:Connect(function(player)
         end
 
         -- GUARDAR PROGRESO antes de limpiar (la parcela y bloques aun existen)
+        -- FIX CRITICO: playerData[userId] aun existe aqui (se borra al final)
         savePlayerProgress(player)
 
         BaseManager.release(userId)
@@ -1783,6 +1807,10 @@ Players.PlayerRemoving:Connect(function(player)
         end
         -- Limpiar cache de SaveManager
         SaveManager.clearCache(userId)
+
+        -- FIX CRITICO: Borrar playerData[userId] AL FINAL, despues de savePlayerProgress
+        -- Antes se borraba antes de savePlayerProgress, causando que NUNCA se guardara al salir
+        playerData[userId] = nil
 end)
 
 -- ============================================
