@@ -485,67 +485,17 @@ moneyIcon.Image = "rbxassetid://128422594736289"
 moneyIcon.ScaleType = Enum.ScaleType.Fit
 moneyIcon.Parent = moneyPanel
 
--- Texto principal del dinero (gigante)
+-- Texto principal del dinero (gigante, centrado verticalmente en el panel)
 local moneyLabel = Instance.new("TextLabel")
 moneyLabel.Name = "MoneyLabel"
-moneyLabel.Size = UDim2.new(1, -70, 0, 50)
+moneyLabel.Size = UDim2.new(1, -70, 1, -16)
 moneyLabel.Position = UDim2.new(0, 65, 0, 8)
 moneyLabel.BackgroundTransparency = 1 moneyLabel.Text = "$0"
 moneyLabel.TextColor3 = MONEY_GREEN_BRIGHT
 moneyLabel.TextScaled = true moneyLabel.Font = Enum.Font.GothamBlack
 moneyLabel.TextXAlignment = Enum.TextXAlignment.Left
+moneyLabel.TextYAlignment = Enum.TextYAlignment.Center
 moneyLabel.Parent = moneyPanel
-
--- Subtexto: +$X/seg (produccion por segundo)
-local moneySubLabel = Instance.new("TextLabel")
-moneySubLabel.Name = "MoneySubLabel"
-moneySubLabel.Size = UDim2.new(1, -70, 0, 18)
-moneySubLabel.Position = UDim2.new(0, 65, 0, 56)
-moneySubLabel.BackgroundTransparency = 1
-moneySubLabel.Text = "+$0/seg"
-moneySubLabel.TextColor3 = Color3.fromRGB(180, 230, 180)
-moneySubLabel.TextScaled = true
-moneySubLabel.Font = Enum.Font.GothamBold
-moneySubLabel.TextXAlignment = Enum.TextXAlignment.Left
-moneySubLabel.TextTransparency = 0.3
-moneySubLabel.Parent = moneyPanel
-
--- Frame para floating texts (+$X que flota y desaparece)
-local floatingContainer = Instance.new("Frame")
-floatingContainer.Name = "FloatingContainer"
-floatingContainer.Size = UDim2.new(0, 200, 0, 100)
-floatingContainer.Position = UDim2.new(0.5, -100, 0, 90)
-floatingContainer.BackgroundTransparency = 1
-floatingContainer.BorderSizePixel = 0
-floatingContainer.ClipsDescendants = false
-floatingContainer.Parent = screenGui
-
--- Pool de floating texts (reutilizar para no crear/destruir instancias)
-local FLOATING_POOL_SIZE = 6
-local floatingPool = {}
-local floatingIdx = 1
-for i = 1, FLOATING_POOL_SIZE do
-        local ft = Instance.new("TextLabel")
-        ft.Name = "FloatingText" .. i
-        ft.Size = UDim2.new(0, 200, 0, 28)
-        ft.Position = UDim2.new(0, 0, 0, 0)
-        ft.BackgroundTransparency = 1
-        ft.Text = ""
-        ft.TextColor3 = MONEY_GREEN_BRIGHT
-        ft.TextScaled = true
-        ft.Font = Enum.Font.GothamBlack
-        ft.TextXAlignment = Enum.TextXAlignment.Center
-        ft.Visible = false
-        ft.Parent = floatingContainer
-        floatingPool[i] = {label = ft, inUse = false}
-end
-
--- TextStroke compartido para floating texts (mas eficiente que 1 stroke por label)
-for i = 1, FLOATING_POOL_SIZE do
-        local stroke = Instance.new("UIStroke", floatingPool[i].label)
-        stroke.Color = Color3.fromRGB(0, 0, 0)
-        stroke.Thickness = 3
-end
 
 -- ============================================
 -- Formato de dinero en cliente (sufijos español con tilde + plural)
@@ -601,27 +551,6 @@ local function getMoneyColor(amount)
                 end
         end
         return MONEY_COLOR_DEFAULT, MONEY_COLOR_BRIGHT_DEFAULT
-end
-
--- Formato corto para floating text (+$X Mil, +$X Millones)
-local function formatMoneyShort(amount)
-        amount = amount or 0
-        if amount < 1000 then
-                return "+$" .. tostring(math.floor(amount))
-        end
-        for _, tier in ipairs(MONEY_SUFFIXES) do
-                if amount >= tier[1] then
-                        local v = amount / tier[1]
-                        if v >= 100 then
-                                return "+$" .. string.format("%.0f", v) .. " " .. tier[3]
-                        elseif v >= 10 then
-                                return "+$" .. string.format("%.1f", v) .. " " .. tier[3]
-                        else
-                                return "+$" .. string.format("%.2f", v) .. " " .. tier[3]
-                        end
-                end
-        end
-        return "+$" .. tostring(math.floor(amount))
 end
 
 -- Upgrade hint
@@ -1538,9 +1467,8 @@ player.CharacterAdded:Connect(function()
 end)
 
 -- ============================================
--- MONEY UPDATE - OPTIMIZADO
+-- MONEY UPDATE - OPTIMIZADO (solo contador + pop sutil)
 -- Throttle: actualiza UI maximo 12 veces/seg (evita lag con muchos brainrots)
--- Animaciones: pop del numero, floating text, flash dorado en montos grandes
 -- ============================================
 local TweenService = game:GetService("TweenService")
 
@@ -1550,144 +1478,24 @@ local lastMoneyUpdate = 0
 local pendingMoneyAmount = nil
 local THROTTLE_INTERVAL = 0.08 -- 12.5 fps para UI de dinero (suficiente para sentirse fluido)
 
--- TweenInfo pre-creados (evita crear TweenInfo en cada evento = optimizacion)
+-- TweenInfo pre-creado (evita crear TweenInfo en cada evento = optimizacion)
 local POP_TWEEN_INFO = TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-local FLASH_TWEEN_INFO = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-local FLOAT_TWEEN_INFO = TweenInfo.new(0.9, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
--- Estado de animacion pop (evita encolar multiples tweens)
-local popPlaying = false
-local popCurrentScale = 1
 -- Flag anti-reentrant para pop (1 por frame)
 local popPlayedThisFrame = false
 
--- Estado de flash dorado
-local flashPlaying = false
-
--- Production rate (se actualiza desde el cliente calculando delta de dinero / tiempo)
-local lastMoneyCheckTime = tick()
-local lastMoneyCheckAmount = 0
-local productionRatePerSec = 0
-local lastSubLabelUpdate = 0
-
--- Funcion para obtener un floating text libre del pool
-local function getFloatingFromPool()
-        for i = 1, FLOATING_POOL_SIZE do
-                local idx = (floatingIdx % FLOATING_POOL_SIZE) + 1
-                floatingIdx = idx
-                local entry = floatingPool[idx]
-                if not entry.inUse then
-                        entry.inUse = true
-                        return entry
-                end
-        end
-        -- Todos en uso: reusar el mas viejo (no bloquear)
-        local entry = floatingPool[floatingIdx]
-        return entry
-end
-
--- Funcion para mostrar un floating text "+$X" que flota hacia arriba y desaparece
-local function showFloatingText(amount)
-        if amount <= 0 then return end
-        local entry = getFloatingFromPool()
-        local label = entry.label
-
-        label.Text = formatMoneyShort(amount)
-        -- Color basado en el monto del floating
-        local _, brightColor = getMoneyColor(amount)
-        label.TextColor3 = brightColor
-
-        -- Posicion inicial: centro del container
-        label.Position = UDim2.new(0, 0, 0, 0)
-        label.TextTransparency = 0
-        label.Visible = true
-
-        -- Tween: subir 60px + desvanecer
-        local tween = TweenService:Create(label, FLOAT_TWEEN_INFO, {
-                Position = UDim2.new(0, 0, 0, -60),
-                TextTransparency = 1,
-        })
-        tween:Play()
-
-        -- Liberar del pool al terminar
-        tween.Completed:Connect(function()
-                label.Visible = false
-                entry.inUse = false
-        end)
-end
-
--- Funcion para aplicar el pop del numero
+-- Funcion para aplicar el pop del numero (sutil, escala 1 -> 1.08 -> 1)
 local function playPopAnim()
         if popPlayedThisFrame then return end
         popPlayedThisFrame = true
-        -- Pop: scale 1 -> 1.12 -> 1 (rapido, 180ms)
-        moneyLabel.Size = UDim2.new(1, -70, 0, 50 * 1.12)
+        moneyLabel.Size = UDim2.new(1, -70, 1, -8)
         local tween = TweenService:Create(moneyLabel, POP_TWEEN_INFO, {
-                Size = UDim2.new(1, -70, 0, 50),
+                Size = UDim2.new(1, -70, 1, -16),
         })
         tween:Play()
 end
 
--- Funcion para flash dorado (cuando ganancia >= 10% del total)
-local function playFlashAnim(bigAmount)
-        if flashPlaying then return end
-        flashPlaying = true
-
-        local _, brightColor = getMoneyColor(bigAmount)
-        local originalColor = moneyLabel.TextColor3
-
-        -- Cambiar a dorado brillante
-        moneyLabel.TextColor3 = Color3.fromRGB(255, 240, 150)
-        moneyStroke.Color = Color3.fromRGB(255, 215, 0)
-        moneyStroke.Thickness = 3
-
-        -- Floating text especial para montos grandes
-        showFloatingText(bigAmount)
-
-        -- Volver al color normal
-        task.delay(0.4, function()
-                local tween = TweenService:Create(moneyLabel, FLASH_TWEEN_INFO, {
-                        TextColor3 = originalColor,
-                })
-                tween:Play()
-                local strokeTween = TweenService:Create(moneyStroke, FLASH_TWEEN_INFO, {
-                        Color = MONEY_GREEN,
-                        Thickness = 2,
-                })
-                strokeTween:Play()
-                strokeTween.Completed:Connect(function()
-                        flashPlaying = false
-                end)
-        end)
-end
-
--- Funcion para actualizar el sublabel "+$X/seg"
-local function updateProductionRate(currentMoney, currentTime)
-        -- Calcular delta solo si paso al menos 1 segundo
-        local dt = currentTime - lastMoneyCheckTime
-        if dt >= 1.0 then
-                local delta = currentMoney - lastMoneyCheckAmount
-                if delta > 0 then
-                        -- Suavizar: promedio ponderado con rate anterior (50/50)
-                        local instantRate = delta / dt
-                        productionRatePerSec = (productionRatePerSec * 0.5) + (instantRate * 0.5)
-                end
-                lastMoneyCheckTime = currentTime
-                lastMoneyCheckAmount = currentMoney
-        end
-
-        -- Actualizar sublabel maximo 4 veces/seg (no necesita mas)
-        if currentTime - lastSubLabelUpdate >= 0.25 then
-                lastSubLabelUpdate = currentTime
-                if productionRatePerSec > 0 then
-                        moneySubLabel.Text = "+" .. formatMoneyShort(productionRatePerSec):sub(2) .. "/seg"
-                else
-                        moneySubLabel.Text = "+$0/seg"
-                end
-        end
-end
-
--- Funcion para aplicar la actualizacion visual del dinero (con todas las animaciones)
+-- Funcion para aplicar la actualizacion visual del dinero
 local function applyMoneyUpdate(amount, forceInstant)
         amount = amount or 0
         playerMoney = amount
@@ -1697,34 +1505,18 @@ local function applyMoneyUpdate(amount, forceInstant)
 
         -- Actualizar color del texto segun rango
         local baseColor, _ = getMoneyColor(amount)
-        if not flashPlaying then
-                moneyLabel.TextColor3 = baseColor == MONEY_COLOR_DEFAULT and MONEY_GREEN_BRIGHT or baseColor
-        end
+        moneyLabel.TextColor3 = baseColor == MONEY_COLOR_DEFAULT and MONEY_GREEN_BRIGHT or baseColor
 
         -- Actualizar texto
         moneyLabel.Text = formatMoneyClient(amount)
 
         local gain = amount - lastDisplayedMoney
         if gain > 0 and not forceInstant then
-                -- Pop animation
+                -- Solo pop sutil del numero, sin floating text ni flash
                 playPopAnim()
-
-                -- Floating text (solo si la ganancia es significativa: >= 1% del total o monto minimo)
-                local threshold = math.max(10, amount * 0.005)
-                if gain >= threshold then
-                        showFloatingText(gain)
-                end
-
-                -- Flash dorado si la ganancia es >= 10% del total
-                if amount > 100 and gain >= (amount * 0.10) then
-                        playFlashAnim(gain)
-                end
         end
 
         lastDisplayedMoney = amount
-
-        -- Actualizar production rate
-        updateProductionRate(amount, tick())
 end
 
 -- Handler del RemoteEvent (con throttle)
