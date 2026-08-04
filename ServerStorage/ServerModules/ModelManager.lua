@@ -619,39 +619,39 @@ function ModelManager.createMoneyPile(pedestal, rarity, level, fusionLevel, owne
 
         -- Recolectar al caminar sobre la moneda
         local touchDebounce = false
-        moneyPile.Touched:Connect(function(hit)
-                if touchDebounce then return end
-                local character = hit.Parent
-                if not character then return end
-                local player = game:GetService("Players"):GetPlayerFromCharacter(character)
-                if not player then return end
+	-- Touched eliminado: el dinero ya no se recoge fisicamente
 
-                -- SOLO el dueño puede recoger el dinero
-                local ownerTag = moneyPile:FindFirstChild("Owner")
-                if ownerTag and ownerTag.Value ~= player then return end
 
-                local mv = moneyPile:FindFirstChild("MoneyValue")
-                if not mv or mv.Value <= 0 then return end
 
-                touchDebounce = true
-                local amount = mv.Value
-                mv.Value = 0
 
-                local bbGui = moneyPile:FindFirstChild("MoneyGui")
-                if bbGui then
-                        local frame = bbGui:FindFirstChild("Frame")
-                        if frame then
-                                local ml = frame:FindFirstChild("MoneyLabel")
-                                if ml then ml.Text = "$0" end
-                        end
-                end
 
-                -- Disparar evento de recoleccion (ya existe, creado arriba)
-                collectEvent:Fire(player, amount)
 
-                task.wait(0.5)
-                touchDebounce = false
-        end)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         return moneyPile
 end
