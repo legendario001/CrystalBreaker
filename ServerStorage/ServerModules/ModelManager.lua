@@ -581,12 +581,9 @@ function ModelManager.createMoneyPile(pedestal, rarity, level, fusionLevel, owne
 
         -- Crear CollectEvent ANTES del Touched para que setupMoneyPileEvents lo encuentre
         local collectEvent = Instance.new("BindableEvent")
-        collectEvent.Name = "CollectEvent"
-        collectEvent.Parent = moneyPile
 
         -- Billboard: Solo dinero (verde)
         local bb = Instance.new("BillboardGui")
-        bb.Name = "MoneyGui"
         bb.Size = UDim2.new(3, 0, 0.8, 0)
         bb.StudsOffset = Vector3.new(0, 1.5, 0)
         bb.AlwaysOnTop = false
