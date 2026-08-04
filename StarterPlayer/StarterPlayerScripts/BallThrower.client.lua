@@ -335,6 +335,7 @@ end
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "GameUI"
 screenGui.ResetOnSpawn = false
+screenGui.IgnoreGuiInset = true -- ignorar offset de 36px de la barra superior de Roblox
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screenGui.Parent = player:WaitForChild("PlayerGui")
 
