@@ -466,7 +466,7 @@ Instance.new("UICorner", dropKey).CornerRadius = UDim.new(0,4)
 -- ============================================
 local moneyPanel = Instance.new("Frame")
 moneyPanel.Size = UDim2.new(0,320,0,80)
-moneyPanel.Position = UDim2.new(0.5,-160,0,8)
+moneyPanel.Position = UDim2.new(0.5,-160,0,0)
 moneyPanel.BackgroundColor3 = Color3.fromRGB(20,20,30)
 moneyPanel.BackgroundTransparency = 0.15
 moneyPanel.BorderSizePixel = 0 moneyPanel.Parent = screenGui
