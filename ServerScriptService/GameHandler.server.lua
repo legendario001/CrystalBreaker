@@ -1263,20 +1263,12 @@ task.spawn(function()
                                                 charData.pedestal = nil return
                                         end
 
-                                        local moneyPile = charData.pedestal:FindFirstChild("MoneyPile")
-                                        if not moneyPile or not moneyPile.Parent then return end
-
-                                        local mv = moneyPile:FindFirstChild("MoneyValue")
-                                        local rarityTag = moneyPile:FindFirstChild("Rarity")
-                                        if not mv or not rarityTag then return end
-
-                                        local levelTag = moneyPile:FindFirstChild("CharLevel")
-                                        local fusionLevelTag = moneyPile:FindFirstChild("FusionLevel")
-                                        local lvl = (levelTag and levelTag.Value) or 1
-                                        local fLvl = (fusionLevelTag and fusionLevelTag.Value) or 0
-                                        local rate = ModelManager.getMoneyRate(rarityTag.Value, lvl, fLvl)
-                                        -- APLICAR BOOST DE GANANCIAS (si el jugador tiene boostLevel > 0)
-                                        -- Cada boostLevel da +20% de ganancias (max 5 = +100%)
+                                        -- Leer datos del personaje directamente (sin MoneyPile)
+                                        local rarityTag = charData.rarity or "Blanco"
+                                        local lvl = charData.level or 1
+                                        local fLvl = charData.fusionLevel or 0
+                                        local rate = ModelManager.getMoneyRate(rarityTag, lvl, fLvl)
+                                        -- APLICAR BOOST DE GANANCIAS + REBIRTH BONUS
                                         local pData = playerData[playerEntry.userId]
                                         if pData then
                                                 local boostPercent = (pData.boostLevel or 0) * 20 + (pData.rebirthLevel or 0) * 20
@@ -1284,18 +1276,16 @@ task.spawn(function()
                                                         rate = rate * (1 + boostPercent / 100)
                                                 end
                                         end
-                                        mv.Value = mv.Value + rate
-
-                                        -- Actualizar UI del MoneyPile para que se vea el dinero acumulado
-                                        local bb = moneyPile:FindFirstChild("MoneyGui")
-                                        if bb and bb.Parent then
-                                                local bg = bb:FindFirstChild("Frame")
-                                                if bg and bg.Parent then
-                                                        local lbl = bg:FindFirstChild("MoneyLabel")
-                                                        if lbl and lbl.Parent then
-                                                                lbl.Text = "$" .. ModelManager.formatMoney(mv.Value)
-                                                        end
+                                        -- DINERO DIRECTO: sumar al jugador en tiempo real
+                                        pData.money = (pData.money or 0) + rate
+                                        local p = Players:GetPlayerByUserId(playerEntry.userId)
+                                        if p and isPlayerValid(p) then
+                                                local leaderstats = p:FindFirstChild("leaderstats")
+                                                if leaderstats then
+                                                        local coins = leaderstats:FindFirstChild("Coins")
+                                                        if coins then coins.Value = pData.money end
                                                 end
+                                                Events.MoneyUpdate:FireClient(p, pData.money)
                                         end
                                 end)
                                 if not ok then warn("[MoneyTimer] "..tostring(err)) end
