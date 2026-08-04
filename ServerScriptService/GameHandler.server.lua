@@ -1305,7 +1305,12 @@ end)
 local sendInventoryUpdate
 
 -- Guardar el progreso del jugador
-local function savePlayerProgress(player)
+-- Throttle: min 30s entre saves del mismo jugador (evita spam al DataStore)
+-- Excepcion: forceSave=true para el save al salir (PlayerRemoving / BindToClose)
+local lastSaveTime = {} -- [userId] = tick()
+local SAVE_THROTTLE = 30 -- segundos minimos entre saves normales
+
+local function savePlayerProgress(player, forceSave)
         if not isPlayerValid(player) then return end
         local data = playerData[player.UserId]
         if not data then return end
@@ -1314,9 +1319,20 @@ local function savePlayerProgress(player)
         -- Si _restored no es true, significa que restorePlayerProgress no termino
         -- (o fallo). Guardar ahora sobrescribiria los datos buenos con estado vacio.
         if not data._restored then
-                warn("[Save] NO se guarda " .. player.Name .. ": datos no restaurados (_restored=false). Evitando sobrescribir datos buenos con estado vacio.")
+                if forceSave then
+                        warn("[Save] NO se guarda " .. player.Name .. " (forceSave): datos no restaurados.")
+                end
                 return
         end
+
+        -- Throttle: si no es forceSave y ya se guardo hace menos de 30s, skip
+        if not forceSave then
+                local last = lastSaveTime[player.UserId] or 0
+                if (tick() - last) < SAVE_THROTTLE then
+                        return -- skip silencioso, no loguear para no llenar la consola
+                end
+        end
+        lastSaveTime[player.UserId] = tick()
 
         local baseLevel = BaseManager.getBaseLevel(player.UserId)
         local blockInventory = BuildManager.getInventory(player.UserId)
@@ -1790,7 +1806,8 @@ Players.PlayerRemoving:Connect(function(player)
 
         -- GUARDAR PROGRESO antes de limpiar (la parcela y bloques aun existen)
         -- FIX CRITICO: playerData[userId] aun existe aqui (se borra al final)
-        savePlayerProgress(player)
+        -- forceSave=true: SIEMPRE guarda al salir (ignora throttle de 30s)
+        savePlayerProgress(player, true)
 
         BaseManager.release(userId)
         -- Liberar parcela de construccion del jugador
@@ -2880,10 +2897,10 @@ task.spawn(function()
         print("[Leaderboard] Sistema iniciado")
 end)
 
--- Auto-update del leaderboard cada 60 segundos
+-- Auto-update del leaderboard cada 120 segundos (antes 60s, menos carga DataStore)
 task.spawn(function()
         while true do
-                task.wait(60)
+                task.wait(120)
                 -- Actualizar balances de jugadores online en el cache del leaderboard
                 for _, player in ipairs(Players:GetPlayers()) do
                         local balance = BankManager.getBalance(player.UserId)
@@ -2891,8 +2908,10 @@ task.spawn(function()
                 end
                 -- Recalcular top
                 LeaderboardManager.recalculateTop()
-                -- Guardar en DataStore
-                LeaderboardManager.saveAll()
+                -- Guardar en DataStore (skip en Studio para no spamear)
+                if not RunService:IsStudio() then
+                        LeaderboardManager.saveAll()
+                end
                 -- Enviar a clientes
                 sendLeaderboardToAll()
                 -- Actualizar personajes del Top 3
@@ -2968,15 +2987,20 @@ task.spawn(function()
 end)
 
 -- ============================================
--- AUTO-SAVE: guardar todos los jugadores cada 60 segundos
+-- AUTO-SAVE: guardar todos los jugadores cada 120 segundos
+-- (reducido de 60s a 120s para menos carga en DataStore)
+-- En Studio (RunService:IsStudio()) se desactiva para evitar spam durante testing
 -- ============================================
+-- RunService ya declarado al inicio del archivo
 task.spawn(function()
         while true do
-                task.wait(60)
+                task.wait(120)
+                -- En Studio, skip auto-save (el save al salir ya es suficiente para testing)
+                if RunService:IsStudio() then continue end
                 for _, player in ipairs(Players:GetPlayers()) do
                         if isPlayerValid(player) then
                                 local ok = pcall(function()
-                                        savePlayerProgress(player)
+                                        savePlayerProgress(player, false) -- con throttle de 30s
                                 end)
                                 if not ok then
                                         warn("[Save] Error en auto-save de " .. player.Name)
@@ -2992,7 +3016,7 @@ game:BindToClose(function()
         for _, player in ipairs(Players:GetPlayers()) do
                 if isPlayerValid(player) then
                         pcall(function()
-                                savePlayerProgress(player)
+                                savePlayerProgress(player, true) -- forceSave=true
                         end)
                 end
         end
