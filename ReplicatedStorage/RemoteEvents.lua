@@ -47,7 +47,6 @@ local eventNames = {
         "EventAnnouncement",            -- Servidor -> Cliente: anuncio de evento
         "PauseMusicForEvent",          -- Servidor -> Cliente: pausar musica durante evento
         "ResumeMusicAfterEvent",       -- Servidor -> Cliente: reanudar musica despues del evento
-        "LoadingState",                -- Servidor -> Cliente: (isLoading, message) avisa al cliente si estan cargando datos
 }
 
 for _, name in ipairs(eventNames) do

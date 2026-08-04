@@ -782,15 +782,6 @@ Events.PickupChest.OnServerEvent:Connect(function(player)
                 local data = playerData[player.UserId]
                 if not data or data.carrying then return end
 
-                -- FIX: Bloquear recogida de cofres mientras se cargan los brainrots guardados
-                -- Esto evita que el jugador coloque brainrots nuevos que se sobreescribirian
-                if data.isLoading then
-                        pcall(function()
-                                Events.LoadingState:FireClient(player, true, "Espera, tus brainrots se estan cargando...")
-                        end)
-                        return
-                end
-
                 -- Buscar cofre cercano (que no este abriendo ya)
                 local nearest, nearDist = nil, 15
                 -- Buscar solo en la carpeta Chests (optimizado)
@@ -933,9 +924,6 @@ Events.PlaceCharacter.OnServerEvent:Connect(function(player)
                 if not data or not data.carrying then return end
                 local charData = data.characters[data.carrying]
                 if not charData or charData.pedestal then return end
-
-                -- FIX: Bloquear colocacion mientras se cargan los brainrots guardados
-                if data.isLoading then return end
 
                 local pchar = player.Character
                 if not pchar then return end
@@ -1384,13 +1372,7 @@ local function restorePlayerProgress(player, savedData, base)
         end
 
         -- Restaurar personajes
-        -- FIX CRITICO: Como el jugador podria haber colocado brainrots nuevos mientras se cargaba,
-        -- NO sobrescribimos data.characters[idx] si ya esta ocupado. En su lugar, buscamos un idx libre.
-        -- Si el pedestal original ya esta ocupado por un brainrot nuevo, dejamos el brainrot guardado
-        -- en el inventario (sin pedestal) para que el jugador pueda colocarlo manualmente.
         if savedData.characters and base then
-                local restoredCount = 0
-                local orphanedCount = 0
                 for idxStr, charSaved in pairs(savedData.characters) do
                         local idx = tonumber(idxStr)
                         if idx and charSaved and charSaved.name and charSaved.rarity then
@@ -1409,83 +1391,49 @@ local function restorePlayerProgress(player, savedData, base)
                                                 fusionLevel = charSaved.fusionLevel or 0,
                                                 modelName = modelNameToFind,
                                         }
-
-                                        -- FIX: Si el idx original ya esta ocupado por un brainrot nuevo
-                                        -- (que el jugador coloco durante la carga), buscar otro idx libre
-                                        local targetIdx = idx
-                                        if data.characters[idx] then
-                                                targetIdx = getNextCharIndex(data.characters)
-                                                print("[Save] Brainrot guardado '" .. charSaved.name .. "' movido de idx " .. idx .. " a idx " .. targetIdx .. " (idx original ya ocupado por brainrot nuevo)")
-                                        end
-                                        data.characters[targetIdx] = charData
-                                        restoredCount = restoredCount + 1
+                                        data.characters[idx] = charData
 
                                         -- Si tenia pedestal, colocarlo ahi
                                         if charSaved.pedestalName and charSaved.pedestalFloor then
                                                 local pedestal = findPedestalByNameAndFloor(base, charSaved.pedestalName, charSaved.pedestalFloor)
-                                                -- FIX: Verificar multiples condiciones antes de colocar:
-                                                -- 1. El pedestal existe
-                                                -- 2. No tiene ya un CharacterModel (brainrot nuevo colocado por el jugador)
-                                                -- 3. Esta activo/visible
-                                                if pedestal then
-                                                        local alreadyHasModel = false
-                                                        for _, child in ipairs(pedestal:GetChildren()) do
-                                                                if child:IsA("Model") then alreadyHasModel=true break end
+                                                if pedestal and not pedestal:FindFirstChild("CharacterModel") then
+                                                        -- Verificar que el pedestal este activo (visible)
+                                                        local platform = pedestal:FindFirstChild("Platform")
+                                                        local isVisible = true
+                                                        if platform and platform.Transparency == 1 then
+                                                                isVisible = false
                                                         end
-                                                        -- Tambien verificar que ningun otro charData tenga este pedestal
-                                                        local pedestalClaimed = false
-                                                        if not alreadyHasModel then
-                                                                for _, entry in ipairs(iterateCharacters(data.characters)) do
-                                                                        if entry.data ~= charData and entry.data.pedestal == pedestal then
-                                                                                pedestalClaimed = true
-                                                                                break
-                                                                        end
+                                                        if isVisible then
+                                                                ModelManager.placeOnPedestal(model, pedestal)
+                                                                charData.pedestal = pedestal
+                                                                ModelManager.createLabels(pedestal, charData.name, charData.rarity, charData.level, charData.fusionLevel or 0)
+                                                                local moneyPile = ModelManager.createMoneyPile(pedestal, charData.rarity, charData.level, charData.fusionLevel or 0, player)
+                                                                local upgradeBtn = ModelManager.createUpgradeButton(pedestal, charData.rarity, charData.level, charData.fusionLevel or 0)
+                                                                if upgradeBtn then
+                                                                        setupUpgradeButtonEvents(pedestal, upgradeBtn, idx)
                                                                 end
-                                                        end
-                                                        if not alreadyHasModel and not pedestalClaimed then
-                                                                -- Verificar que el pedestal este activo (visible)
-                                                                local platform = pedestal:FindFirstChild("Platform")
-                                                                local isVisible = true
-                                                                if platform and platform.Transparency == 1 then
-                                                                        isVisible = false
-                                                                end
-                                                                if isVisible then
-                                                                        ModelManager.placeOnPedestal(model, pedestal)
-                                                                        charData.pedestal = pedestal
-                                                                        ModelManager.createLabels(pedestal, charData.name, charData.rarity, charData.level, charData.fusionLevel or 0)
-                                                                        local moneyPile = ModelManager.createMoneyPile(pedestal, charData.rarity, charData.level, charData.fusionLevel or 0, player)
-                                                                        local upgradeBtn = ModelManager.createUpgradeButton(pedestal, charData.rarity, charData.level, charData.fusionLevel or 0)
-                                                                        if upgradeBtn then
-                                                                                setupUpgradeButtonEvents(pedestal, upgradeBtn, targetIdx)
-                                                                        end
-                                                                        if moneyPile then
-                                                                                setupMoneyPileEvents(pedestal, moneyPile)
-                                                                                -- Restaurar dinero acumulado guardado
-                                                                                local savedMoney = charSaved.accumulatedMoney or 0
-                                                                                if savedMoney > 0 then
-                                                                                        local mv = moneyPile:FindFirstChild("MoneyValue")
-                                                                                        if mv then
-                                                                                                mv.Value = savedMoney
-                                                                                        end
-                                                                                        -- Actualizar el label del MoneyPile
-                                                                                        local bbGui = moneyPile:FindFirstChild("MoneyGui")
-                                                                                        if bbGui then
-                                                                                                local frame = bbGui:FindFirstChild("Frame")
-                                                                                                if frame then
-                                                                                                        local ml = frame:FindFirstChild("MoneyLabel")
-                                                                                                        if ml then
-                                                                                                                ml.Text = "$" .. tostring(savedMoney)
-                                                                                                        end
+                                                                if moneyPile then
+                                                                        setupMoneyPileEvents(pedestal, moneyPile)
+                                                                        -- Restaurar dinero acumulado guardado
+                                                                        local savedMoney = charSaved.accumulatedMoney or 0
+                                                                        if savedMoney > 0 then
+                                                                                local mv = moneyPile:FindFirstChild("MoneyValue")
+                                                                                if mv then
+                                                                                        mv.Value = savedMoney
+                                                                                end
+                                                                                -- Actualizar el label del MoneyPile
+                                                                                local bbGui = moneyPile:FindFirstChild("MoneyGui")
+                                                                                if bbGui then
+                                                                                        local frame = bbGui:FindFirstChild("Frame")
+                                                                                        if frame then
+                                                                                                local ml = frame:FindFirstChild("MoneyLabel")
+                                                                                                if ml then
+                                                                                                        ml.Text = "$" .. tostring(savedMoney)
                                                                                                 end
                                                                                         end
                                                                                 end
                                                                         end
                                                                 end
-                                                        else
-                                                                -- FIX: El pedestal ya esta ocupado. El brainrot guardado queda en el inventario
-                                                                -- (sin pedestal) para que el jugador lo coloque manualmente en otro pedestal libre.
-                                                                orphanedCount = orphanedCount + 1
-                                                                print("[Save] Brainrot '" .. charSaved.name .. "' (idx " .. targetIdx .. ") no se pudo colocar: pedestal ya ocupado. Queda en inventario.")
                                                         end
                                                 end
                                         end
@@ -1494,7 +1442,6 @@ local function restorePlayerProgress(player, savedData, base)
                                 end
                         end
                 end
-                print("[Save] " .. restoredCount .. " brainrots restaurados para " .. player.Name .. " (" .. orphanedCount .. " sin pedestal por conflicto)")
         end
 
         -- Restaurar inventario de bloques (se carga via BuildManager.setInventory)
@@ -1650,22 +1597,12 @@ local function restorePlayerProgress(player, savedData, base)
         end
 
         print("[Save] Progreso restaurado para " .. player.Name .. " (money=" .. (savedData.money or 0) .. ")")
-
-        -- FIX: Marcar carga como completa y avisar al cliente
-        data.isLoading = false
-        task.delay(0.3, function()
-                if isPlayerValid(player) then
-                        pcall(function()
-                                Events.LoadingState:FireClient(player, false, "")
-                        end)
-                end
-        end)
 end
 
 -- PLAYERS
 Players.PlayerAdded:Connect(function(player)
         print(player.Name.." se unio")
-        playerData[player.UserId] = {characters={}, carrying=nil, money=0, unlockedBalls={["basic"]=true}, boostLevel=0, rebirthLevel=0, isLoading=true}
+        playerData[player.UserId] = {characters={}, carrying=nil, money=0, unlockedBalls={["basic"]=true}, boostLevel=0, rebirthLevel=0}
 
         local leaderstats = Instance.new("Folder")
         leaderstats.Name = "leaderstats"
@@ -1673,15 +1610,6 @@ Players.PlayerAdded:Connect(function(player)
 
         local coins = Instance.new("IntValue")
         coins.Name = "Coins" coins.Value = 0 coins.Parent = leaderstats
-
-        -- Avisar al cliente que estan cargando sus datos (para que no coloque brainrots nuevos)
-        task.delay(0.5, function()
-                if isPlayerValid(player) then
-                        pcall(function()
-                                Events.LoadingState:FireClient(player, true, "Cargando tus brainrots...")
-                        end)
-                end
-        end)
 
         -- Cargar datos guardados desde DataStore (antes de asignar la base)
         local savedData = SaveManager.loadPlayerData(player.UserId)
@@ -1741,15 +1669,6 @@ Players.PlayerAdded:Connect(function(player)
                         -- Restaurar progreso DESPUES de que la base y parcela esten asignadas
                         if savedData then
                                 restorePlayerProgress(player, savedData, base)
-                        else
-                                -- FIX: Jugador nuevo, no hay nada que cargar. Marcar como listo.
-                                local data = playerData[player.UserId]
-                                if data then
-                                        data.isLoading = false
-                                        pcall(function()
-                                                Events.LoadingState:FireClient(player, false, "")
-                                        end)
-                                end
                         end
                 else
                         task.delay(5, function()
@@ -1767,15 +1686,6 @@ Players.PlayerAdded:Connect(function(player)
                                         -- Restaurar progreso en el reintento tambien
                                         if savedData then
                                                 restorePlayerProgress(player, savedData, base)
-                                        else
-                                                -- FIX: Jugador nuevo, marcar como listo
-                                                local data = playerData[player.UserId]
-                                                if data then
-                                                        data.isLoading = false
-                                                        pcall(function()
-                                                                Events.LoadingState:FireClient(player, false, "")
-                                                        end)
-                                                end
                                         end
                                 end
                         end)
