@@ -1476,7 +1476,7 @@ local playerMoney = 0
 local lastDisplayedMoney = 0
 local lastMoneyUpdate = 0
 local pendingMoneyAmount = nil
-local THROTTLE_INTERVAL = 0.08 -- 12.5 fps para UI de dinero (suficiente para sentirse fluido)
+local THROTTLE_INTERVAL = 0.05 -- 20 fps para UI de dinero (mas fluido, sin lag)
 
 -- TweenInfo pre-creado (evita crear TweenInfo en cada evento = optimizacion)
 local POP_TWEEN_INFO = TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out)

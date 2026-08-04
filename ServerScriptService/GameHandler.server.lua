@@ -1233,9 +1233,11 @@ end)
 -- MONEY TIMER - OPTIMIZADO
 -- Solo acumula en el servidor, NO actualiza UI desde aqui
 -- El cliente recoge el dinero cuando lo necesita
+-- OPTIMIZACION: 1 solo FireClient por jugador por tick (no por brainrot)
+-- Intervalo de 0.5s para sensacion de dinero rapido (dopamina)
 task.spawn(function()
         while true do
-                task.wait(2)
+                task.wait(0.5)
                 local activePlayers = {}
                 for userId, data in pairs(playerData) do
                         table.insert(activePlayers, {userId=userId, data=data})
@@ -1244,6 +1246,12 @@ task.spawn(function()
                 for _, playerEntry in ipairs(activePlayers) do
                         local data = playerEntry.data
                         if not data or not data.characters then continue end
+
+                        -- Acumular el dinero de TODOS los brainrots del jugador en una sola pasada
+                        local totalGain = 0
+                        local hadValidBrainrot = false
+                        local boostPercent = (data.boostLevel or 0) * 20 + (data.rebirthLevel or 0) * 20
+                        local boostMultiplier = 1 + (boostPercent / 100)
 
                         local charList = iterateCharacters(data.characters)
                         for _, entry in ipairs(charList) do
@@ -1259,27 +1267,31 @@ task.spawn(function()
                                         local lvl = charData.level or 1
                                         local fLvl = charData.fusionLevel or 0
                                         local rate = ModelManager.getMoneyRate(rarityTag, lvl, fLvl)
-                                        -- APLICAR BOOST DE GANANCIAS + REBIRTH BONUS
-                                        local pData = playerData[playerEntry.userId]
-                                        if pData then
-                                                local boostPercent = (pData.boostLevel or 0) * 20 + (pData.rebirthLevel or 0) * 20
-                                                if boostPercent > 0 then
-                                                        rate = rate * (1 + boostPercent / 100)
-                                                end
-                                        end
-                                        -- DINERO DIRECTO: sumar al jugador en tiempo real
-                                        pData.money = (pData.money or 0) + rate
+                                        -- Aplicar boost + rebirth (multiplicador pre-calculado)
+                                        rate = rate * boostMultiplier
+                                        -- Acumular al total del tick
+                                        totalGain = totalGain + rate
+                                        hadValidBrainrot = true
+                                end)
+                                if not ok then warn("[MoneyTimer] "..tostring(err)) end
+                        end
+
+                        -- Si el jugador gano dinero en este tick, actualizar todo de una sola vez
+                        if hadValidBrainrot and totalGain > 0 then
+                                local ok2, err2 = pcall(function()
+                                        data.money = (data.money or 0) + totalGain
                                         local p = Players:GetPlayerByUserId(playerEntry.userId)
                                         if p and isPlayerValid(p) then
                                                 local leaderstats = p:FindFirstChild("leaderstats")
                                                 if leaderstats then
                                                         local coins = leaderstats:FindFirstChild("Coins")
-                                                        if coins then coins.Value = pData.money end
+                                                        if coins then coins.Value = data.money end
                                                 end
-                                                Events.MoneyUpdate:FireClient(p, pData.money)
+                                                -- UN SOLO FireClient por jugador por tick (no por brainrot)
+                                                Events.MoneyUpdate:FireClient(p, data.money)
                                         end
                                 end)
-                                if not ok then warn("[MoneyTimer] "..tostring(err)) end
+                                if not ok2 then warn("[MoneyTimer] update: "..tostring(err2)) end
                         end
                 end
         end
