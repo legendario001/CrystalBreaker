@@ -52,18 +52,7 @@ CrystalBreaker/
 │
 ├── StarterPlayer/
 │   └── StarterPlayerScripts/
-│       ├── BallThrower.client.lua          (LocalScript - UI, inputs del cliente)
-│       ├── BankSystem.lua                  (LocalScript - UI del banco)
-│       ├── BuildSystem.lua                 (LocalScript - sistema de construccion)
-│       ├── LeaderboardSystem.lua           (LocalScript - leaderboard top dinero)
-│       ├── OfflineEarningsSystem.lua       (LocalScript - popup dinero offline)
-│       ├── ShopSystem.lua                  (LocalScript - UI de tienda boost)
-│       ├── DonationLeaderboardSystem.lua   (LocalScript - top donadores)
-│       ├── DonationPromptSystem.lua        (LocalScript - prompt de donacion)
-│       ├── EventUI.client.lua              (LocalScript - UI del evento magnate)
-│       ├── RebirthSystem.lua               (LocalScript - UI de renacimiento)
-│       ├── MochilaInteract.client.lua      (LocalScript - boton E para mochila)
-│       └── LoadingScreen.client.lua        (LocalScript - UI "Cargando brainrots..." anti-bug)
+│       └── BallThrower.client.lua          (LocalScript - UI, inputs del cliente)
 │
 ├── StarterGui/
 │   └── .gitkeep
