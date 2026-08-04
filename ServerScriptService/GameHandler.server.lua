@@ -543,28 +543,19 @@ local function showEmptyLabels(base)
 end
 
 local function setupMoneyPileEvents(pedestal, moneyPile)
-        if not moneyPile then return end
-        local collectEvent = moneyPile:WaitForChild("CollectEvent", 5)
-        if collectEvent then
-                collectEvent.Event:Connect(function(player, amount)
-                        -- Solo el dueño de la base puede recoger el dinero
-                        if not isPedestalOwnedByPlayer(pedestal, player) then return end
-                        addMoney(player, amount)
-                        -- Sonido de recoger dinero
-                        playSoundForPlayer(SOUND_COLLECT_MONEY, player)
-                        -- Efecto visual de billete (solo visible para el dueño)
-                        local char = player.Character
-                        if char and char:FindFirstChild("HumanoidRootPart") then
-                                local pilePos = moneyPile.Position
-                                local playerPos = char.HumanoidRootPart.Position
-                                -- Mezclar 50/50: aparece entre la pila y el jugador
-                                local midPos = (pilePos + playerPos) * 0.5
-                                pcall(function()
-                                        Events.ShowBillEffect:FireClient(player, midPos, amount)
-                                end)
-                        end
-                end)
-        end
+        -- FIX: Con el sistema de dinero automatico (commit 80d3ebe), el MoneyPile ya no tiene
+        -- CollectEvent (fue eliminado del createMoneyPile en ModelManager). El Money Timer ahora
+        -- suma directamente a pData.money leyendo de charData, sin tocar el MoneyPile.
+        --
+        -- ANTES (bug): usabamos moneyPile:WaitForChild("CollectEvent", 5) que esperaba 5 segundos
+        -- completos por un evento que ya no existe. Como esta funcion se llama para CADA brainrot
+        -- restaurado en restorePlayerProgress, N brainrots = N*5s de carga bloqueada.
+        --   5 brainrots = 25s, 10 brainrots = 50s, 20 brainrots = 100s
+        -- Por eso los brainrots tardaban mucho en aparecer y se encimaban con los nuevos.
+        --
+        -- AHORA: funcion vacia (no-op). El MoneyPile se sigue creando para efecto visual,
+        -- pero el dinero va directo al jugador via Money Timer.
+        return
 end
 
 local function setupUpgradeButtonEvents(pedestal, upgradeBtn, charIdx)
