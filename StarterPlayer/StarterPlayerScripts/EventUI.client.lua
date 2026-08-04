@@ -20,12 +20,13 @@ screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screenGui.Parent = playerGui
 
 -- ============================================
--- Timer permanente (arriba centro)
+-- Timer permanente (arriba derecha - compacto)
+-- Texto corto: "Evento: 4:32" o "Activo: 2:15"
 -- ============================================
 local timerFrame = Instance.new("Frame")
 timerFrame.Name = "TimerFrame"
-timerFrame.Size = UDim2.new(0, 350, 0, 45)
-timerFrame.Position = UDim2.new(0.5, -175, 0, 10)
+timerFrame.Size = UDim2.new(0, 180, 0, 36)
+timerFrame.Position = UDim2.new(1, -195, 0, 12)
 timerFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
 timerFrame.BackgroundTransparency = 0.3
 timerFrame.BorderSizePixel = 0
@@ -34,21 +35,21 @@ Instance.new("UICorner", timerFrame).CornerRadius = UDim.new(0, 10)
 
 local timerStroke = Instance.new("UIStroke", timerFrame)
 timerStroke.Color = Color3.fromRGB(0, 0, 0)
-timerStroke.Thickness = 8
+timerStroke.Thickness = 6
 
 local timerLabel = Instance.new("TextLabel")
 timerLabel.Size = UDim2.new(1, -10, 1, 0)
 timerLabel.Position = UDim2.new(0, 5, 0, 0)
 timerLabel.BackgroundTransparency = 1
-timerLabel.Text = "Cargando eventos..."
-timerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+timerLabel.Text = "Evento: ..."
+timerLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
 timerLabel.TextScaled = true
 timerLabel.Font = Enum.Font.GothamBold
 timerLabel.Parent = timerFrame
 
 local timerTextStroke = Instance.new("UIStroke", timerLabel)
 timerTextStroke.Color = Color3.fromRGB(0, 0, 0)
-timerTextStroke.Thickness = 4
+timerTextStroke.Thickness = 3
 
 -- ============================================
 -- Formatear segundos a M:SS
@@ -115,14 +116,14 @@ msgStroke.Thickness = 4
 if EventAnnouncement then
         EventAnnouncement.OnClientEvent:Connect(function(data)
                 if data.type == "timer" then
-                        -- Actualizar timer permanente
+                        -- Actualizar timer permanente (formato compacto)
                         if data.state == "waiting" then
-                                timerLabel.Text = data.eventName .. " | Proximo en: " .. formatTime(data.timeLeft)
-                                timerLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+                                timerLabel.Text = "Evento: " .. formatTime(data.timeLeft)
+                                timerLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
                                 timerStroke.Color = Color3.fromRGB(0, 0, 0)
                                 timerFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
                         elseif data.state == "active" then
-                                timerLabel.Text = "EVENTO ACTIVO | Termina en: " .. formatTime(data.timeLeft)
+                                timerLabel.Text = "Activo: " .. formatTime(data.timeLeft)
                                 timerLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
                                 timerStroke.Color = Color3.fromRGB(0, 0, 0)
                                 timerFrame.BackgroundColor3 = Color3.fromRGB(20, 50, 20)
