@@ -1739,6 +1739,23 @@ Players.PlayerAdded:Connect(function(player)
                 if not isPlayerValid(player) then return end
                 local base = BaseManager.assign(player)
                 if base then
+                        -- FIX CRITICO: Limpiar TODOS los pedestales de la base al entrar,
+                        -- por si quedaron modelos huerfanos de una sesion anterior (en Studio
+                        -- las bases persisten entre sesiones). Esto previene que aparezcan
+                        -- brainrots "fantasma" al instante antes de que restorePlayerProgress cargue.
+                        local allPedestals = getAllPedestals(base)
+                        for _, pedestal in ipairs(allPedestals) do
+                                for _, child in ipairs(pedestal:GetChildren()) do
+                                        if child:IsA("Model") then
+                                                child:Destroy()
+                                        end
+                                end
+                                ModelManager.removeMoneyPile(pedestal)
+                                ModelManager.removeUpgradeButton(pedestal)
+                                ModelManager.clearPedestal(pedestal)
+                        end
+                        print("[Save] Base pre-limpiada al entrar para " .. player.Name .. " (" .. #allPedestals .. " pedestales)")
+
                         showEmptyLabels(base)
                         -- Crear boton de mejorar base (solo si BaseUpgradeManager cargo)
                         if BaseUpgradeManager then
@@ -1764,6 +1781,19 @@ Players.PlayerAdded:Connect(function(player)
                                 if not isPlayerValid(player) then return end
                                 base = BaseManager.assign(player)
                                 if base then
+                                        -- FIX CRITICO: Pre-limpiar pedestales al entrar (reintento)
+                                        local allPedestals = getAllPedestals(base)
+                                        for _, pedestal in ipairs(allPedestals) do
+                                                for _, child in ipairs(pedestal:GetChildren()) do
+                                                        if child:IsA("Model") then
+                                                                child:Destroy()
+                                                        end
+                                                end
+                                                ModelManager.removeMoneyPile(pedestal)
+                                                ModelManager.removeUpgradeButton(pedestal)
+                                                ModelManager.clearPedestal(pedestal)
+                                        end
+                                        print("[Save] Base pre-limpiada al entrar (reintento) para " .. player.Name)
                                         showEmptyLabels(base)
                                         if BaseUpgradeManager then
                                                 BaseUpgradeManager.createUpgradeButton(base, player)
@@ -1809,6 +1839,29 @@ Players.PlayerRemoving:Connect(function(player)
                                 ModelManager.removeMoneyPile(charData.pedestal)
                                 ModelManager.removeUpgradeButton(charData.pedestal)
                         end
+                end
+
+                -- FIX CRITICO: Limpiar TODOS los pedestales de la base del jugador,
+                -- no solo los que estan en data.characters. Esto previene que modelos
+                -- huerfanos (de brainrots cuyo charData.pedestal era nil o invalido)
+                -- queden en los pedestales y aparezcan al volver a entrar.
+                local base = BaseManager.getBase(userId)
+                if base then
+                        local allPedestals = getAllPedestals(base)
+                        for _, pedestal in ipairs(allPedestals) do
+                                -- Destruir todos los Model hijos (brainrots)
+                                for _, child in ipairs(pedestal:GetChildren()) do
+                                        if child:IsA("Model") then
+                                                child:Destroy()
+                                        end
+                                end
+                                -- Limpiar MoneyPile y UpgradeButton tambien
+                                ModelManager.removeMoneyPile(pedestal)
+                                ModelManager.removeUpgradeButton(pedestal)
+                                -- Limpiar labels
+                                ModelManager.clearPedestal(pedestal)
+                        end
+                        print("[Save] Base limpiada para " .. player.Name .. " (" .. #allPedestals .. " pedestales)")
                 end
 
                 for key, tp in pairs(droppedChars) do
