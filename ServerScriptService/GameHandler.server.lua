@@ -1357,7 +1357,24 @@ local function savePlayerProgress(player, forceSave)
                 parcelCenter = parcel.Position
         end
 
-        print("[Save] Guardando " .. player.Name .. ": money=" .. (data.money or 0) .. ", bankBalance=" .. bankBalance .. ", blocksFolder=" .. (blocksFolder and "si" or "no"))
+        -- LOGS DE DIAGNOSTICO: contar brainrots en data.characters
+        local brainrotCount = 0
+        local brainrotDetails = {}
+        if data.characters then
+                for idx, charData in pairs(data.characters) do
+                        if charData and charData.name then
+                                brainrotCount = brainrotCount + 1
+                                table.insert(brainrotDetails, "[" .. idx .. "]=" .. charData.name .. "(" .. charData.rarity .. ")")
+                        end
+                end
+        end
+        print("[Save] === GUARDANDO " .. player.Name .. " ===")
+        print("[Save] money=" .. (data.money or 0) .. ", bankBalance=" .. bankBalance .. ", baseLevel=" .. (baseLevel or 1))
+        print("[Save] brainrots en data.characters: " .. brainrotCount)
+        if brainrotCount > 0 then
+                print("[Save] brainrots: " .. table.concat(brainrotDetails, ", "))
+        end
+        print("[Save] _restored=" .. tostring(data._restored) .. ", _isRestoring=" .. tostring(data._isRestoring))
 
         local success = SaveManager.savePlayerData(player.UserId, data, baseLevel, blockInventory, blocksFolder, bankBalance, parcelCenter, data.unlockedBalls, data.boostLevel or 0, data.rebirthLevel or 0)
         if success then
@@ -1418,6 +1435,12 @@ local function restorePlayerProgress(player, savedData, base)
 
         -- Restaurar personajes
         if savedData.characters and base then
+                -- LOG DE DIAGNOSTICO: contar brainrots guardados
+                local savedBrainrotCount = 0
+                for _ in pairs(savedData.characters) do savedBrainrotCount = savedBrainrotCount + 1 end
+                print("[Save] Cargando " .. savedBrainrotCount .. " brainrots guardados para " .. player.Name)
+                local loadedBrainrotCount = 0
+                local failedBrainrotCount = 0
                 for idxStr, charSaved in pairs(savedData.characters) do
                         local idx = tonumber(idxStr)
                         if idx and charSaved and charSaved.name and charSaved.rarity then
@@ -1437,6 +1460,8 @@ local function restorePlayerProgress(player, savedData, base)
                                                 modelName = modelNameToFind,
                                         }
                                         data.characters[idx] = charData
+                                        loadedBrainrotCount = loadedBrainrotCount + 1
+                                        print("[Save] + Brainrot cargado: [" .. idx .. "] " .. charSaved.name .. " (" .. charSaved.rarity .. ", Lv." .. (charSaved.level or 1) .. ", fusion " .. (charSaved.fusionLevel or 0) .. ")")
 
                                         -- Si tenia pedestal, colocarlo ahi
                                         if charSaved.pedestalName and charSaved.pedestalFloor then
@@ -1466,27 +1491,18 @@ local function restorePlayerProgress(player, savedData, base)
                                                                                 if mv then
                                                                                         mv.Value = savedMoney
                                                                                 end
-                                                                                -- Actualizar el label del MoneyPile
-                                                                                local bbGui = moneyPile:FindFirstChild("MoneyGui")
-                                                                                if bbGui then
-                                                                                        local frame = bbGui:FindFirstChild("Frame")
-                                                                                        if frame then
-                                                                                                local ml = frame:FindFirstChild("MoneyLabel")
-                                                                                                if ml then
-                                                                                                        ml.Text = "$" .. tostring(savedMoney)
-                                                                                                end
-                                                                                        end
-                                                                                end
                                                                         end
                                                                 end
                                                         end
                                                 end
                                         end
                                 else
-                                        warn("[Save] No se encontro modelo '" .. charSaved.name .. "' en rareza '" .. charSaved.rarity .. "' para " .. player.Name)
+                                        failedBrainrotCount = failedBrainrotCount + 1
+                                        warn("[Save] No se encontro modelo '" .. charSaved.name .. "' (modelName=" .. tostring(charSaved.modelName) .. ") en rareza '" .. charSaved.rarity .. "' para " .. player.Name)
                                 end
                         end
                 end
+                print("[Save] Brainrots cargados: " .. loadedBrainrotCount .. "/" .. savedBrainrotCount .. " para " .. player.Name .. " (fallaron: " .. failedBrainrotCount .. ")")
         end
 
         -- Restaurar inventario de bloques (se carga via BuildManager.setInventory)
@@ -1537,6 +1553,16 @@ local function restorePlayerProgress(player, savedData, base)
 
         -- Restaurar saldo del banco (siempre setear, incluso si es 0)
         local savedBankBalance = savedData.bankBalance or 0
+        -- FIX CRITICO: Si savedBankBalance es 0 pero el leaderboard tiene un saldo guardado,
+        -- usar el del leaderboard como fallback. El leaderboard usa un DataStore separado
+        -- que no se corrompe con el race condition del save principal.
+        if savedBankBalance == 0 and LeaderboardManager then
+                local lbBalance = LeaderboardManager.getBalance(player.UserId)
+                if lbBalance and lbBalance > 0 then
+                        warn("[Save] savedBankBalance era 0 pero leaderboard tiene " .. lbBalance .. " para " .. player.Name .. ". Usando leaderboard como fallback al cargar.")
+                        savedBankBalance = lbBalance
+                end
+        end
         BankManager.setBalance(player.UserId, savedBankBalance)
         print("[Save] Banco restaurado para " .. player.Name .. " (saldo=" .. savedBankBalance .. ")")
         -- Enviar BankUIUpdate al cliente para que su UI muestre el saldo correcto desde el inicio
