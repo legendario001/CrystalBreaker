@@ -500,7 +500,7 @@ moneyLabel.Parent = moneyPanel
 -- ============================================
 -- Formato de dinero en cliente (sufijos español con tilde + plural)
 -- Mil, Millón/Millones, Billón/Billones, Trillón/Trillones, Cuatrillón/Cuatrillones
--- Maximo 4 digitos + 2 decimales + sufijo
+-- Maximo 4 digitos + 3 decimales + sufijo
 -- ============================================
 local MONEY_SUFFIXES = {
         {1e15, "Cuatrillón", "Cuatrillones", Color3.fromRGB(255, 215, 0),   Color3.fromRGB(255, 240, 150)}, -- dorado
@@ -522,18 +522,18 @@ local function formatMoneyClient(amount)
                 local threshold, singular, plural, _color, _brightColor = tier[1], tier[2], tier[3], tier[4], tier[5]
                 if amount >= threshold then
                         local v = amount / threshold
-                        -- Singular solo si es exactamente 1.00 (ej: 1.00 Millón)
+                        -- Singular solo si es exactamente 1.000 (ej: 1.000 Millón)
                         local suffix
                         if v == 1 then
                                 suffix = singular
                         else
                                 suffix = plural
                         end
-                        -- Formatear: entero si es entero, sino 2 decimales
+                        -- Formatear: entero si es entero, sino 3 decimales
                         if v == math.floor(v) then
                                 return "$" .. tostring(math.floor(v)) .. " " .. suffix
                         else
-                                return "$" .. string.format("%.2f", v) .. " " .. suffix
+                                return "$" .. string.format("%.3f", v) .. " " .. suffix
                         end
                 end
         end
