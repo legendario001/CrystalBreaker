@@ -1553,14 +1553,19 @@ local function restorePlayerProgress(player, savedData, base)
 
         -- Restaurar saldo del banco (siempre setear, incluso si es 0)
         local savedBankBalance = savedData.bankBalance or 0
-        -- FIX CRITICO: Si savedBankBalance es 0 pero el leaderboard tiene un saldo guardado,
-        -- usar el del leaderboard como fallback. El leaderboard usa un DataStore separado
-        -- que no se corrompe con el race condition del save principal.
-        if savedBankBalance == 0 and LeaderboardManager then
-                local lbBalance = LeaderboardManager.getBalance(player.UserId)
-                if lbBalance and lbBalance > 0 then
-                        warn("[Save] savedBankBalance era 0 pero leaderboard tiene " .. lbBalance .. " para " .. player.Name .. ". Usando leaderboard como fallback al cargar.")
+        -- FIX CRITICO: Si el leaderboard tiene un saldo MAYOR que el banco guardado,
+        -- usar el del leaderboard. El leaderboard usa un DataStore separado que no se
+        -- corrompe con el race condition del save principal.
+        -- Si el banco guardado es mayor (depositos recientes no sincronizados al leaderboard),
+        -- usar el del banco y actualizar el leaderboard.
+        if LeaderboardManager then
+                local lbBalance = LeaderboardManager.getBalance(player.UserId) or 0
+                if lbBalance > savedBankBalance then
+                        warn("[Save] Leaderboard tiene " .. lbBalance .. " > banco guardado " .. savedBankBalance .. " para " .. player.Name .. ". Usando leaderboard.")
                         savedBankBalance = lbBalance
+                elseif savedBankBalance > lbBalance then
+                        print("[Save] Banco guardado (" .. savedBankBalance .. ") > leaderboard (" .. lbBalance .. "). Actualizando leaderboard.")
+                        LeaderboardManager.updateBalance(player.UserId, savedBankBalance)
                 end
         end
         BankManager.setBalance(player.UserId, savedBankBalance)

@@ -115,7 +115,12 @@ end
 -- Cargar datos del jugador desde DataStore
 -- Devuelve: tabla de datos o nil si no hay datos guardados
 function SaveManager.loadPlayerData(userId)
+        -- FIX: La cache solo se usa si fue poblada por un loadPlayerData previo en la
+        -- MISMA sesion del servidor. Si el jugador salio y volvio a entrar, clearCache
+        -- la borro, asi que esta llamada va a leer del DataStore real.
+        -- Esto es correcto: si la cache existia, son los mismos datos que ya cargamos.
         if loadedData[userId] then
+                print("[SaveManager] Cache hit para userId " .. userId)
                 return loadedData[userId]
         end
 
@@ -130,8 +135,19 @@ function SaveManager.loadPlayerData(userId)
 
         if not data then
                 -- No hay datos guardados (jugador nuevo)
+                print("[SaveManager] No hay datos guardados para userId " .. userId .. " (jugador nuevo)")
                 return nil
         end
+
+        -- LOGS DE DIAGNOSTICO: mostrar que se leyo del DataStore
+        local charCount = 0
+        if data.characters then
+                for _ in pairs(data.characters) do charCount = charCount + 1 end
+        end
+        print("[SaveManager] Datos leidos del DataStore para userId " .. userId .. ":")
+        print("[SaveManager]   money=" .. tostring(data.money) .. ", bankBalance=" .. tostring(data.bankBalance))
+        print("[SaveManager]   characters=" .. charCount .. ", baseLevel=" .. tostring(data.baseLevel))
+        print("[SaveManager]   lastSaveTimestamp=" .. tostring(data.lastSaveTimestamp) .. " (hace " .. (os.time() - (data.lastSaveTimestamp or 0)) .. "s)")
 
         loadedData[userId] = data
         return data
@@ -171,6 +187,11 @@ function SaveManager.savePlayerData(userId, playerData, baseLevel, blockInventor
                 dataToSave.placedBlocks = serializePlacedBlocks(blocksFolder, parcelCenter)
         end
 
+        -- LOG DE DIAGNOSTICO: que se va a guardar
+        local charCount = 0
+        for _ in pairs(dataToSave.characters) do charCount = charCount + 1 end
+        print("[SaveManager] SetAsync para userId " .. userId .. ": money=" .. dataToSave.money .. ", bank=" .. dataToSave.bankBalance .. ", chars=" .. charCount)
+
         -- Guardar en DataStore
         local success, err = pcall(function()
                 playerStore:SetAsync("player_" .. userId, dataToSave)
@@ -181,6 +202,7 @@ function SaveManager.savePlayerData(userId, playerData, baseLevel, blockInventor
                 return false
         end
 
+        print("[SaveManager] SetAsync OK para userId " .. userId)
         -- Actualizar cache
         loadedData[userId] = dataToSave
         return true
