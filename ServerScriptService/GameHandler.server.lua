@@ -1320,7 +1320,7 @@ local function savePlayerProgress(player, forceSave)
         -- (o fallo). Guardar ahora sobrescribiria los datos buenos con estado vacio.
         if not data._restored then
                 if forceSave then
-                        warn("[Save] NO se guarda " .. player.Name .. " (forceSave): datos no restaurados.")
+                        warn("[Save] NO se guarda " .. player.Name .. " (forceSave): datos no restaurados (_restored=" .. tostring(data._restored) .. ", _isRestoring=" .. tostring(data._isRestoring) .. "). Evitando sobrescribir datos buenos.")
                 end
                 return
         end
@@ -1339,6 +1339,18 @@ local function savePlayerProgress(player, forceSave)
         local parcel = ParcelManager.getParcel(player.UserId)
         local blocksFolder = ParcelManager.getBlocksFolder(player.UserId)
         local bankBalance = BankManager.getBalance(player.UserId)
+        -- FIX CRITICO: Si bankBalance es 0 pero el leaderboard tiene un saldo guardado,
+        -- usar el del leaderboard como fallback. Esto protege contra el caso donde
+        -- BankManager.cleanupPlayer se ejecuto antes de tiempo o el saldo no cargo.
+        if bankBalance == 0 and LeaderboardManager then
+                local leaderboardBalance = LeaderboardManager.getBalance and LeaderboardManager.getBalance(player.UserId)
+                if leaderboardBalance and leaderboardBalance > 0 then
+                        warn("[Save] bankBalance era 0 pero leaderboard tiene " .. leaderboardBalance .. " para " .. player.Name .. ". Usando leaderboard como fallback.")
+                        bankBalance = leaderboardBalance
+                        -- Restaurar el saldo en BankManager para futuras operaciones
+                        BankManager.setBalance(player.UserId, bankBalance)
+                end
+        end
         -- Centro de la parcela para guardar posiciones relativas de bloques
         local parcelCenter = nil
         if parcel then
@@ -1365,7 +1377,13 @@ local function restorePlayerProgress(player, savedData, base)
         if data._restored then
                 return
         end
-        data._restored = true
+        -- FIX CRITICO: Marcar _restored = false (restaurando) mientras se ejecuta
+        -- y recien setear _restored = true al FINAL de la funcion.
+        -- ANTES se seteaba al inicio, lo que permitia a savePlayerProgress guardar
+        -- datos parciales si el jugador salia mientras se restauraba (race condition).
+        -- data._restored = false significa "restaurando, NO guardar"
+        data._restored = false
+        data._isRestoring = true
 
         -- Restaurar dinero
         if savedData.money then
@@ -1624,6 +1642,12 @@ local function restorePlayerProgress(player, savedData, base)
         end
 
         print("[Save] Progreso restaurado para " .. player.Name .. " (money=" .. (savedData.money or 0) .. ")")
+
+        -- FIX CRITICO: Marcar como restaurado al FINAL (no al inicio)
+        -- Esto evita que savePlayerProgress guarde datos parciales si el jugador
+        -- sale mientras restorePlayerProgress aun se esta ejecutando (race condition)
+        data._isRestoring = false
+        data._restored = true
 end
 
 -- PLAYERS
@@ -1807,6 +1831,22 @@ Players.PlayerRemoving:Connect(function(player)
         -- GUARDAR PROGRESO antes de limpiar (la parcela y bloques aun existen)
         -- FIX CRITICO: playerData[userId] aun existe aqui (se borra al final)
         -- forceSave=true: SIEMPRE guarda al salir (ignora throttle de 30s)
+        -- FIX CRITICO 2: Si restorePlayerProgress esta corriendo (_isRestoring=true),
+        -- esperar a que termine antes de guardar. Sino se guardarian datos parciales.
+        if data._isRestoring then
+                warn("[Save] " .. player.Name .. " salio mientras se restauraba. Esperando a que termine restorePlayerProgress...")
+                local maxWait = 5 -- max 5 segundos
+                local waited = 0
+                while data._isRestoring and waited < maxWait do
+                        task.wait(0.1)
+                        waited = waited + 0.1
+                end
+                if data._isRestoring then
+                        warn("[Save] Timeout esperando restorePlayerProgress para " .. player.Name .. ". NO se guarda para evitar datos parciales.")
+                else
+                        print("[Save] restorePlayerProgress termino para " .. player.Name .. ". Guardando...")
+                end
+        end
         savePlayerProgress(player, true)
 
         BaseManager.release(userId)

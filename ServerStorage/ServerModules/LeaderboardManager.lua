@@ -73,6 +73,11 @@ function LeaderboardManager.updateBalance(userId, balance)
         allBalances[tostring(userId)] = balance
 end
 
+-- Obtener el saldo de un jugador desde el cache (fallback para BankManager)
+function LeaderboardManager.getBalance(userId)
+        return allBalances[tostring(userId)] or 0
+end
+
 -- Recalcular el top 30
 function LeaderboardManager.recalculateTop()
         local sorted = {}
