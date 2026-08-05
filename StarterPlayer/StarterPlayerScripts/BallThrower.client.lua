@@ -466,8 +466,8 @@ Instance.new("UICorner", dropKey).CornerRadius = UDim.new(0,4)
 -- Panel mas grande, texto gigante, sufijos en español
 -- ============================================
 local moneyPanel = Instance.new("Frame")
-moneyPanel.Size = UDim2.new(0,320,0,80)
-moneyPanel.Position = UDim2.new(0.5,-160,0,0)
+moneyPanel.Size = UDim2.new(0,420,0,80)
+moneyPanel.Position = UDim2.new(0.5,-210,0,0)
 moneyPanel.BackgroundColor3 = Color3.fromRGB(20,20,30)
 moneyPanel.BackgroundTransparency = 0.15
 moneyPanel.BorderSizePixel = 0 moneyPanel.Parent = screenGui
@@ -486,9 +486,10 @@ moneyIcon.ScaleType = Enum.ScaleType.Fit
 moneyIcon.Parent = moneyPanel
 
 -- Texto principal del dinero (gigante, centrado verticalmente en el panel)
+-- Ancho amplio para que quepan 3 decimales + sufijo sin que el TextScaled suba/baje
 local moneyLabel = Instance.new("TextLabel")
 moneyLabel.Name = "MoneyLabel"
-moneyLabel.Size = UDim2.new(1, -70, 1, -16)
+moneyLabel.Size = UDim2.new(1, -75, 1, -16)
 moneyLabel.Position = UDim2.new(0, 65, 0, 8)
 moneyLabel.BackgroundTransparency = 1 moneyLabel.Text = "$0"
 moneyLabel.TextColor3 = MONEY_GREEN_BRIGHT
@@ -1488,9 +1489,9 @@ local popPlayedThisFrame = false
 local function playPopAnim()
         if popPlayedThisFrame then return end
         popPlayedThisFrame = true
-        moneyLabel.Size = UDim2.new(1, -70, 1, -8)
+        moneyLabel.Size = UDim2.new(1, -75, 1, -8)
         local tween = TweenService:Create(moneyLabel, POP_TWEEN_INFO, {
-                Size = UDim2.new(1, -70, 1, -16),
+                Size = UDim2.new(1, -75, 1, -16),
         })
         tween:Play()
 end
