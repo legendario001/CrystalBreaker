@@ -1311,9 +1311,18 @@ local lastSaveTime = {} -- [userId] = tick()
 local SAVE_THROTTLE = 30 -- segundos minimos entre saves normales
 
 local function savePlayerProgress(player, forceSave)
-        if not isPlayerValid(player) then return end
+        -- LOG al inicio para diagnosticar si se llama
+        print("[Save] savePlayerProgress llamado para " .. (player and player.Name or "nil") .. " (forceSave=" .. tostring(forceSave) .. ")")
+
+        -- FIX CRITICO: Cuando forceSave=true (al salir del jugador), NO verificar
+        -- isPlayerValid porque player.Parent puede ser nil durante PlayerRemoving.
+        -- Solo verificar isPlayerValid para saves normales (auto-save).
+        if not forceSave and not isPlayerValid(player) then return end
         local data = playerData[player.UserId]
-        if not data then return end
+        if not data then
+                print("[Save] NO se guarda: playerData[userId] es nil")
+                return
+        end
 
         -- FIX CRITICO: No guardar si los datos no se han restaurado correctamente
         -- Si _restored no es true, significa que restorePlayerProgress no termino
@@ -3137,13 +3146,41 @@ end)
 -- Guardar todos los jugadores cuando el servidor se cierra
 game:BindToClose(function()
         print("[Save] Servidor cerrandose - guardando todos los jugadores...")
-        for _, player in ipairs(Players:GetPlayers()) do
-                if isPlayerValid(player) then
+        -- FIX CRITICO: Players:GetPlayers() puede devolver vacio si PlayerRemoving
+        -- ya se ejecuto. Iterar sobre playerData directamente para asegurar que
+        -- todos los jugadores con datos se guarden.
+        local savedCount = 0
+        for userId, data in pairs(playerData) do
+                -- Buscar el player object por userId (puede ser nil si ya se fue)
+                local player = Players:GetPlayerByUserId(userId)
+                if player then
                         pcall(function()
-                                savePlayerProgress(player, true) -- forceSave=true
+                                savePlayerProgress(player, true)
+                        end)
+                        savedCount = savedCount + 1
+                else
+                        -- Player ya se fue pero playerData aun existe.
+                        -- Guardar directamente desde playerData usando userId.
+                        print("[Save] BindToClose: player " .. userId .. " ya se fue, guardando desde playerData directamente")
+                        pcall(function()
+                                local baseLevel = BaseManager.getBaseLevel(userId)
+                                local blockInventory = BuildManager.getInventory(userId)
+                                local parcel = ParcelManager.getParcel(userId)
+                                local blocksFolder = ParcelManager.getBlocksFolder(userId)
+                                local bankBalance = BankManager.getBalance(userId) or 0
+                                if bankBalance == 0 and LeaderboardManager then
+                                        local lbBalance = LeaderboardManager.getBalance(userId)
+                                        if lbBalance and lbBalance > 0 then
+                                                bankBalance = lbBalance
+                                        end
+                                end
+                                local parcelCenter = parcel and parcel.Position or nil
+                                SaveManager.savePlayerData(userId, data, baseLevel, blockInventory, blocksFolder, bankBalance, parcelCenter, data.unlockedBalls, data.boostLevel or 0, data.rebirthLevel or 0)
+                                savedCount = savedCount + 1
                         end)
                 end
         end
+        print("[Save] " .. savedCount .. " jugadores guardados en BindToClose. Esperando SetAsync...")
         task.wait(3) -- esperar a que terminen los saves
         print("[Save] Todos los jugadores guardados.")
 end)
