@@ -51,9 +51,11 @@ arrowTextStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
 -- ============================================
 -- Panel 3x3 al centro de la pantalla
+-- Panel 380x380, padding 15, cells 100, gaps 15
+-- 3*100 + 2*15 = 330, disponible = 380-30 = 350 (margen 20px)
 -- ============================================
-local PANEL_W = 360
-local PANEL_H = 360
+local PANEL_W = 380
+local PANEL_H = 380
 local CELL = 100 -- tamaño de cada slot
 local GAP = 15 -- separacion entre slots
 
@@ -73,12 +75,12 @@ panelStroke.Color = Color3.fromRGB(255, 215, 60)
 panelStroke.Thickness = 2.5
 panelStroke.Transparency = 0.15
 
--- Padding interno
+-- Padding interno (15px para que los 9 slots quepan con margen)
 local panelPadding = Instance.new("UIPadding", panel)
-panelPadding.PaddingLeft = UDim.new(0, 20)
-panelPadding.PaddingRight = UDim.new(0, 20)
-panelPadding.PaddingTop = UDim.new(0, 20)
-panelPadding.PaddingBottom = UDim.new(0, 20)
+panelPadding.PaddingLeft = UDim.new(0, 15)
+panelPadding.PaddingRight = UDim.new(0, 15)
+panelPadding.PaddingTop = UDim.new(0, 15)
+panelPadding.PaddingBottom = UDim.new(0, 15)
 
 -- GridLayout 3x3
 local grid = Instance.new("UIGridLayout", panel)
@@ -139,6 +141,9 @@ end
 -- ============================================
 -- Mover botones existentes a los slots
 -- ============================================
+-- Forward declaration para que moveButtonToSlot pueda cerrar el panel al click
+local closePanel
+
 local function moveButtonToSlot(button, slotIdx)
         if not button or not button.Parent then return false end
         local slot = slots[slotIdx]
@@ -158,6 +163,13 @@ local function moveButtonToSlot(button, slotIdx)
         -- Ocultar el label "Vacio"
         slot.emptyLabel.Visible = false
         slot.occupied = true
+
+        -- FIX: Conectar click para cerrar el menu al hacer click en cualquier boton
+        -- Esto permite que el sub-panel (mochila, shop, etc.) se vea encima de todo
+        button.MouseButton1Click:Connect(function()
+                task.wait(0.05) -- pequeno delay para que el click del boton se procese primero
+                if closePanel then closePanel() end
+        end)
 
         print("[MenuToggle] Boton " .. button.Name .. " movido al slot " .. slotIdx)
         return true
@@ -208,32 +220,43 @@ end)
 -- ============================================
 local isPanelOpen = false
 
-local function togglePanel()
-        isPanelOpen = not isPanelOpen
+local function closePanelImpl()
+        if not isPanelOpen then return end
+        isPanelOpen = false
+        arrowBtn.Text = ">"
+        local tween = TweenService:Create(panel,
+                TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                {Size = UDim2.new(0, 0, 0, 0)}
+        )
+        tween:Play()
+        tween.Completed:Connect(function()
+                panel.Visible = false
+        end)
+        print("[MenuToggle] Panel cerrado")
+end
 
+-- Asignar a la forward declaration
+closePanel = closePanelImpl
+
+local function openPanel()
+        if isPanelOpen then return end
+        isPanelOpen = true
+        arrowBtn.Text = "<"
+        panel.Visible = true
+        panel.Size = UDim2.new(0, 0, 0, 0)
+        local tween = TweenService:Create(panel,
+                TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+                {Size = UDim2.new(0, PANEL_W, 0, PANEL_H)}
+        )
+        tween:Play()
+        print("[MenuToggle] Panel abierto")
+end
+
+local function togglePanel()
         if isPanelOpen then
-                -- Abrir panel
-                arrowBtn.Text = "<"
-                panel.Visible = true
-                panel.Size = UDim2.new(0, 0, 0, 0)
-                local tween = TweenService:Create(panel,
-                        TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
-                        {Size = UDim2.new(0, PANEL_W, 0, PANEL_H)}
-                )
-                tween:Play()
-                print("[MenuToggle] Panel abierto")
+                closePanel()
         else
-                -- Cerrar panel
-                arrowBtn.Text = ">"
-                local tween = TweenService:Create(panel,
-                        TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-                        {Size = UDim2.new(0, 0, 0, 0)}
-                )
-                tween:Play()
-                tween.Completed:Connect(function()
-                        panel.Visible = false
-                end)
-                print("[MenuToggle] Panel cerrado")
+                openPanel()
         end
 end
 
