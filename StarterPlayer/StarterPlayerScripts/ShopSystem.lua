@@ -58,12 +58,17 @@ function ShopSystem.init(deps)
         shopStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
         -- ============================================
-        -- Panel de la Shop (modal)
+        -- Panel de la Shop (modal) - RESPONSIVE
+        -- Usa Scale para adaptarse a cualquier pantalla (movil, tablet, PC)
+        -- Maximo 450x550 pero se reduce en pantallas chicas
         -- ============================================
         local shopPanel = Instance.new("Frame")
         shopPanel.Name = "ShopPanel"
-        shopPanel.Size = UDim2.new(0, 450, 0, 550)
-        shopPanel.Position = UDim2.new(0.5, -225, 0.5, -275)
+        -- Scale 0.9 = 90% del viewport, maximo 450x550 (LimitSize)
+        -- En movil chico (360x640): 324x576, en PC (1920x1080): 450x550
+        shopPanel.Size = UDim2.new(0.9, 0, 0.7, 0)
+        shopPanel.Position = UDim2.new(0.5, 0, 0.5, 0)
+        shopPanel.AnchorPoint = Vector2.new(0.5, 0.5)
         shopPanel.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
         shopPanel.BackgroundTransparency = 0.05
         shopPanel.BorderSizePixel = 0
@@ -71,14 +76,18 @@ function ShopSystem.init(deps)
         shopPanel.Parent = screenGui
         Instance.new("UICorner", shopPanel).CornerRadius = UDim.new(0, 15)
 
+        -- Limitar tamano maximo para que no se haga gigante en PC
+        local sizeConstraint = Instance.new("UISizeConstraint", shopPanel)
+        sizeConstraint.MaxSize = Vector2.new(450, 550)
+
         local panelStroke = Instance.new("UIStroke", shopPanel)
         panelStroke.Color = Color3.fromRGB(255, 100, 50)
         panelStroke.Thickness = 4
 
         -- Titulo
         local titleLabel = Instance.new("TextLabel")
-        titleLabel.Size = UDim2.new(1, -40, 0, 70)
-        titleLabel.Position = UDim2.new(0, 20, 0, 15)
+        titleLabel.Size = UDim2.new(1, -60, 0, 60)
+        titleLabel.Position = UDim2.new(0, 20, 0, 10)
         titleLabel.BackgroundTransparency = 1
         titleLabel.Text = "🛒 TIENDA"
         titleLabel.TextColor3 = Color3.fromRGB(255, 100, 50)
@@ -86,26 +95,31 @@ function ShopSystem.init(deps)
         titleLabel.Font = Enum.Font.GothamBlack
         titleLabel.Parent = shopPanel
 
-        -- Boton cerrar (X)
+        -- Boton cerrar (X) - SIEMPRE visible y clickeable
+        -- Posicion relativa al panel (1, -50, 0, 10) para que este en la esquina
         local closeBtn = Instance.new("TextButton")
-        closeBtn.Size = UDim2.new(0, 45, 0, 45)
-        closeBtn.Position = UDim2.new(1, -55, 0, 10)
+        closeBtn.Size = UDim2.new(0, 40, 0, 40)
+        closeBtn.AnchorPoint = Vector2.new(1, 0)
+        closeBtn.Position = UDim2.new(1, -10, 0, 10)
         closeBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
         closeBtn.Text = "X"
         closeBtn.Font = Enum.Font.GothamBold
         closeBtn.TextSize = 22
         closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
         closeBtn.BorderSizePixel = 0
+        closeBtn.ZIndex = 10
         closeBtn.Parent = shopPanel
         Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 8)
+        -- Asegurar que el boton siempre este activo (no oculto por otros elementos)
+        closeBtn.Active = true
 
         -- ============================================
         -- Item: Boost de Ganancias 20%
         -- ============================================
         local boostItem = Instance.new("Frame")
         boostItem.Name = "BoostItem"
-        boostItem.Size = UDim2.new(1, -40, 0, 250)
-        boostItem.Position = UDim2.new(0, 20, 0, 100)
+        boostItem.Size = UDim2.new(1, -40, 1, -100) -- altura responsiva (panel - titulo)
+        boostItem.Position = UDim2.new(0, 20, 0, 80)
         boostItem.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
         boostItem.BackgroundTransparency = 0.2
         boostItem.BorderSizePixel = 0
