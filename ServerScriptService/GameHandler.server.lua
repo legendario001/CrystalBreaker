@@ -1250,8 +1250,16 @@ task.spawn(function()
                         -- Acumular el dinero de TODOS los brainrots del jugador en una sola pasada
                         local totalGain = 0
                         local hadValidBrainrot = false
-                        local boostPercent = (data.boostLevel or 0) * 20 + (data.rebirthLevel or 0) * 20
+                        -- Boost de ganancias: porcentaje (boostLevel * 20%)
+                        local boostPercent = (data.boostLevel or 0) * 20
                         local boostMultiplier = 1 + (boostPercent / 100)
+                        -- Multiplicador de renacimiento: acumulable (x1, x3, x6, x10, x15)
+                        local rebirthMultiplier = 1
+                        if RebirthManager and RebirthManager.getRebirthMultiplier then
+                                rebirthMultiplier = RebirthManager.getRebirthMultiplier(data.rebirthLevel or 0)
+                        end
+                        -- Multiplicador total = boost * rebirth
+                        local totalMultiplier = boostMultiplier * rebirthMultiplier
 
                         local charList = iterateCharacters(data.characters)
                         for _, entry in ipairs(charList) do
@@ -1267,8 +1275,8 @@ task.spawn(function()
                                         local lvl = charData.level or 1
                                         local fLvl = charData.fusionLevel or 0
                                         local rate = ModelManager.getMoneyRate(rarityTag, lvl, fLvl)
-                                        -- Aplicar boost + rebirth (multiplicador pre-calculado)
-                                        rate = rate * boostMultiplier
+                                        -- Aplicar boost (porcentaje) + rebirth (multiplicador)
+                                        rate = rate * totalMultiplier
                                         -- Acumular al total del tick
                                         totalGain = totalGain + rate
                                         hadValidBrainrot = true
@@ -1603,7 +1611,11 @@ local function restorePlayerProgress(player, savedData, base)
                         end
                         if savedData.rebirthLevel then
                                 data.rebirthLevel = savedData.rebirthLevel
-                                print("[Save] Rebirth level cargado: " .. data.rebirthLevel .. " (+" .. (data.rebirthLevel * 20) .. "% ganancias)")
+                                local mult = 1
+                                if RebirthManager and RebirthManager.getRebirthMultiplier then
+                                        mult = RebirthManager.getRebirthMultiplier(data.rebirthLevel)
+                                end
+                                print("[Save] Rebirth level cargado: " .. data.rebirthLevel .. " (multiplicador x" .. mult .. ")")
                         end
                         print("[Save] Pelotas desbloqueadas restauradas para " .. player.Name)
                 end
@@ -1724,7 +1736,11 @@ Players.PlayerAdded:Connect(function(player)
                         end
                         if savedData.rebirthLevel then
                                 data.rebirthLevel = savedData.rebirthLevel
-                                print("[Save] Rebirth level cargado: " .. data.rebirthLevel .. " (+" .. (data.rebirthLevel * 20) .. "% ganancias)")
+                                local mult = 1
+                                if RebirthManager and RebirthManager.getRebirthMultiplier then
+                                        mult = RebirthManager.getRebirthMultiplier(data.rebirthLevel)
+                                end
+                                print("[Save] Rebirth level cargado: " .. data.rebirthLevel .. " (multiplicador x" .. mult .. ")")
                         end
                         -- Enviar al cliente con un delay corto (1s) para que el BallThrower ya este cargado
                         task.delay(1, function()

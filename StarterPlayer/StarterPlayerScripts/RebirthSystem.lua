@@ -23,7 +23,7 @@ function RebirthSystem.init(deps)
         local isProcessing = false
 
         -- ============================================
-        -- Etiqueta de bonus en pantalla (esquina inferior derecha)
+        -- Etiqueta de multiplicador en pantalla (esquina inferior derecha)
         -- ============================================
         local bonusLabel = Instance.new("TextLabel")
         bonusLabel.Name = "RebirthBonusLabel"
@@ -32,7 +32,7 @@ function RebirthSystem.init(deps)
         bonusLabel.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
         bonusLabel.BackgroundTransparency = 0.3
         bonusLabel.BorderSizePixel = 0
-        bonusLabel.Text = "Bonus: +0%"
+        bonusLabel.Text = "Multiplicador: x1"
         bonusLabel.Font = Enum.Font.GothamBold
         bonusLabel.TextSize = 18
         bonusLabel.TextColor3 = Color3.fromRGB(100, 255, 150)
@@ -131,7 +131,7 @@ function RebirthSystem.init(deps)
         instructionsLabel.Size = UDim2.new(1, -40, 0, 90)
         instructionsLabel.Position = UDim2.new(0, 20, 0, 70)
         instructionsLabel.BackgroundTransparency = 1
-        instructionsLabel.Text = "Para renacer, debes llenar los 5 pisos de tu base con 50 brainrots de la rareza indicada.\n\nCada renacimiento te da +20% de ganancias permanentes y se acumula con tus mejoras compradas."
+        instructionsLabel.Text = "Para renacer, debes llenar los 5 pisos de tu base con 50 brainrots de la rareza indicada.\n\nCada renacimiento te da un MULTIPLICADOR de ganancias acumulable: x1, x2, x3, x4, x5 (total hasta x15)."
         instructionsLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
         instructionsLabel.TextWrapped = true
         instructionsLabel.TextScaled = true
@@ -151,6 +151,12 @@ function RebirthSystem.init(deps)
 
         local levelsLayout = Instance.new("UIListLayout", levelsFrame)
         levelsLayout.Padding = UDim.new(0, 5)
+
+        -- Multiplicador total acumulado por nivel (suma 1+2+...+N)
+        -- Nivel 1 -> x1, 2 -> x3, 3 -> x6, 4 -> x10, 5 -> x15
+        local function getMultForLevel(n)
+                return n * (n + 1) / 2
+        end
 
         local levelInfo = {
                 {rarity = "Comun (Blanco)", color = Color3.fromRGB(220, 220, 220)},
@@ -178,7 +184,7 @@ function RebirthSystem.init(deps)
                 levelText.Size = UDim2.new(1, -10, 1, 0)
                 levelText.Position = UDim2.new(0, 10, 0, 0)
                 levelText.BackgroundTransparency = 1
-                levelText.Text = "Renacimiento " .. i .. ": 50x " .. info.rarity .. "  →  +" .. (i * 20) .. "% total"
+                levelText.Text = "Renacimiento " .. i .. ": 50x " .. info.rarity .. "  →  +x" .. i .. " (total x" .. getMultForLevel(i) .. ")"
                 levelText.TextColor3 = info.color
                 levelText.TextScaled = true
                 levelText.Font = Enum.Font.GothamBold
@@ -271,10 +277,24 @@ function RebirthSystem.init(deps)
                 end
         end
 
+        -- Funcion local para calcular multiplicador acumulado de renacimiento
+        local function getRebirthMult(level)
+                local lvl = level or 0
+                if lvl <= 0 then return 1 end
+                return lvl * (lvl + 1) / 2
+        end
+
         local function updateBonusLabel(boostLevel, rebirthLevel)
-                local total = (boostLevel or 0) * 20 + (rebirthLevel or 0) * 20
-                bonusLabel.Text = "Bonus: +" .. total .. "%"
-                if total > 0 then
+                -- Boost sigue siendo porcentaje (+20% por nivel)
+                -- Rebirth ahora es multiplicador acumulable (x1, x3, x6, x10, x15)
+                local boostPct = (boostLevel or 0) * 20
+                local rebirthMult = getRebirthMult(rebirthLevel or 0)
+                if boostPct > 0 then
+                        bonusLabel.Text = "x" .. rebirthMult .. " (+" .. boostPct .. "%)"
+                else
+                        bonusLabel.Text = "Multiplicador: x" .. rebirthMult
+                end
+                if rebirthMult > 1 or boostPct > 0 then
                         bonusLabel.TextColor3 = Color3.fromRGB(100, 255, 150)
                 end
         end
