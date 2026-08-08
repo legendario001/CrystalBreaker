@@ -1,8 +1,7 @@
 -- ============================================
 -- InvestorSystem (LocalScript) - StarterPlayerScripts
 -- UI del sistema de Inversionistas (estilo Sell Lemons)
--- Muestra: inversionistas actuales, ganaria al renacer, multiplicador, boton renacer
--- Tematica: hombre millonario (en lugar de alien)
+-- Layout responsivo con UIListLayout (no alturas fijas que se desbordan)
 -- ============================================
 
 local Players = game:GetService("Players")
@@ -28,11 +27,12 @@ screenGui.DisplayOrder = 100 -- encima de otros paneles
 screenGui.Parent = playerGui
 
 -- ============================================
--- Panel principal (modal) - RESPONSIVE (igual que shop/rebirth)
+-- Panel principal (modal) - RESPONSIVE
+-- Usa Scale + UISizeConstraint para adaptarse a cualquier pantalla
 -- ============================================
 local panel = Instance.new("Frame")
 panel.Name = "InvestorPanel"
-panel.Size = UDim2.new(0.9, 0, 0.75, 0)
+panel.Size = UDim2.new(0.9, 0, 0.7, 0)
 panel.Position = UDim2.new(0.5, 0, 0.5, 0)
 panel.AnchorPoint = Vector2.new(0.5, 0.5)
 panel.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
@@ -43,18 +43,33 @@ panel.Parent = screenGui
 Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 20)
 
 local sizeConstraint = Instance.new("UISizeConstraint", panel)
-sizeConstraint.MaxSize = Vector2.new(500, 600)
+sizeConstraint.MaxSize = Vector2.new(450, 580)
 
 local panelStroke = Instance.new("UIStroke", panel)
 panelStroke.Color = Color3.fromRGB(255, 215, 0)  -- dorado
 panelStroke.Thickness = 4
 
+-- Padding interno del panel
+local panelPadding = Instance.new("UIPadding", panel)
+panelPadding.PaddingLeft = UDim.new(0, 15)
+panelPadding.PaddingRight = UDim.new(0, 15)
+panelPadding.PaddingTop = UDim.new(0, 15)
+panelPadding.PaddingBottom = UDim.new(0, 15)
+
+-- UIListLayout para que los elementos se apilen automaticamente
+-- y se ajusten al alto del panel sin desbordar
+local listLayout = Instance.new("UIListLayout", panel)
+listLayout.Padding = UDim.new(0, 8)
+listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+listLayout.VerticalAlignment = Enum.VerticalAlignment.Top
+
 -- ============================================
 -- Titulo
 -- ============================================
 local titleLabel = Instance.new("TextLabel")
-titleLabel.Size = UDim2.new(1, -60, 0, 50)
-titleLabel.Position = UDim2.new(0, 20, 0, 10)
+titleLabel.LayoutOrder = 1
+titleLabel.Size = UDim2.new(1, 0, 0, 40)
 titleLabel.BackgroundTransparency = 1
 titleLabel.Text = "💰 INVERSIONISTAS"
 titleLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
@@ -63,31 +78,13 @@ titleLabel.Font = Enum.Font.GothamBlack
 titleLabel.Parent = panel
 
 -- ============================================
--- Boton cerrar (X) - SIEMPRE visible
--- ============================================
-local closeBtn = Instance.new("TextButton")
-closeBtn.Size = UDim2.new(0, 40, 0, 40)
-closeBtn.AnchorPoint = Vector2.new(1, 0)
-closeBtn.Position = UDim2.new(1, -10, 0, 10)
-closeBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-closeBtn.Text = "X"
-closeBtn.Font = Enum.Font.GothamBold
-closeBtn.TextSize = 22
-closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-closeBtn.BorderSizePixel = 0
-closeBtn.ZIndex = 10
-closeBtn.Parent = panel
-Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 8)
-closeBtn.Active = true
-
--- ============================================
 -- Subtitulo / descripcion
 -- ============================================
 local descLabel = Instance.new("TextLabel")
-descLabel.Size = UDim2.new(1, -40, 0, 50)
-descLabel.Position = UDim2.new(0, 20, 0, 70)
+descLabel.LayoutOrder = 2
+descLabel.Size = UDim2.new(1, 0, 0, 35)
 descLabel.BackgroundTransparency = 1
-descLabel.Text = "Los inversionistas te dan +0.5% de ganancias permanentes por cada uno. Renace para obtener mas."
+descLabel.Text = "Cada inversionista da +0.5% permanente. Renace para obtener mas."
 descLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 descLabel.TextWrapped = true
 descLabel.TextScaled = true
@@ -95,12 +92,11 @@ descLabel.Font = Enum.Font.GothamMedium
 descLabel.Parent = panel
 
 -- ============================================
--- Bloque 1: Bonus actual (verde)
+-- Bloque 1: Multiplicador actual (verde)
 -- ============================================
 local bonusFrame = Instance.new("Frame")
-bonusFrame.Name = "BonusFrame"
-bonusFrame.Size = UDim2.new(1, -40, 0, 60)
-bonusFrame.Position = UDim2.new(0, 20, 0, 130)
+bonusFrame.LayoutOrder = 3
+bonusFrame.Size = UDim2.new(1, 0, 0, 45)
 bonusFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
 bonusFrame.BackgroundTransparency = 0.2
 bonusFrame.BorderSizePixel = 0
@@ -116,7 +112,7 @@ bonusLabel.Name = "BonusLabel"
 bonusLabel.Size = UDim2.new(1, -20, 1, 0)
 bonusLabel.Position = UDim2.new(0, 10, 0, 0)
 bonusLabel.BackgroundTransparency = 1
-bonusLabel.Text = "Multiplicador actual: x1"
+bonusLabel.Text = "Multiplicador: x1.00"
 bonusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
 bonusLabel.TextScaled = true
 bonusLabel.Font = Enum.Font.GothamBold
@@ -126,9 +122,8 @@ bonusLabel.Parent = bonusFrame
 -- Bloque 2: Inversionistas actuales
 -- ============================================
 local currentFrame = Instance.new("Frame")
-currentFrame.Name = "CurrentFrame"
-currentFrame.Size = UDim2.new(1, -40, 0, 60)
-currentFrame.Position = UDim2.new(0, 20, 0, 200)
+currentFrame.LayoutOrder = 4
+currentFrame.Size = UDim2.new(1, 0, 0, 45)
 currentFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
 currentFrame.BackgroundTransparency = 0.2
 currentFrame.BorderSizePixel = 0
@@ -144,7 +139,7 @@ currentLabel.Name = "CurrentLabel"
 currentLabel.Size = UDim2.new(1, -20, 1, 0)
 currentLabel.Position = UDim2.new(0, 10, 0, 0)
 currentLabel.BackgroundTransparency = 1
-currentLabel.Text = "Inversionistas: 0"
+currentLabel.Text = "Tienes: 0"
 currentLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 currentLabel.TextScaled = true
 currentLabel.Font = Enum.Font.GothamBold
@@ -154,9 +149,8 @@ currentLabel.Parent = currentFrame
 -- Bloque 3: Ganarias al renacer (destacado)
 -- ============================================
 local gainFrame = Instance.new("Frame")
-gainFrame.Name = "GainFrame"
-gainFrame.Size = UDim2.new(1, -40, 0, 70)
-gainFrame.Position = UDim2.new(0, 20, 0, 270)
+gainFrame.LayoutOrder = 5
+gainFrame.Size = UDim2.new(1, 0, 0, 55)
 gainFrame.BackgroundColor3 = Color3.fromRGB(40, 30, 15)
 gainFrame.BackgroundTransparency = 0.1
 gainFrame.BorderSizePixel = 0
@@ -172,19 +166,18 @@ gainLabel.Name = "GainLabel"
 gainLabel.Size = UDim2.new(1, -20, 1, 0)
 gainLabel.Position = UDim2.new(0, 10, 0, 0)
 gainLabel.BackgroundTransparency = 1
-gainLabel.Text = "Renacer para obtener: 0 inversionistas"
+gainLabel.Text = "Renacer: +0"
 gainLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
 gainLabel.TextScaled = true
 gainLabel.Font = Enum.Font.GothamBlack
 gainLabel.Parent = gainFrame
 
 -- ============================================
--- Bloque 4: Progreso actual (dinero generado esta vida)
+-- Bloque 4: Progreso actual (dinero generado)
 -- ============================================
 local progressFrame = Instance.new("Frame")
-progressFrame.Name = "ProgressFrame"
-progressFrame.Size = UDim2.new(1, -40, 0, 50)
-progressFrame.Position = UDim2.new(0, 20, 0, 350)
+progressFrame.LayoutOrder = 6
+progressFrame.Size = UDim2.new(1, 0, 0, 35)
 progressFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
 progressFrame.BackgroundTransparency = 0.3
 progressFrame.BorderSizePixel = 0
@@ -200,19 +193,28 @@ progressLabel.Name = "ProgressLabel"
 progressLabel.Size = UDim2.new(1, -20, 1, 0)
 progressLabel.Position = UDim2.new(0, 10, 0, 0)
 progressLabel.BackgroundTransparency = 1
-progressLabel.Text = "Dinero generado: $0"
+progressLabel.Text = "Generado: $0"
 progressLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
 progressLabel.TextScaled = true
 progressLabel.Font = Enum.Font.GothamMedium
 progressLabel.Parent = progressFrame
 
 -- ============================================
--- Boton RENACER (grande, dorado, anclado al fondo)
+-- Spacer flexible para empujar el boton al fondo
+-- ============================================
+local spacer = Instance.new("Frame")
+spacer.LayoutOrder = 7
+spacer.Size = UDim2.new(1, 0, 1, -300) -- ocupa el espacio restante
+spacer.BackgroundTransparency = 1
+spacer.Parent = panel
+
+-- ============================================
+-- Boton RENACER (al fondo, empujado por el spacer)
 -- ============================================
 local rebirthBtn = Instance.new("TextButton")
 rebirthBtn.Name = "RebirthBtn"
-rebirthBtn.Size = UDim2.new(1, -40, 0, 55)
-rebirthBtn.Position = UDim2.new(0, 20, 1, -65)
+rebirthBtn.LayoutOrder = 8
+rebirthBtn.Size = UDim2.new(1, 0, 0, 50)
 rebirthBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 rebirthBtn.BorderSizePixel = 0
 rebirthBtn.Text = "NECESITAS MAS DINERO"
@@ -227,26 +229,43 @@ rebirthStroke.Color = Color3.fromRGB(100, 100, 100)
 rebirthStroke.Thickness = 2
 
 -- ============================================
--- Formato de dinero (reutiliza el mismo formato del contador)
+-- Boton cerrar (X) - SIEMPRE visible, posicion absoluta
+-- (no pertenece al UIListLayout, se posiciona con AnchorPoint)
+-- ============================================
+local closeBtn = Instance.new("TextButton")
+closeBtn.Size = UDim2.new(0, 35, 0, 35)
+closeBtn.AnchorPoint = Vector2.new(1, 0)
+closeBtn.Position = UDim2.new(1, -8, 0, 8)
+closeBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+closeBtn.Text = "X"
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.TextSize = 20
+closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeBtn.BorderSizePixel = 0
+closeBtn.ZIndex = 10
+closeBtn.Parent = panel
+Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 8)
+closeBtn.Active = true
+
+-- ============================================
+-- Formato de dinero
 -- ============================================
 local function formatMoney(amount)
         amount = amount or 0
         local suffixes = {
-                {1e15, "Cuatrillones"},
-                {1e12, "Trillones"},
-                {1e9, "Billones"},
-                {1e6, "Millones"},
-                {1e3, "Mil"},
+                {1e15, "Q"},
+                {1e12, "T"},
+                {1e9, "B"},
+                {1e6, "M"},
+                {1e3, "K"},
         }
         for _, tier in ipairs(suffixes) do
                 if amount >= tier[1] then
                         local v = amount / tier[1]
                         if v >= 100 then
-                                return string.format("%.1f %s", v, tier[2])
-                        elseif v >= 10 then
-                                return string.format("%.2f %s", v, tier[2])
+                                return string.format("%.1f%s", v, tier[2])
                         else
-                                return string.format("%.3f %s", v, tier[2])
+                                return string.format("%.2f%s", v, tier[2])
                         end
                 end
         end
@@ -266,30 +285,30 @@ local function updateUI(info)
         if not info then return end
         currentInfo = info
 
-        -- Multiplicador actual
-        local multStr = string.format("%.2f", info.currentMultiplier)
-        bonusLabel.Text = "Multiplicador actual: x" .. multStr
+        -- Multiplicador actual (texto corto)
+        bonusLabel.Text = "Multiplicador: x" .. string.format("%.2f", info.currentMultiplier)
 
-        -- Inversionistas actuales
-        currentLabel.Text = "Inversionistas: " .. tostring(info.currentInvestors)
+        -- Inversionistas actuales (texto corto)
+        currentLabel.Text = "Tienes: " .. tostring(info.currentInvestors)
 
-        -- Ganarias al renacer
+        -- Ganarias al renacer (texto corto)
         if info.investorsGained > 0 then
-                gainLabel.Text = "Renacer para obtener: +" .. tostring(info.investorsGained) .. " inversionistas"
+                gainLabel.Text = "Renacer: +" .. tostring(info.investorsGained)
                 gainLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
         else
-                gainLabel.Text = "Genera mas dinero para obtener inversionistas"
+                gainLabel.Text = "Genera mas dinero"
                 gainLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
         end
 
-        -- Progreso (dinero generado esta vida)
-        progressLabel.Text = "Dinero generado: $" .. formatMoney(info.totalMoneyEarnedThisLife)
+        -- Progreso (dinero generado, texto corto)
+        progressLabel.Text = "Generado: $" .. formatMoney(info.totalMoneyEarnedThisLife)
 
-        -- Boton renacer
+        -- Boton renacer (texto corto)
         if info.canRebirth and info.investorsGained > 0 then
                 rebirthBtn.BackgroundColor3 = Color3.fromRGB(255, 215, 0)
                 rebirthBtn.TextColor3 = Color3.fromRGB(20, 20, 30)
-                rebirthBtn.Text = "🔄 RENACER (+x" .. string.format("%.2f", info.nextMultiplier) .. ")"
+                -- Texto corto: "RENACER x26" en lugar de "🔄 RENACER (+x26.00)"
+                rebirthBtn.Text = "RENACER x" .. string.format("%.1f", info.nextMultiplier)
                 rebirthStroke.Color = Color3.fromRGB(255, 240, 100)
                 rebirthStroke.Thickness = 3
                 rebirthBtn.Active = true
@@ -320,7 +339,7 @@ local function openPanel()
         panel.Size = UDim2.new(0, 0, 0, 0)
         local tween = TweenService:Create(panel,
                 TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
-                {Size = UDim2.new(0.9, 0, 0.75, 0)}
+                {Size = UDim2.new(0.9, 0, 0.7, 0)}
         )
         tween:Play()
         -- Pedir info actualizada al servidor
