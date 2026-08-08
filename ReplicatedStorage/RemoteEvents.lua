@@ -47,6 +47,8 @@ local eventNames = {
         "EventAnnouncement",            -- Servidor -> Cliente: anuncio de evento
         "PauseMusicForEvent",          -- Servidor -> Cliente: pausar musica durante evento
         "ResumeMusicAfterEvent",       -- Servidor -> Cliente: reanudar musica despues del evento
+        "InvestorRequest",             -- Cliente -> Servidor: pedir info o renacer inversionistas
+        "InvestorUpdate",              -- Servidor -> Cliente: actualizar UI de inversionistas
 }
 
 for _, name in ipairs(eventNames) do

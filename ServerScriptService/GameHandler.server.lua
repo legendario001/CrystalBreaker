@@ -165,6 +165,27 @@ else
 end
 
 -- ============================================
+-- Cargar InvestorManager (sistema de Inversionistas estilo Sell Lemons)
+-- ============================================
+local InvestorManager
+local ok_inv, err_inv = pcall(function()
+        local mod = ServerStorage.ServerModules:WaitForChild("InvestorManager", 10)
+        InvestorManager = require(mod)
+end)
+if not ok_inv or not InvestorManager then
+        warn("[CRITICAL] InvestorManager no se pudo cargar: " .. tostring(err_inv))
+        InvestorManager = {
+                calculateInvestorsGained = function() return 0 end,
+                getInvestorMultiplier = function() return 1 end,
+                getPlayerInfo = function() return nil end,
+                performRebirth = function() return false, "modulo no cargado" end,
+                onCharacterAdded = function() end,
+        }
+else
+        print("[OK] InvestorManager cargado correctamente")
+end
+
+-- ============================================
 -- Cargar EventManager (evento del magnate)
 -- ============================================
 local EventManager
@@ -1253,13 +1274,18 @@ task.spawn(function()
                         -- Boost de ganancias: porcentaje (boostLevel * 20%)
                         local boostPercent = (data.boostLevel or 0) * 20
                         local boostMultiplier = 1 + (boostPercent / 100)
-                        -- Multiplicador de renacimiento: acumulable (x1, x3, x6, x10, x15)
+                        -- Multiplicador de evolucion (renacimiento): acumulable (x1, x3, x6, x10, x15)
                         local rebirthMultiplier = 1
                         if RebirthManager and RebirthManager.getRebirthMultiplier then
                                 rebirthMultiplier = RebirthManager.getRebirthMultiplier(data.rebirthLevel or 0)
                         end
-                        -- Multiplicador total = boost * rebirth
-                        local totalMultiplier = boostMultiplier * rebirthMultiplier
+                        -- Multiplicador de inversionistas: +0.5% por inversionista (acumulable)
+                        local investorMultiplier = 1
+                        if InvestorManager and InvestorManager.getInvestorMultiplier then
+                                investorMultiplier = InvestorManager.getInvestorMultiplier(data.investors or 0)
+                        end
+                        -- Multiplicador total = boost * evolucion * inversionistas
+                        local totalMultiplier = boostMultiplier * rebirthMultiplier * investorMultiplier
 
                         local charList = iterateCharacters(data.characters)
                         for _, entry in ipairs(charList) do
@@ -1275,7 +1301,7 @@ task.spawn(function()
                                         local lvl = charData.level or 1
                                         local fLvl = charData.fusionLevel or 0
                                         local rate = ModelManager.getMoneyRate(rarityTag, lvl, fLvl)
-                                        -- Aplicar boost (porcentaje) + rebirth (multiplicador)
+                                        -- Aplicar boost + evolucion + inversionistas
                                         rate = rate * totalMultiplier
                                         -- Acumular al total del tick
                                         totalGain = totalGain + rate
@@ -1288,6 +1314,8 @@ task.spawn(function()
                         if hadValidBrainrot and totalGain > 0 then
                                 local ok2, err2 = pcall(function()
                                         data.money = (data.money or 0) + totalGain
+                                        -- Trackear dinero total generado esta vida (para inversionistas)
+                                        data.totalMoneyEarnedThisLife = (data.totalMoneyEarnedThisLife or 0) + totalGain
                                         local p = Players:GetPlayerByUserId(playerEntry.userId)
                                         if p and isPlayerValid(p) then
                                                 local leaderstats = p:FindFirstChild("leaderstats")
@@ -1621,6 +1649,20 @@ local function restorePlayerProgress(player, savedData, base)
                 end
         end
 
+        -- Restaurar inversionistas y totalMoneyEarnedThisLife
+        do
+                local data = playerData[player.UserId]
+                if data then
+                        data.investors = savedData.investors or 0
+                        data.totalMoneyEarnedThisLife = savedData.totalMoneyEarnedThisLife or 0
+                        local invMult = 1
+                        if InvestorManager and InvestorManager.getInvestorMultiplier then
+                                invMult = InvestorManager.getInvestorMultiplier(data.investors)
+                        end
+                        print("[Save] Inversionistas cargados: " .. data.investors .. " (multiplicador x" .. invMult .. "), dinero generado esta vida: " .. data.totalMoneyEarnedThisLife)
+                end
+        end
+
         -- ============================================
         -- DINERO OFFLINE: calcular dinero generado mientras el jugador estuvo fuera
         -- ============================================
@@ -1705,7 +1747,7 @@ end
 -- PLAYERS
 Players.PlayerAdded:Connect(function(player)
         print(player.Name.." se unio")
-        playerData[player.UserId] = {characters={}, carrying=nil, money=0, unlockedBalls={["basic"]=true}, boostLevel=0, rebirthLevel=0}
+        playerData[player.UserId] = {characters={}, carrying=nil, money=0, unlockedBalls={["basic"]=true}, boostLevel=0, rebirthLevel=0, investors=0, totalMoneyEarnedThisLife=0}
 
         local leaderstats = Instance.new("Folder")
         leaderstats.Name = "leaderstats"
@@ -3066,6 +3108,124 @@ task.spawn(function()
                 -- Actualizar personajes del Top 3
                 LeaderboardManager.updateTop3Characters()
         end
+end)
+
+-- ============================================
+-- SISTEMA DE INVERSIONISTAS (Sell Lemons style)
+-- ============================================
+local InvestorRequestEvent = ReplicatedStorage:FindFirstChild("InvestorRequest")
+local InvestorUpdateEvent = ReplicatedStorage:FindFirstChild("InvestorUpdate")
+
+-- Funcion local para obtener personajes del jugador (para reset)
+local getPlayerCharacters
+local function ensureGetPlayerCharacters()
+        if not getPlayerCharacters then
+                -- Buscar la funcion en el scope global del script
+                -- (se define mas abajo en el archivo, en la seccion de Rebirth)
+        end
+end
+
+if InvestorRequestEvent and InvestorManager then
+        InvestorRequestEvent.OnServerEvent:Connect(function(player, action)
+                local userId = player.UserId
+                local data = playerData[userId]
+                if not data then return end
+
+                if action == "getInfo" or action == "sync" then
+                        -- Enviar info al cliente
+                        local info = InvestorManager.getPlayerInfo(data)
+                        if info and InvestorUpdateEvent then
+                                InvestorUpdateEvent:FireClient(player, info)
+                        end
+                elseif action == "rebirth" then
+                        -- Ejecutar renacimiento de inversionistas
+                        local ok, result = InvestorManager.performRebirth(player, {
+                                getPlayerData = function(uid) return playerData[uid] end,
+                                resetProgress = function(uid)
+                                        local pd = playerData[uid]
+                                        if pd then
+                                                pd.money = 0
+                                                pd.characters = {}
+                                                pd.carrying = nil
+                                                pd.unlockedBalls = {["basic"] = true}
+                                        end
+                                        if BankManager then BankManager.setBalance(uid, 0) end
+                                        -- Limpiar base del jugador (brainrots en pedestales)
+                                        if BaseManager then
+                                                local base = BaseManager.getBase(uid)
+                                                if base then
+                                                        local function getAllPedestalsLocal(b)
+                                                                local all = {}
+                                                                local p1 = b:FindFirstChild("Pedestals")
+                                                                if p1 then for _, p in ipairs(p1:GetChildren()) do table.insert(all, p) end end
+                                                                for fn = 2, 5 do
+                                                                        local f = b:FindFirstChild("Floor"..fn)
+                                                                        if f then
+                                                                                local ps = f:FindFirstChild("Pedestals"..fn)
+                                                                                if ps then for _, p in ipairs(ps:GetChildren()) do table.insert(all, p) end end
+                                                                        end
+                                                                end
+                                                                return all
+                                                        end
+                                                        local allPeds = getAllPedestalsLocal(base)
+                                                        for _, ped in ipairs(allPeds) do
+                                                                for _, child in ipairs(ped:GetChildren()) do
+                                                                        if child:IsA("Model") then child:Destroy() end
+                                                                end
+                                                                if ModelManager then
+                                                                        ModelManager.removeMoneyPile(ped)
+                                                                        ModelManager.removeUpgradeButton(ped)
+                                                                        ModelManager.clearPedestal(ped)
+                                                                end
+                                                        end
+                                                end
+                                        end
+                                        -- Resetear nivel de base a 1
+                                        if BaseManager and BaseManager.setBaseLevel then
+                                                BaseManager.setBaseLevel(uid, 1)
+                                        end
+                                        -- Limpiar bloques
+                                        if BuildManager and BuildManager.cleanupPlayer then
+                                                BuildManager.cleanupPlayer(uid)
+                                        end
+                                        -- Limpiar pelotas excepto basic
+                                        if pd then pd.unlockedBalls = {["basic"] = true} end
+                                end,
+                                setTotalMoneyEarned = function(uid, value)
+                                        if playerData[uid] then playerData[uid].totalMoneyEarnedThisLife = value end
+                                end,
+                                setInvestors = function(uid, value)
+                                        if playerData[uid] then playerData[uid].investors = value end
+                                end,
+                                saveData = function(uid) end,  -- el save se hace en PlayerRemoving
+                                notifyClient = function(p, info)
+                                        if InvestorUpdateEvent then
+                                                InvestorUpdateEvent:FireClient(p, info)
+                                        end
+                                end,
+                                respawnPlayer = function(p) p:LoadCharacter() end,
+                        })
+                        if not ok then
+                                warn("[Investors] Error al renacer: " .. tostring(result))
+                        end
+                end
+        end)
+end
+
+-- Enviar sync inicial al cliente cuando entra (para que vea sus inversionistas)
+Players.PlayerAdded:Connect(function(player)
+        task.delay(5, function()
+                if not isPlayerValid(player) then return end
+                local data = playerData[player.UserId]
+                if data and InvestorManager and InvestorUpdateEvent then
+                        local info = InvestorManager.getPlayerInfo(data)
+                        if info then
+                                pcall(function()
+                                        InvestorUpdateEvent:FireClient(player, info)
+                                end)
+                        end
+                end
+        end)
 end)
 
 -- ============================================

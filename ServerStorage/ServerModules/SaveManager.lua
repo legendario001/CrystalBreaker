@@ -167,7 +167,9 @@ function SaveManager.savePlayerData(userId, playerData, baseLevel, blockInventor
                 bankBalance = bankBalance or 0,
                 unlockedBalls = unlockedBalls or {}, -- pelotas desbloqueadas
                 boostLevel = boostLevel or 0, -- nivel de boost de ganancias (0-5)
-                rebirthLevel = rebirthLevel or 0, -- nivel de renacimiento (0-5)
+                rebirthLevel = rebirthLevel or 0, -- nivel de renacimiento/evolucion (0-5)
+                investors = playerData.investors or 0, -- inversionistas acumulados (Sell Lemons style)
+                totalMoneyEarnedThisLife = playerData.totalMoneyEarnedThisLife or 0, -- dinero generado esta vida
                 lastSaveTimestamp = os.time(), -- timestamp del ultimo guardado (para dinero offline)
                 version = 1, -- version del formato de guardado
         }
