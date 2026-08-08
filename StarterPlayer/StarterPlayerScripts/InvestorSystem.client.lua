@@ -1,13 +1,12 @@
 -- ============================================
 -- InvestorSystem (LocalScript) - StarterPlayerScripts
 -- UI del sistema de Inversionistas (estilo Sell Lemons)
--- Layout responsivo con UIListLayout (no alturas fijas que se desbordan)
+-- Layout con posiciones absolutas (sin UIListLayout ni tweens de size que causan bugs al reabrir)
 -- ============================================
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -28,7 +27,7 @@ screenGui.Parent = playerGui
 
 -- ============================================
 -- Panel principal (modal) - RESPONSIVE
--- Usa Scale + UISizeConstraint para adaptarse a cualquier pantalla
+-- Size FIJO (no se anima, evita bug al reabrir)
 -- ============================================
 local panel = Instance.new("Frame")
 panel.Name = "InvestorPanel"
@@ -49,188 +48,8 @@ local panelStroke = Instance.new("UIStroke", panel)
 panelStroke.Color = Color3.fromRGB(255, 215, 0)  -- dorado
 panelStroke.Thickness = 4
 
--- Padding interno del panel
-local panelPadding = Instance.new("UIPadding", panel)
-panelPadding.PaddingLeft = UDim.new(0, 15)
-panelPadding.PaddingRight = UDim.new(0, 15)
-panelPadding.PaddingTop = UDim.new(0, 15)
-panelPadding.PaddingBottom = UDim.new(0, 15)
-
--- UIListLayout para que los elementos se apilen automaticamente
--- y se ajusten al alto del panel sin desbordar
-local listLayout = Instance.new("UIListLayout", panel)
-listLayout.Padding = UDim.new(0, 8)
-listLayout.SortOrder = Enum.SortOrder.LayoutOrder
-listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-listLayout.VerticalAlignment = Enum.VerticalAlignment.Top
-
 -- ============================================
--- Titulo
--- ============================================
-local titleLabel = Instance.new("TextLabel")
-titleLabel.LayoutOrder = 1
-titleLabel.Size = UDim2.new(1, 0, 0, 40)
-titleLabel.BackgroundTransparency = 1
-titleLabel.Text = "💰 INVERSIONISTAS"
-titleLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
-titleLabel.TextScaled = true
-titleLabel.Font = Enum.Font.GothamBlack
-titleLabel.Parent = panel
-
--- ============================================
--- Subtitulo / descripcion
--- ============================================
-local descLabel = Instance.new("TextLabel")
-descLabel.LayoutOrder = 2
-descLabel.Size = UDim2.new(1, 0, 0, 35)
-descLabel.BackgroundTransparency = 1
-descLabel.Text = "Cada inversionista da +0.5% permanente. Renace para obtener mas."
-descLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-descLabel.TextWrapped = true
-descLabel.TextScaled = true
-descLabel.Font = Enum.Font.GothamMedium
-descLabel.Parent = panel
-
--- ============================================
--- Bloque 1: Multiplicador actual (verde)
--- ============================================
-local bonusFrame = Instance.new("Frame")
-bonusFrame.LayoutOrder = 3
-bonusFrame.Size = UDim2.new(1, 0, 0, 45)
-bonusFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-bonusFrame.BackgroundTransparency = 0.2
-bonusFrame.BorderSizePixel = 0
-bonusFrame.Parent = panel
-Instance.new("UICorner", bonusFrame).CornerRadius = UDim.new(0, 10)
-
-local bonusStroke = Instance.new("UIStroke", bonusFrame)
-bonusStroke.Color = Color3.fromRGB(100, 255, 100)
-bonusStroke.Thickness = 2
-
-local bonusLabel = Instance.new("TextLabel")
-bonusLabel.Name = "BonusLabel"
-bonusLabel.Size = UDim2.new(1, -20, 1, 0)
-bonusLabel.Position = UDim2.new(0, 10, 0, 0)
-bonusLabel.BackgroundTransparency = 1
-bonusLabel.Text = "Multiplicador: x1.00"
-bonusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
-bonusLabel.TextScaled = true
-bonusLabel.Font = Enum.Font.GothamBold
-bonusLabel.Parent = bonusFrame
-
--- ============================================
--- Bloque 2: Inversionistas actuales
--- ============================================
-local currentFrame = Instance.new("Frame")
-currentFrame.LayoutOrder = 4
-currentFrame.Size = UDim2.new(1, 0, 0, 45)
-currentFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-currentFrame.BackgroundTransparency = 0.2
-currentFrame.BorderSizePixel = 0
-currentFrame.Parent = panel
-Instance.new("UICorner", currentFrame).CornerRadius = UDim.new(0, 10)
-
-local currentStroke = Instance.new("UIStroke", currentFrame)
-currentStroke.Color = Color3.fromRGB(255, 215, 0)
-currentStroke.Thickness = 2
-
-local currentLabel = Instance.new("TextLabel")
-currentLabel.Name = "CurrentLabel"
-currentLabel.Size = UDim2.new(1, -20, 1, 0)
-currentLabel.Position = UDim2.new(0, 10, 0, 0)
-currentLabel.BackgroundTransparency = 1
-currentLabel.Text = "Tienes: 0"
-currentLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-currentLabel.TextScaled = true
-currentLabel.Font = Enum.Font.GothamBold
-currentLabel.Parent = currentFrame
-
--- ============================================
--- Bloque 3: Ganarias al renacer (destacado)
--- ============================================
-local gainFrame = Instance.new("Frame")
-gainFrame.LayoutOrder = 5
-gainFrame.Size = UDim2.new(1, 0, 0, 55)
-gainFrame.BackgroundColor3 = Color3.fromRGB(40, 30, 15)
-gainFrame.BackgroundTransparency = 0.1
-gainFrame.BorderSizePixel = 0
-gainFrame.Parent = panel
-Instance.new("UICorner", gainFrame).CornerRadius = UDim.new(0, 10)
-
-local gainStroke = Instance.new("UIStroke", gainFrame)
-gainStroke.Color = Color3.fromRGB(255, 215, 0)
-gainStroke.Thickness = 3
-
-local gainLabel = Instance.new("TextLabel")
-gainLabel.Name = "GainLabel"
-gainLabel.Size = UDim2.new(1, -20, 1, 0)
-gainLabel.Position = UDim2.new(0, 10, 0, 0)
-gainLabel.BackgroundTransparency = 1
-gainLabel.Text = "Renacer: +0"
-gainLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
-gainLabel.TextScaled = true
-gainLabel.Font = Enum.Font.GothamBlack
-gainLabel.Parent = gainFrame
-
--- ============================================
--- Bloque 4: Progreso actual (dinero generado)
--- ============================================
-local progressFrame = Instance.new("Frame")
-progressFrame.LayoutOrder = 6
-progressFrame.Size = UDim2.new(1, 0, 0, 35)
-progressFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-progressFrame.BackgroundTransparency = 0.3
-progressFrame.BorderSizePixel = 0
-progressFrame.Parent = panel
-Instance.new("UICorner", progressFrame).CornerRadius = UDim.new(0, 10)
-
-local progressStroke = Instance.new("UIStroke", progressFrame)
-progressStroke.Color = Color3.fromRGB(150, 150, 150)
-progressStroke.Thickness = 1.5
-
-local progressLabel = Instance.new("TextLabel")
-progressLabel.Name = "ProgressLabel"
-progressLabel.Size = UDim2.new(1, -20, 1, 0)
-progressLabel.Position = UDim2.new(0, 10, 0, 0)
-progressLabel.BackgroundTransparency = 1
-progressLabel.Text = "Generado: $0"
-progressLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
-progressLabel.TextScaled = true
-progressLabel.Font = Enum.Font.GothamMedium
-progressLabel.Parent = progressFrame
-
--- ============================================
--- Spacer flexible para empujar el boton al fondo
--- ============================================
-local spacer = Instance.new("Frame")
-spacer.LayoutOrder = 7
-spacer.Size = UDim2.new(1, 0, 1, -300) -- ocupa el espacio restante
-spacer.BackgroundTransparency = 1
-spacer.Parent = panel
-
--- ============================================
--- Boton RENACER (al fondo, empujado por el spacer)
--- ============================================
-local rebirthBtn = Instance.new("TextButton")
-rebirthBtn.Name = "RebirthBtn"
-rebirthBtn.LayoutOrder = 8
-rebirthBtn.Size = UDim2.new(1, 0, 0, 50)
-rebirthBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-rebirthBtn.BorderSizePixel = 0
-rebirthBtn.Text = "NECESITAS MAS DINERO"
-rebirthBtn.Font = Enum.Font.GothamBlack
-rebirthBtn.TextSize = 22
-rebirthBtn.TextColor3 = Color3.fromRGB(150, 150, 150)
-rebirthBtn.Parent = panel
-Instance.new("UICorner", rebirthBtn).CornerRadius = UDim.new(0, 12)
-
-local rebirthStroke = Instance.new("UIStroke", rebirthBtn)
-rebirthStroke.Color = Color3.fromRGB(100, 100, 100)
-rebirthStroke.Thickness = 2
-
--- ============================================
--- Boton cerrar (X) - SIEMPRE visible, posicion absoluta
--- (no pertenece al UIListLayout, se posiciona con AnchorPoint)
+-- Boton cerrar (X) - SIEMPRE visible
 -- ============================================
 local closeBtn = Instance.new("TextButton")
 closeBtn.Size = UDim2.new(0, 35, 0, 35)
@@ -246,6 +65,157 @@ closeBtn.ZIndex = 10
 closeBtn.Parent = panel
 Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 8)
 closeBtn.Active = true
+
+-- ============================================
+-- Titulo (posicion absoluta)
+-- ============================================
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Size = UDim2.new(1, -50, 0, 40)
+titleLabel.Position = UDim2.new(0, 15, 0, 10)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Text = "💰 INVERSIONISTAS"
+titleLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
+titleLabel.TextScaled = true
+titleLabel.Font = Enum.Font.GothamBlack
+titleLabel.Parent = panel
+
+-- ============================================
+-- Subtitulo / descripcion
+-- ============================================
+local descLabel = Instance.new("TextLabel")
+descLabel.Size = UDim2.new(1, -30, 0, 35)
+descLabel.Position = UDim2.new(0, 15, 0, 55)
+descLabel.BackgroundTransparency = 1
+descLabel.Text = "Cada inversionista da +0.5% permanente. Renace para obtener mas."
+descLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+descLabel.TextWrapped = true
+descLabel.TextScaled = true
+descLabel.Font = Enum.Font.GothamMedium
+descLabel.Parent = panel
+
+-- ============================================
+-- Bloque 1: Multiplicador actual (verde)
+-- ============================================
+local bonusFrame = Instance.new("Frame")
+bonusFrame.Size = UDim2.new(1, -30, 0, 45)
+bonusFrame.Position = UDim2.new(0, 15, 0, 100)
+bonusFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+bonusFrame.BackgroundTransparency = 0.2
+bonusFrame.BorderSizePixel = 0
+bonusFrame.Parent = panel
+Instance.new("UICorner", bonusFrame).CornerRadius = UDim.new(0, 10)
+
+local bonusStroke = Instance.new("UIStroke", bonusFrame)
+bonusStroke.Color = Color3.fromRGB(100, 255, 100)
+bonusStroke.Thickness = 2
+
+local bonusLabel = Instance.new("TextLabel")
+bonusLabel.Size = UDim2.new(1, -20, 1, 0)
+bonusLabel.Position = UDim2.new(0, 10, 0, 0)
+bonusLabel.BackgroundTransparency = 1
+bonusLabel.Text = "Multiplicador: x1.00"
+bonusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+bonusLabel.TextScaled = true
+bonusLabel.Font = Enum.Font.GothamBold
+bonusLabel.Parent = bonusFrame
+
+-- ============================================
+-- Bloque 2: Inversionistas actuales
+-- ============================================
+local currentFrame = Instance.new("Frame")
+currentFrame.Size = UDim2.new(1, -30, 0, 45)
+currentFrame.Position = UDim2.new(0, 15, 0, 150)
+currentFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+currentFrame.BackgroundTransparency = 0.2
+currentFrame.BorderSizePixel = 0
+currentFrame.Parent = panel
+Instance.new("UICorner", currentFrame).CornerRadius = UDim.new(0, 10)
+
+local currentStroke = Instance.new("UIStroke", currentFrame)
+currentStroke.Color = Color3.fromRGB(255, 215, 0)
+currentStroke.Thickness = 2
+
+local currentLabel = Instance.new("TextLabel")
+currentLabel.Size = UDim2.new(1, -20, 1, 0)
+currentLabel.Position = UDim2.new(0, 10, 0, 0)
+currentLabel.BackgroundTransparency = 1
+currentLabel.Text = "Tienes: 0"
+currentLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+currentLabel.TextScaled = true
+currentLabel.Font = Enum.Font.GothamBold
+currentLabel.Parent = currentFrame
+
+-- ============================================
+-- Bloque 3: Ganarias al renacer (destacado)
+-- ============================================
+local gainFrame = Instance.new("Frame")
+gainFrame.Size = UDim2.new(1, -30, 0, 55)
+gainFrame.Position = UDim2.new(0, 15, 0, 200)
+gainFrame.BackgroundColor3 = Color3.fromRGB(40, 30, 15)
+gainFrame.BackgroundTransparency = 0.1
+gainFrame.BorderSizePixel = 0
+gainFrame.Parent = panel
+Instance.new("UICorner", gainFrame).CornerRadius = UDim.new(0, 10)
+
+local gainStroke = Instance.new("UIStroke", gainFrame)
+gainStroke.Color = Color3.fromRGB(255, 215, 0)
+gainStroke.Thickness = 3
+
+local gainLabel = Instance.new("TextLabel")
+gainLabel.Size = UDim2.new(1, -20, 1, 0)
+gainLabel.Position = UDim2.new(0, 10, 0, 0)
+gainLabel.BackgroundTransparency = 1
+gainLabel.Text = "Renacer: +0"
+gainLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
+gainLabel.TextScaled = true
+gainLabel.Font = Enum.Font.GothamBlack
+gainLabel.Parent = gainFrame
+
+-- ============================================
+-- Bloque 4: Progreso actual (dinero generado)
+-- ============================================
+local progressFrame = Instance.new("Frame")
+progressFrame.Size = UDim2.new(1, -30, 0, 35)
+progressFrame.Position = UDim2.new(0, 15, 0, 260)
+progressFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+progressFrame.BackgroundTransparency = 0.3
+progressFrame.BorderSizePixel = 0
+progressFrame.Parent = panel
+Instance.new("UICorner", progressFrame).CornerRadius = UDim.new(0, 10)
+
+local progressStroke = Instance.new("UIStroke", progressFrame)
+progressStroke.Color = Color3.fromRGB(150, 150, 150)
+progressStroke.Thickness = 1.5
+
+local progressLabel = Instance.new("TextLabel")
+progressLabel.Size = UDim2.new(1, -20, 1, 0)
+progressLabel.Position = UDim2.new(0, 10, 0, 0)
+progressLabel.BackgroundTransparency = 1
+progressLabel.Text = "Generado: $0"
+progressLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+progressLabel.TextScaled = true
+progressLabel.Font = Enum.Font.GothamMedium
+progressLabel.Parent = progressFrame
+
+-- ============================================
+-- Boton RENACER (al fondo, posicion absoluta)
+-- ============================================
+local rebirthBtn = Instance.new("TextButton")
+rebirthBtn.Name = "RebirthBtn"
+rebirthBtn.Size = UDim2.new(1, -30, 0, 50)
+rebirthBtn.Position = UDim2.new(0, 15, 1, -60)
+rebirthBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+rebirthBtn.BorderSizePixel = 0
+rebirthBtn.Text = "NECESITAS MAS DINERO"
+rebirthBtn.Font = Enum.Font.GothamBlack
+rebirthBtn.TextSize = 22
+rebirthBtn.TextColor3 = Color3.fromRGB(150, 150, 150)
+rebirthBtn.Parent = panel
+Instance.new("UICorner", rebirthBtn).CornerRadius = UDim.new(0, 12)
+
+local rebirthStroke = Instance.new("UIStroke", rebirthBtn)
+rebirthStroke.Color = Color3.fromRGB(100, 100, 100)
+rebirthStroke.Thickness = 2
 
 -- ============================================
 -- Formato de dinero
@@ -307,7 +277,6 @@ local function updateUI(info)
         if info.canRebirth and info.investorsGained > 0 then
                 rebirthBtn.BackgroundColor3 = Color3.fromRGB(255, 215, 0)
                 rebirthBtn.TextColor3 = Color3.fromRGB(20, 20, 30)
-                -- Texto corto: "RENACER x26" en lugar de "🔄 RENACER (+x26.00)"
                 rebirthBtn.Text = "RENACER x" .. string.format("%.1f", info.nextMultiplier)
                 rebirthStroke.Color = Color3.fromRGB(255, 240, 100)
                 rebirthStroke.Thickness = 3
@@ -332,16 +301,10 @@ if InvestorUpdate then
 end
 
 -- ============================================
--- Abrir / cerrar panel
+-- Abrir / cerrar panel (sin tween de size, evita bug al reabrir)
 -- ============================================
 local function openPanel()
         panel.Visible = true
-        panel.Size = UDim2.new(0, 0, 0, 0)
-        local tween = TweenService:Create(panel,
-                TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
-                {Size = UDim2.new(0.9, 0, 0.7, 0)}
-        )
-        tween:Play()
         -- Pedir info actualizada al servidor
         if InvestorRequest then
                 InvestorRequest:FireServer("getInfo")
@@ -358,14 +321,7 @@ local function openPanel()
 end
 
 local function closePanel()
-        local tween = TweenService:Create(panel,
-                TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-                {Size = UDim2.new(0, 0, 0, 0)}
-        )
-        tween:Play()
-        tween.Completed:Connect(function()
-                panel.Visible = false
-        end)
+        panel.Visible = false
 end
 
 closeBtn.MouseButton1Click:Connect(closePanel)
