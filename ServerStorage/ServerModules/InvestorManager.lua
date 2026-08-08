@@ -13,8 +13,8 @@ local Workspace = game:GetService("Workspace")
 local InvestorManager = {}
 
 -- Configuracion
-local INVESTOR_BONUS_PER_UNIT = 0.005  -- +0.5% por inversionista (0.005 = 0.5%)
-local MONEY_DIVISOR = 1e9  -- 1 billon como base para calcular inversionistas
+local INVESTOR_BONUS_PER_UNIT = 0.01  -- +1% por inversionista (0.01 = 1%)
+local MONEY_DIVISOR = 1e6  -- 1 millon como base para calcular inversionistas
 local EXPONENT = 0.6  -- curva decreciente (rendimiento marginal)
 
 -- ============================================
@@ -31,7 +31,7 @@ function InvestorManager.calculateInvestorsGained(totalMoneyEarnedThisLife)
 end
 
 -- Multiplicador de bonus por inversionistas
--- 0 inversionistas = x1, 1000 = x6, 10000 = x51, etc.
+-- 0 inversionistas = x1, 100 = x2, 1000 = x11, 10000 = x101, etc.
 function InvestorManager.getInvestorMultiplier(totalInvestors)
         local count = totalInvestors or 0
         return 1 + (count * INVESTOR_BONUS_PER_UNIT)
