@@ -1,6 +1,6 @@
 -- ============================================
 -- RebirthSystem (ModuleScript) - StarterPlayer/StarterPlayerScripts
--- Boton "Renacer" al lado de la mochila + interfaz con requisitos y conteo.
+-- Boton "Evolucion" al lado de la mochila + interfaz con requisitos y conteo.
 -- Muestra el bonus total del jugador en pantalla.
 -- ============================================
 
@@ -44,9 +44,9 @@ function RebirthSystem.init(deps)
         bonusStroke.Thickness = 3
 
         -- ============================================
-        -- Boton "Renacer" (al lado derecho de la mochila)
+        -- Boton "Evolucion" (al lado derecho de la mochila)
         -- Mochila esta en Position(0, 20, 1, -200), Size 60x60
-        -- Ponemos renacer a la derecha: Position(0, 90, 1, -200)
+        -- Ponemos evolucion a la derecha: Position(0, 90, 1, -200)
         -- ============================================
         local rebirthBtn = Instance.new("TextButton")
         rebirthBtn.Name = "RebirthBtn"
@@ -62,7 +62,7 @@ function RebirthSystem.init(deps)
         rebirthStroke.Color = Color3.fromRGB(180, 80, 255)
         rebirthStroke.Thickness = 3
 
-        -- Icono del boton renacer
+        -- Icono del boton evolucion
         local rebirthIcon = Instance.new("ImageLabel")
         rebirthIcon.Size = UDim2.new(0.7, 0, 0.7, 0)
         rebirthIcon.Position = UDim2.new(0.15, 0, 0.15, 0)
@@ -72,7 +72,7 @@ function RebirthSystem.init(deps)
         rebirthIcon.Parent = rebirthBtn
 
         -- ============================================
-        -- Panel de Renacimiento (modal) - RESPONSIVE
+        -- Panel de Evolucion (modal) - RESPONSIVE
         -- Usa Scale para adaptarse a cualquier pantalla (movil, tablet, PC)
         -- Maximo 450x600 pero se reduce en pantallas chicas
         -- ============================================
@@ -101,7 +101,7 @@ function RebirthSystem.init(deps)
         titleLabel.Size = UDim2.new(1, -60, 0, 50)
         titleLabel.Position = UDim2.new(0, 20, 0, 10)
         titleLabel.BackgroundTransparency = 1
-        titleLabel.Text = "🔄 RENACIMIENTO"
+        titleLabel.Text = "🔄 EVOLUCION"
         titleLabel.TextColor3 = Color3.fromRGB(180, 80, 255)
         titleLabel.TextScaled = true
         titleLabel.Font = Enum.Font.GothamBlack
@@ -131,7 +131,7 @@ function RebirthSystem.init(deps)
         instructionsLabel.Size = UDim2.new(1, -40, 0, 90)
         instructionsLabel.Position = UDim2.new(0, 20, 0, 70)
         instructionsLabel.BackgroundTransparency = 1
-        instructionsLabel.Text = "Para renacer, debes llenar los 5 pisos de tu base con 50 brainrots de la rareza indicada.\n\nCada renacimiento te da un MULTIPLICADOR de ganancias acumulable: x1, x2, x3, x4, x5 (total hasta x15)."
+        instructionsLabel.Text = "Para evolucionar, debes llenar los 5 pisos de tu base con 50 brainrots de la rareza indicada.\n\nCada evolucion te da un MULTIPLICADOR de ganancias acumulable: x1, x2, x3, x4, x5 (total hasta x15)."
         instructionsLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
         instructionsLabel.TextWrapped = true
         instructionsLabel.TextScaled = true
@@ -140,7 +140,7 @@ function RebirthSystem.init(deps)
         instructionsLabel.Parent = rebirthPanel
 
         -- ============================================
-        -- Tabla de niveles de renacimiento - responsiva
+        -- Tabla de niveles de evolucion - responsiva
         -- ============================================
         local levelsFrame = Instance.new("Frame")
         levelsFrame.Name = "LevelsTable"
@@ -184,7 +184,7 @@ function RebirthSystem.init(deps)
                 levelText.Size = UDim2.new(1, -10, 1, 0)
                 levelText.Position = UDim2.new(0, 10, 0, 0)
                 levelText.BackgroundTransparency = 1
-                levelText.Text = "Renacimiento " .. i .. ": 50x " .. info.rarity .. "  →  +x" .. i .. " (total x" .. getMultForLevel(i) .. ")"
+                levelText.Text = "Evolucion " .. i .. ": 50x " .. info.rarity .. "  →  +x" .. i .. " (total x" .. getMultForLevel(i) .. ")"
                 levelText.TextColor3 = info.color
                 levelText.TextScaled = true
                 levelText.Font = Enum.Font.GothamBold
@@ -221,7 +221,7 @@ function RebirthSystem.init(deps)
         countLabel.Parent = countFrame
 
         -- ============================================
-        -- Boton RENACER (dentro del panel) - responsivo
+        -- Boton EVOLUCIONAR (dentro del panel) - responsivo
         -- ============================================
         local doRebirthBtn = Instance.new("TextButton")
         doRebirthBtn.Name = "DoRebirthBtn"
@@ -229,7 +229,7 @@ function RebirthSystem.init(deps)
         doRebirthBtn.Position = UDim2.new(0, 20, 1, -60)
         doRebirthBtn.BackgroundColor3 = Color3.fromRGB(80, 30, 120)
         doRebirthBtn.BorderSizePixel = 0
-        doRebirthBtn.Text = "RENACER"
+        doRebirthBtn.Text = "EVOLUCIONAR"
         doRebirthBtn.Font = Enum.Font.GothamBlack
         doRebirthBtn.TextSize = 24
         doRebirthBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
@@ -264,10 +264,10 @@ function RebirthSystem.init(deps)
                 -- Color del contador: rojo si < 50, verde si >= 50
                 if count >= max then
                         countLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
-                        countLabel.Text = "✅ " .. count .. " / " .. max .. " brainrots " .. displayName .. " (" .. rarity .. ") - LISTO PARA RENACER"
+                        countLabel.Text = "✅ " .. count .. " / " .. max .. " brainrots " .. displayName .. " (" .. rarity .. ") - LISTO PARA EVOLUCIONAR"
                         doRebirthBtn.BackgroundColor3 = Color3.fromRGB(180, 80, 255)
                         doRebirthBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-                        doRebirthBtn.Text = "🔄 RENACER AHORA"
+                        doRebirthBtn.Text = "🔄 EVOLUCIONAR AHORA"
                 else
                         countLabel.TextColor3 = rarityColor
                         countLabel.Text = count .. " / " .. max .. " brainrots " .. displayName .. " (" .. rarity .. ") requeridos"
@@ -277,7 +277,7 @@ function RebirthSystem.init(deps)
                 end
         end
 
-        -- Funcion local para calcular multiplicador acumulado de renacimiento
+        -- Funcion local para calcular multiplicador acumulado de evolucion
         local function getRebirthMult(level)
                 local lvl = level or 0
                 if lvl <= 0 then return 1 end
@@ -325,7 +325,7 @@ function RebirthSystem.init(deps)
         end)
 
         -- ============================================
-        -- Boton RENACER
+        -- Boton EVOLUCIONAR
         -- ============================================
         doRebirthBtn.MouseButton1Click:Connect(function()
                 if isProcessing then return end
@@ -341,7 +341,7 @@ function RebirthSystem.init(deps)
                 -- El servidor respondera via RebirthUpdate o cerrara el panel
                 task.delay(5, function()
                         isProcessing = false
-                        doRebirthBtn.Text = "RENACER AHORA"
+                        doRebirthBtn.Text = "EVOLUCIONAR AHORA"
                 end)
         end)
 
@@ -393,7 +393,7 @@ function RebirthSystem.init(deps)
                 end
         end)
 
-        print("[RebirthSystem] Sistema de renacimiento cargado")
+        print("[RebirthSystem] Sistema de evolucion cargado")
 end
 
 return RebirthSystem

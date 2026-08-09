@@ -199,9 +199,11 @@ progressLabel.Parent = progressFrame
 
 -- ============================================
 -- Boton RENACER (al fondo, posicion absoluta)
+-- Nombre unico: InvestorRebirthBtn (NO RebirthBtn, que es el de Evolucion)
+-- para que MenuToggle no lo mueva al slot 3x3 por error
 -- ============================================
 local rebirthBtn = Instance.new("TextButton")
-rebirthBtn.Name = "RebirthBtn"
+rebirthBtn.Name = "InvestorRebirthBtn"
 rebirthBtn.Size = UDim2.new(1, -30, 0, 50)
 rebirthBtn.Position = UDim2.new(0, 15, 1, -60)
 rebirthBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
