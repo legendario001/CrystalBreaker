@@ -1665,6 +1665,8 @@ local function restorePlayerProgress(player, savedData, base)
 
         -- ============================================
         -- DINERO OFFLINE: calcular dinero generado mientras el jugador estuvo fuera
+        -- FIX: Ahora aplica TODOS los multiplicadores (boost + evolucion + inversionistas)
+        -- y suma al totalMoneyEarnedThisLife para que los inversionistas aumenten offline
         -- ============================================
         if savedData.lastSaveTimestamp and savedData.lastSaveTimestamp > 0 then
                 local currentTime = os.time()
@@ -1678,17 +1680,37 @@ local function restorePlayerProgress(player, savedData, base)
                 -- Solo calcular si paso mas de 60 segundos (evitar calculos inutiles)
                 if elapsedSeconds > 60 then
                         -- Calcular el rate total de todos los personajes en pedestales
+                        -- aplicando TODOS los multiplicadores (igual que el Money Timer en vivo)
                         local totalRatePerSecond = 0
+
+                        -- Calcular multiplicadores (igual que Money Timer)
+                        local boostPercent = (data.boostLevel or 0) * 20
+                        local boostMultiplier = 1 + (boostPercent / 100)
+
+                        local rebirthMultiplier = 1
+                        if RebirthManager and RebirthManager.getRebirthMultiplier then
+                                rebirthMultiplier = RebirthManager.getRebirthMultiplier(data.rebirthLevel or 0)
+                        end
+
+                        local investorMultiplier = 1
+                        if InvestorManager and InvestorManager.getInvestorMultiplier then
+                                investorMultiplier = InvestorManager.getInvestorMultiplier(data.investors or 0)
+                        end
+
+                        local totalMultiplier = boostMultiplier * rebirthMultiplier * investorMultiplier
+
                         if data.characters then
                                 for _, charData in pairs(data.characters) do
                                         if charData and charData.pedestal then
-                                                local rate = ModelManager.getMoneyRate(
+                                                local baseRate = ModelManager.getMoneyRate(
                                                         charData.rarity,
                                                         charData.level or 1,
                                                         charData.fusionLevel or 0
                                                 )
-                                                -- El rate es por 2 segundos, asi que dividir entre 2 para obtener por segundo
-                                                totalRatePerSecond = totalRatePerSecond + (rate / 2)
+                                                -- Aplicar TODOS los multiplicadores
+                                                local rate = baseRate * totalMultiplier
+                                                -- Money Timer ahora es cada 0.5s, asi que multiplicar por 2 para obtener por segundo
+                                                totalRatePerSecond = totalRatePerSecond + (rate * 2)
                                         end
                                 end
                         end
@@ -1698,6 +1720,9 @@ local function restorePlayerProgress(player, savedData, base)
 
                                 -- Dar el dinero al jugador
                                 data.money = (data.money or 0) + offlineEarnings
+                                -- FIX: Sumar al totalMoneyEarnedThisLife para que los inversionistas aumenten offline
+                                data.totalMoneyEarnedThisLife = (data.totalMoneyEarnedThisLife or 0) + offlineEarnings
+
                                 local leaderstats = player:FindFirstChild("leaderstats")
                                 if leaderstats then
                                         local coins = leaderstats:FindFirstChild("Coins")
@@ -1708,6 +1733,15 @@ local function restorePlayerProgress(player, savedData, base)
                                 task.delay(3, function()
                                         if isPlayerValid(player) then
                                                 Events.MoneyUpdate:FireClient(player, data.money)
+                                                -- Enviar tambien la info actualizada de inversionistas
+                                                if InvestorManager and InvestorUpdateEvent then
+                                                        local info = InvestorManager.getPlayerInfo(data)
+                                                        if info then
+                                                                pcall(function()
+                                                                        InvestorUpdateEvent:FireClient(player, info)
+                                                                end)
+                                                        end
+                                                end
                                         end
                                 end)
 
@@ -1721,7 +1755,7 @@ local function restorePlayerProgress(player, savedData, base)
                                         timeStr = minutes .. "m"
                                 end
 
-                                print("[Save] Dinero offline para " .. player.Name .. ": $" .. offlineEarnings .. " (" .. timeStr .. " fuera, rate/sec: " .. totalRatePerSecond .. ")")
+                                print("[Save] Dinero offline para " .. player.Name .. ": $" .. offlineEarnings .. " (" .. timeStr .. " fuera, rate/sec: " .. totalRatePerSecond .. ", multiplicador: x" .. totalMultiplier .. ")")
 
                                                                 -- Enviar notificacion visual al cliente
                                                                 task.delay(4, function()
