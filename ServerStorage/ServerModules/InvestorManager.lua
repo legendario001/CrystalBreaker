@@ -55,14 +55,15 @@ function InvestorManager.getSignLevel(totalInvestors)
         return math.max(1, level)
 end
 
--- Altura del cartel en studs: 3 + log10(inversionistas) * 3
--- 1 inv = 3, 100 = 9, 1000 = 12, 10000 = 15, 100000 = 18, 1M = 21, 1B = 30
+-- Altura del cartel en studs: 5 + log10(inversionistas) * 3
+-- min 5 (para que el texto quepa), max 35
+-- 1 inv = 5, 100 = 11, 1000 = 14, 10000 = 17, 100000 = 20, 1M = 23, 1B = 32
 function InvestorManager.getSignHeight(totalInvestors)
         local count = totalInvestors or 0
-        if count <= 0 then return 3 end
-        local height = 3 + math.log10(count) * 3
+        if count <= 0 then return 5 end
+        local height = 5 + math.log10(count) * 3
         -- Limitar a maximo 35 studs para no romper el mapa
-        return math.min(35, math.max(3, height))
+        return math.min(35, math.max(5, height))
 end
 
 -- Multiplicador global del cartel: 1 + nivel * 0.05 (5% por nivel)

@@ -15,6 +15,7 @@ local SIGN_WIDTH = 12
 local SIGN_DEPTH = 0.5
 local SIGN_OFFSET_Z = -10  -- 10 studs adelante del BaseSign (Z=29 -> Z=19)
 local SIGN_BASE_Y = 0.5  -- base del cartel a media altura del suelo
+local PIXELS_PER_STUD = 100  -- resolucion: 100 pixels por stud (consistente)
 
 -- Cache de carteles: [userId] = {signPart, surfaceGui, investorsLabel, levelLabel, playerLabel}
 local signs = {}
@@ -55,19 +56,15 @@ function SignManager.createSign(player, base, investorCount)
         -- Cartel principal (Part que crece en altura)
         local signPart = Instance.new("Part")
         signPart.Name = "SignBoard"
-        -- Altura inicial segun inversionistas
-        local initialHeight = 3
-        if investorCount and investorCount > 0 then
-                -- Calcular altura (log10 * 3 + 3)
-                initialHeight = math.min(35, math.max(3, 3 + math.log10(investorCount) * 3))
-        end
+        -- Altura inicial segun inversionistas (usar InvestorManager para consistencia)
+        local InvestorManager = require(script.Parent.InvestorManager)
+        local initialHeight = InvestorManager.getSignHeight(investorCount or 0)
         signPart.Size = Vector3.new(SIGN_WIDTH, initialHeight, SIGN_DEPTH)
         -- Posicionar de modo que la base del cartel este a Y=3 (encima del poste)
         signPart.Position = Vector3.new(signPos.X, 3 + initialHeight/2, signPos.Z + SIGN_OFFSET_Z)
         signPart.Anchored = true
         signPart.Material = Enum.Material.Neon
         -- Color inicial segun inversionistas
-        local InvestorManager = require(script.Parent.InvestorManager)
         signPart.Color = InvestorManager.getSignColor(investorCount or 0)
         signPart.Parent = signFolder
 
@@ -80,12 +77,14 @@ function SignManager.createSign(player, base, investorCount)
         light.Parent = signPart
 
         -- SurfaceGui con el texto (NO rota, esta fijo en la cara Front del cartel)
-        -- CanvasSize mas ancho (2400x1200) para aprovechar el ancho doble del cartel (12 studs)
-        -- Esto da mejor resolucion horizontal y texto mas grande/legible
+        -- CanvasSize DINAMICO: X fijo (12 studs * 100px = 1200px), Y = altura * 100px
+        -- Esto mantiene 100 pixels por stud SIEMPRE, asi el texto NO se estira
+        -- cuando el cartel crece. El fixedContainer tiene tamaño fijo en pixels
+        -- = tamaño fisico fijo en studs.
         local surfaceGui = Instance.new("SurfaceGui")
         surfaceGui.Name = "SignGui"
         surfaceGui.Face = Enum.NormalId.Front
-        surfaceGui.CanvasSize = Vector2.new(2400, 1200)  -- ancho doble para cartel doble de ancho
+        surfaceGui.CanvasSize = Vector2.new(SIGN_WIDTH * PIXELS_PER_STUD, initialHeight * PIXELS_PER_STUD)
         surfaceGui.LightInfluence = 0
         surfaceGui.MaxDistance = 250
         surfaceGui.Parent = signPart
@@ -107,11 +106,12 @@ function SignManager.createSign(player, base, investorCount)
         bgStroke.Transparency = 0.2
 
         -- fixedContainer: anclado al fondo del cartel, tamaño FIJO en pixels
-        -- Altura aumentada a 450px para textos mas grandes
+        -- 350px = 3.5 studs fisicos (siempre, sin importar la altura del cartel)
+        -- cabe en el minimo de 5 studs de altura
         local fixedContainer = Instance.new("Frame")
         fixedContainer.Name = "FixedContainer"
         fixedContainer.AnchorPoint = Vector2.new(0.5, 1)  -- anclado al centro-abajo
-        fixedContainer.Size = UDim2.new(1, -60, 0, 450)  -- ancho completo - padding, alto fijo 450px
+        fixedContainer.Size = UDim2.new(1, -60, 0, 350)  -- ancho completo - padding, alto fijo 350px
         fixedContainer.Position = UDim2.new(0.5, 0, 1, -15)  -- al fondo del SurfaceGui
         fixedContainer.BackgroundTransparency = 1
         fixedContainer.BorderSizePixel = 0
@@ -120,7 +120,7 @@ function SignManager.createSign(player, base, investorCount)
         -- Titulo "INVERSIONISTAS" (arriba del contenedor)
         local titleLabel = Instance.new("TextLabel")
         titleLabel.Name = "TitleLabel"
-        titleLabel.Size = UDim2.new(1, 0, 0, 60)
+        titleLabel.Size = UDim2.new(1, 0, 0, 50)
         titleLabel.Position = UDim2.new(0, 0, 0, 0)
         titleLabel.BackgroundTransparency = 1
         titleLabel.Text = "INVERSIONISTAS"
@@ -138,8 +138,8 @@ function SignManager.createSign(player, base, investorCount)
         -- Numero de inversionistas (grande, debajo del titulo)
         local investorsLabel = Instance.new("TextLabel")
         investorsLabel.Name = "InvestorsLabel"
-        investorsLabel.Size = UDim2.new(1, 0, 0, 170)
-        investorsLabel.Position = UDim2.new(0, 0, 0, 70)
+        investorsLabel.Size = UDim2.new(1, 0, 0, 120)
+        investorsLabel.Position = UDim2.new(0, 0, 0, 55)
         investorsLabel.BackgroundTransparency = 1
         investorsLabel.Text = tostring(investorCount or 0)
         investorsLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
@@ -156,8 +156,8 @@ function SignManager.createSign(player, base, investorCount)
         -- Nivel del cartel
         local levelLabel = Instance.new("TextLabel")
         levelLabel.Name = "LevelLabel"
-        levelLabel.Size = UDim2.new(1, 0, 0, 50)
-        levelLabel.Position = UDim2.new(0, 0, 0, 250)
+        levelLabel.Size = UDim2.new(1, 0, 0, 40)
+        levelLabel.Position = UDim2.new(0, 0, 0, 185)
         levelLabel.BackgroundTransparency = 1
         local level = InvestorManager.getSignLevel(investorCount or 0)
         levelLabel.Text = "Nivel " .. level
@@ -175,8 +175,8 @@ function SignManager.createSign(player, base, investorCount)
         -- Multiplicador del cartel
         local multLabel = Instance.new("TextLabel")
         multLabel.Name = "MultLabel"
-        multLabel.Size = UDim2.new(1, 0, 0, 50)
-        multLabel.Position = UDim2.new(0, 0, 0, 305)
+        multLabel.Size = UDim2.new(1, 0, 0, 40)
+        multLabel.Position = UDim2.new(0, 0, 0, 230)
         multLabel.BackgroundTransparency = 1
         local mult = InvestorManager.getSignMultiplier(investorCount or 0)
         multLabel.Text = "Multiplicador x" .. string.format("%.2f", mult)
@@ -194,8 +194,8 @@ function SignManager.createSign(player, base, investorCount)
         -- Nombre del jugador (abajo del todo)
         local playerLabel = Instance.new("TextLabel")
         playerLabel.Name = "PlayerLabel"
-        playerLabel.Size = UDim2.new(1, 0, 0, 50)
-        playerLabel.Position = UDim2.new(0, 0, 1, -50)
+        playerLabel.Size = UDim2.new(1, 0, 0, 40)
+        playerLabel.Position = UDim2.new(0, 0, 1, -40)
         playerLabel.BackgroundTransparency = 1
         playerLabel.Text = player.Name
         playerLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
@@ -251,6 +251,13 @@ function SignManager.updateSign(userId, investorCount)
 
         -- Actualizar luz
         sign.light.Color = newColor
+
+        -- FIX CRITICO: Actualizar CanvasSize Y del SurfaceGui para que mantenga
+        -- 100 pixels por stud. Sin esto, el texto se estira verticalmente cuando
+        -- el cartel crece (porque el canvas fijo se mapea a un Part mas grande).
+        if sign.surfaceGui then
+                sign.surfaceGui.CanvasSize = Vector2.new(SIGN_WIDTH * PIXELS_PER_STUD, newHeight * PIXELS_PER_STUD)
+        end
 
         -- Actualizar textos (el fixedContainer con AnchorPoint al fondo se ajusta solo)
         sign.investorsLabel.Text = tostring(investorCount)
