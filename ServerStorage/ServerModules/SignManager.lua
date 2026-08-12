@@ -15,7 +15,7 @@ local SIGN_WIDTH = 12
 local SIGN_DEPTH = 0.5
 local SIGN_OFFSET_Z = -10  -- 10 studs adelante del BaseSign (Z=29 -> Z=19)
 local SIGN_BASE_Y = 0.5  -- base del cartel a media altura del suelo
-local PIXELS_PER_STUD = 100  -- resolucion: 100 pixels por stud (consistente)
+local PIXELS_PER_STUD = 60  -- resolucion: 60 pixels por stud (texto mas grande fisicamente)
 
 -- Cache de carteles: [userId] = {signPart, surfaceGui, investorsLabel, levelLabel, playerLabel}
 local signs = {}
@@ -102,17 +102,17 @@ function SignManager.createSign(player, base, investorCount)
         -- UIStroke grueso del fondo (estilo moderno)
         local bgStroke = Instance.new("UIStroke", bg)
         bgStroke.Color = Color3.fromRGB(255, 255, 255)
-        bgStroke.Thickness = 8
+        bgStroke.Thickness = 5
         bgStroke.Transparency = 0.2
 
         -- fixedContainer: anclado al fondo del cartel, tamaño FIJO en pixels
-        -- 350px = 3.5 studs fisicos (siempre, sin importar la altura del cartel)
-        -- cabe en el minimo de 5 studs de altura
+        -- Con PIXELS_PER_STUD=60: 210px = 3.5 studs fisicos (cabe en minimo 5 studs)
+        -- Padding lateral reducido (-20) para que el texto sea mas ancho
         local fixedContainer = Instance.new("Frame")
         fixedContainer.Name = "FixedContainer"
         fixedContainer.AnchorPoint = Vector2.new(0.5, 1)  -- anclado al centro-abajo
-        fixedContainer.Size = UDim2.new(1, -60, 0, 350)  -- ancho completo - padding, alto fijo 350px
-        fixedContainer.Position = UDim2.new(0.5, 0, 1, -15)  -- al fondo del SurfaceGui
+        fixedContainer.Size = UDim2.new(1, -20, 0, 210)  -- ancho casi completo, alto fijo 210px (3.5 studs)
+        fixedContainer.Position = UDim2.new(0.5, 0, 1, -10)  -- al fondo del SurfaceGui
         fixedContainer.BackgroundTransparency = 1
         fixedContainer.BorderSizePixel = 0
         fixedContainer.Parent = bg
@@ -120,7 +120,7 @@ function SignManager.createSign(player, base, investorCount)
         -- Titulo "INVERSIONISTAS" (arriba del contenedor)
         local titleLabel = Instance.new("TextLabel")
         titleLabel.Name = "TitleLabel"
-        titleLabel.Size = UDim2.new(1, 0, 0, 50)
+        titleLabel.Size = UDim2.new(1, 0, 0, 30)
         titleLabel.Position = UDim2.new(0, 0, 0, 0)
         titleLabel.BackgroundTransparency = 1
         titleLabel.Text = "INVERSIONISTAS"
@@ -132,14 +132,14 @@ function SignManager.createSign(player, base, investorCount)
         -- UIStroke grueso del titulo
         local titleStroke = Instance.new("UIStroke", titleLabel)
         titleStroke.Color = Color3.fromRGB(0, 0, 0)
-        titleStroke.Thickness = 6
+        titleStroke.Thickness = 4
         titleStroke.Transparency = 0
 
         -- Numero de inversionistas (grande, debajo del titulo)
         local investorsLabel = Instance.new("TextLabel")
         investorsLabel.Name = "InvestorsLabel"
-        investorsLabel.Size = UDim2.new(1, 0, 0, 120)
-        investorsLabel.Position = UDim2.new(0, 0, 0, 55)
+        investorsLabel.Size = UDim2.new(1, 0, 0, 70)
+        investorsLabel.Position = UDim2.new(0, 0, 0, 35)
         investorsLabel.BackgroundTransparency = 1
         investorsLabel.Text = tostring(investorCount or 0)
         investorsLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
@@ -150,14 +150,14 @@ function SignManager.createSign(player, base, investorCount)
         -- UIStroke grueso del numero
         local investorsStroke = Instance.new("UIStroke", investorsLabel)
         investorsStroke.Color = Color3.fromRGB(0, 0, 0)
-        investorsStroke.Thickness = 8
+        investorsStroke.Thickness = 6
         investorsStroke.Transparency = 0
 
         -- Nivel del cartel
         local levelLabel = Instance.new("TextLabel")
         levelLabel.Name = "LevelLabel"
-        levelLabel.Size = UDim2.new(1, 0, 0, 40)
-        levelLabel.Position = UDim2.new(0, 0, 0, 185)
+        levelLabel.Size = UDim2.new(1, 0, 0, 25)
+        levelLabel.Position = UDim2.new(0, 0, 0, 110)
         levelLabel.BackgroundTransparency = 1
         local level = InvestorManager.getSignLevel(investorCount or 0)
         levelLabel.Text = "Nivel " .. level
@@ -169,16 +169,17 @@ function SignManager.createSign(player, base, investorCount)
         -- UIStroke del nivel
         local levelStroke = Instance.new("UIStroke", levelLabel)
         levelStroke.Color = Color3.fromRGB(0, 0, 0)
-        levelStroke.Thickness = 4
+        levelStroke.Thickness = 3
         levelStroke.Transparency = 0
 
-        -- Multiplicador del cartel
+        -- Multiplicador del cartel (mismo que la UI de Inversionistas para sincronizar)
         local multLabel = Instance.new("TextLabel")
         multLabel.Name = "MultLabel"
-        multLabel.Size = UDim2.new(1, 0, 0, 40)
-        multLabel.Position = UDim2.new(0, 0, 0, 230)
+        multLabel.Size = UDim2.new(1, 0, 0, 25)
+        multLabel.Position = UDim2.new(0, 0, 0, 140)
         multLabel.BackgroundTransparency = 1
-        local mult = InvestorManager.getSignMultiplier(investorCount or 0)
+        -- Usar getInvestorMultiplier (igual que la UI) para que se sincronicen
+        local mult = InvestorManager.getInvestorMultiplier(investorCount or 0)
         multLabel.Text = "Multiplicador x" .. string.format("%.2f", mult)
         multLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
         multLabel.TextScaled = true
@@ -188,14 +189,14 @@ function SignManager.createSign(player, base, investorCount)
         -- UIStroke del multiplicador
         local multStroke = Instance.new("UIStroke", multLabel)
         multStroke.Color = Color3.fromRGB(0, 0, 0)
-        multStroke.Thickness = 4
+        multStroke.Thickness = 3
         multStroke.Transparency = 0
 
         -- Nombre del jugador (abajo del todo)
         local playerLabel = Instance.new("TextLabel")
         playerLabel.Name = "PlayerLabel"
-        playerLabel.Size = UDim2.new(1, 0, 0, 40)
-        playerLabel.Position = UDim2.new(0, 0, 1, -40)
+        playerLabel.Size = UDim2.new(1, 0, 0, 25)
+        playerLabel.Position = UDim2.new(0, 0, 1, -25)
         playerLabel.BackgroundTransparency = 1
         playerLabel.Text = player.Name
         playerLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
@@ -206,7 +207,7 @@ function SignManager.createSign(player, base, investorCount)
         -- UIStroke del nombre
         local playerStroke = Instance.new("UIStroke", playerLabel)
         playerStroke.Color = Color3.fromRGB(0, 0, 0)
-        playerStroke.Thickness = 4
+        playerStroke.Thickness = 3
         playerStroke.Transparency = 0
 
         -- Guardar en cache
@@ -235,7 +236,8 @@ function SignManager.updateSign(userId, investorCount)
         local newHeight = InvestorManager.getSignHeight(investorCount)
         local newColor = InvestorManager.getSignColor(investorCount)
         local newLevel = InvestorManager.getSignLevel(investorCount)
-        local newMult = InvestorManager.getSignMultiplier(investorCount)
+        -- Usar getInvestorMultiplier (igual que la UI) para sincronizar
+        local newMult = InvestorManager.getInvestorMultiplier(investorCount)
 
         -- Tween de altura (animacion suave)
         local currentSize = sign.signPart.Size
