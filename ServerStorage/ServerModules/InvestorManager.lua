@@ -38,6 +38,52 @@ function InvestorManager.getInvestorMultiplier(totalInvestors)
 end
 
 -- ============================================
+-- SISTEMA DE CARTEL DE INVERSIONISTAS (Opcion B)
+-- ============================================
+-- El cartel crece en altura y da un bonus de multiplicador global
+-- basado en la cantidad de inversionistas acumulados.
+
+-- Nivel del cartel: 1 nivel por cada 100 inversionistas (logaritmico)
+-- 1 inv = nivel 1, 100 inv = nivel 1, 1000 inv = nivel 10, 10000 = nivel 100
+function InvestorManager.getSignLevel(totalInvestors)
+        local count = totalInvestors or 0
+        if count <= 0 then return 1 end
+        -- log base 100: 1=0, 100=1, 1000=2, 10000=3...
+        -- Pero queremos que sea 1 nivel por cada 100 inv
+        -- Nivel = floor(log10(count) * 2) aproximado, minimo 1
+        local level = math.floor(math.log10(count) * 2)
+        return math.max(1, level)
+end
+
+-- Altura del cartel en studs: 3 + log10(inversionistas) * 3
+-- 1 inv = 3, 100 = 9, 1000 = 12, 10000 = 15, 100000 = 18, 1M = 21, 1B = 30
+function InvestorManager.getSignHeight(totalInvestors)
+        local count = totalInvestors or 0
+        if count <= 0 then return 3 end
+        local height = 3 + math.log10(count) * 3
+        -- Limitar a maximo 35 studs para no romper el mapa
+        return math.min(35, math.max(3, height))
+end
+
+-- Multiplicador global del cartel: 1 + nivel * 0.05 (5% por nivel)
+-- Nivel 1 = x1.05, Nivel 10 = x1.5, Nivel 100 = x6, Nivel 1000 = x51
+function InvestorManager.getSignMultiplier(totalInvestors)
+        local level = InvestorManager.getSignLevel(totalInvestors)
+        return 1 + (level * 0.05)
+end
+
+-- Color del cartel segun el nivel (escala de rareza)
+function InvestorManager.getSignColor(totalInvestors)
+        local level = InvestorManager.getSignLevel(totalInvestors)
+        -- Escala de colores: verde -> azul -> amarillo -> rojo -> morado
+        if level >= 1000 then return Color3.fromRGB(180, 80, 255) end   -- morado
+        if level >= 100 then return Color3.fromRGB(255, 80, 80) end     -- rojo
+        if level >= 10 then return Color3.fromRGB(255, 215, 0) end      -- amarillo
+        if level >= 2 then return Color3.fromRGB(100, 200, 255) end     -- azul
+        return Color3.fromRGB(100, 255, 100)                            -- verde
+end
+
+-- ============================================
 -- TABLA DE PROGRESO (para mostrar en UI)
 -- ============================================
 

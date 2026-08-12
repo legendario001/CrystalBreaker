@@ -186,6 +186,25 @@ else
 end
 
 -- ============================================
+-- Cargar SignManager (cartel de inversionistas frente a cada base)
+-- ============================================
+local SignManager
+local ok_sm, err_sm = pcall(function()
+        local mod = ServerStorage.ServerModules:WaitForChild("SignManager", 10)
+        SignManager = require(mod)
+end)
+if not ok_sm or not SignManager then
+        warn("[CRITICAL] SignManager no se pudo cargar: " .. tostring(err_sm))
+        SignManager = {
+                createSign = function() end,
+                updateSign = function() end,
+                removeSign = function() end,
+        }
+else
+        print("[OK] SignManager cargado correctamente")
+end
+
+-- ============================================
 -- Cargar EventManager (evento del magnate)
 -- ============================================
 local EventManager
@@ -1284,8 +1303,13 @@ task.spawn(function()
                         if InvestorManager and InvestorManager.getInvestorMultiplier then
                                 investorMultiplier = InvestorManager.getInvestorMultiplier(data.investors or 0)
                         end
-                        -- Multiplicador total = boost * evolucion * inversionistas
-                        local totalMultiplier = boostMultiplier * rebirthMultiplier * investorMultiplier
+                        -- Multiplicador del cartel de inversionistas: bonus global segun nivel del cartel
+                        local signMultiplier = 1
+                        if InvestorManager and InvestorManager.getSignMultiplier then
+                                signMultiplier = InvestorManager.getSignMultiplier(data.investors or 0)
+                        end
+                        -- Multiplicador total = boost * evolucion * inversionistas * cartel
+                        local totalMultiplier = boostMultiplier * rebirthMultiplier * investorMultiplier * signMultiplier
 
                         local charList = iterateCharacters(data.characters)
                         for _, entry in ipairs(charList) do
@@ -1877,6 +1901,13 @@ Players.PlayerAdded:Connect(function(player)
                                         newData._restored = true
                                 end
                         end
+
+                        -- Crear cartel de inversionistas frente a la base
+                        if SignManager then
+                                local data = playerData[player.UserId]
+                                local invCount = (data and data.investors) or 0
+                                SignManager.createSign(player, base, invCount)
+                        end
                 else
                         task.delay(5, function()
                                 if not isPlayerValid(player) then return end
@@ -1912,6 +1943,13 @@ Players.PlayerAdded:Connect(function(player)
                                                 if newData then
                                                         newData._restored = true
                                                 end
+                                        end
+
+                                        -- Crear cartel de inversionistas frente a la base (reintento)
+                                        if SignManager then
+                                                local data = playerData[player.UserId]
+                                                local invCount = (data and data.investors) or 0
+                                                SignManager.createSign(player, base, invCount)
                                         end
                                 end
                         end)
@@ -2049,6 +2087,11 @@ Players.PlayerRemoving:Connect(function(player)
         end
         -- Limpiar cache de SaveManager
         SaveManager.clearCache(userId)
+
+        -- Eliminar cartel de inversionistas
+        if SignManager then
+                SignManager.removeSign(userId)
+        end
 
         -- FIX CRITICO: Borrar playerData[userId] AL FINAL, despues de savePlayerProgress
         -- Antes se borraba antes de savePlayerProgress, causando que NUNCA se guardara al salir
@@ -3236,11 +3279,24 @@ if InvestorRequestEvent and InvestorManager then
                                         if InvestorUpdateEvent then
                                                 InvestorUpdateEvent:FireClient(p, info)
                                         end
+                                        -- Actualizar cartel de inversionistas (crece al renacer)
+                                        if SignManager and ok then
+                                                local newData = playerData[p.UserId]
+                                                local invCount = (newData and newData.investors) or 0
+                                                SignManager.updateSign(p.UserId, invCount)
+                                        end
                                 end,
                                 respawnPlayer = function(p) p:LoadCharacter() end,
                         })
                         if not ok then
                                 warn("[Investors] Error al renacer: " .. tostring(result))
+                        else
+                                -- Actualizar cartel despues del renacimiento exitoso
+                                if SignManager then
+                                        local newData = playerData[player.UserId]
+                                        local invCount = (newData and newData.investors) or 0
+                                        SignManager.updateSign(player.UserId, invCount)
+                                end
                         end
                 end
         end)
