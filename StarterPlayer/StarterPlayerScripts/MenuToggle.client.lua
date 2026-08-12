@@ -22,6 +22,37 @@ screenGui.DisplayOrder = 50 -- encima de la mayoria de GUIs pero debajo de popup
 screenGui.Parent = playerGui
 
 -- ============================================
+-- Boton Tutorial (slot 6 del menu 3x3)
+-- Se crea aqui para que MenuToggle lo mueva al slot 6 automaticamente
+-- Al hacer click, llama a _G.OpenTutorial (definida en TutorialSystem)
+-- ============================================
+local tutorialButton = Instance.new("TextButton")
+tutorialButton.Name = "TutorialButton"
+tutorialButton.Size = UDim2.new(0, 60, 0, 60)
+tutorialButton.Position = UDim2.new(0, 20, 1, -480) -- posicion temporal, MenuToggle lo movera
+tutorialButton.BackgroundColor3 = Color3.fromRGB(30, 60, 100)  -- azul oscuro
+tutorialButton.BorderSizePixel = 0
+tutorialButton.Text = "📖"
+tutorialButton.Font = Enum.Font.GothamBold
+tutorialButton.TextSize = 28
+tutorialButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+tutorialButton.Parent = screenGui
+Instance.new("UICorner", tutorialButton).CornerRadius = UDim.new(0, 12)
+
+local tutorialStroke = Instance.new("UIStroke", tutorialButton)
+tutorialStroke.Color = Color3.fromRGB(100, 200, 255)
+tutorialStroke.Thickness = 3
+
+-- Click: abrir tutorial (llama a la funcion global de TutorialSystem)
+tutorialButton.MouseButton1Click:Connect(function()
+        if _G.OpenTutorial then
+                _G.OpenTutorial()
+        else
+                warn("[MenuToggle] _G.OpenTutorial no definida (TutorialSystem no cargo?)")
+        end
+end)
+
+-- ============================================
 -- Boton flecha (borde izquierdo-centro)
 -- ============================================
 local arrowBtn = Instance.new("TextButton")
@@ -97,13 +128,14 @@ grid.VerticalAlignment = Enum.VerticalAlignment.Center
 local slots = {}
 local slotOrder = 1
 
--- Botones conocidos a mover (en orden de slot 1-5)
+-- Botones conocidos a mover (en orden de slot 1-6)
 local buttonNames = {
         "ShopButton",   -- slot 1
         "BuildBtn",     -- slot 2 (martillo)
         "MusicBtn",     -- slot 3 (musica)
         "BackpackBtn",  -- slot 4 (mochila)
-        "RebirthBtn",   -- slot 5 (renacer)
+        "RebirthBtn",   -- slot 5 (evolucion)
+        "TutorialButton", -- slot 6 (tutorial)
 }
 
 -- Crear los 9 slots (5 para botones conocidos, 4 vacios como placeholders)
