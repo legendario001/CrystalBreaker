@@ -313,17 +313,27 @@ function updateBankUI()
         -- Formato de dinero (K, M, B, T)
 function formatMoney(amount)
                 amount = amount or 0
-                if amount >= 1000000000000 then
-                        return string.format("%.1fT", amount / 1000000000000)
-                elseif amount >= 1000000000 then
-                        return string.format("%.1fB", amount / 1000000000)
-                elseif amount >= 1000000 then
-                        return string.format("%.1fM", amount / 1000000)
-                elseif amount >= 10000 then
-                        return string.format("%.1fK", amount / 1000)
-                else
-                        return tostring(amount)
+                local suffixes = {
+                        {1e18, "QQ"},  -- Quintillones
+                        {1e15, "Q"},   -- Cuatrillones
+                        {1e12, "T"},   -- Trillones
+                        {1e9,  "B"},   -- Billones
+                        {1e6,  "M"},   -- Millones
+                        {1e3,  "K"},   -- Miles
+                }
+                for _, tier in ipairs(suffixes) do
+                        if amount >= tier[1] then
+                                local v = amount / tier[1]
+                                if v >= 100 then
+                                        return string.format("%.1f%s", v, tier[2])
+                                elseif v >= 10 then
+                                        return string.format("%.2f%s", v, tier[2])
+                                else
+                                        return string.format("%.3f%s", v, tier[2])
+                                end
+                        end
                 end
+                return tostring(math.floor(amount))
         end
 
         -- Obtener cantidad del input (soporta sufijos: K, M, B, T, Q)

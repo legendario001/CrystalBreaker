@@ -1255,10 +1255,10 @@ end)
 -- Solo acumula en el servidor, NO actualiza UI desde aqui
 -- El cliente recoge el dinero cuando lo necesita
 -- OPTIMIZACION: 1 solo FireClient por jugador por tick (no por brainrot)
--- Intervalo de 0.5s para sensacion de dinero rapido (dopamina)
+-- Intervalo de 0.25s para sensacion de dinero MUY rapido (dopamina maxima)
 task.spawn(function()
         while true do
-                task.wait(0.5)
+                task.wait(0.25)
                 local activePlayers = {}
                 for userId, data in pairs(playerData) do
                         table.insert(activePlayers, {userId=userId, data=data})
@@ -1709,8 +1709,8 @@ local function restorePlayerProgress(player, savedData, base)
                                                 )
                                                 -- Aplicar TODOS los multiplicadores
                                                 local rate = baseRate * totalMultiplier
-                                                -- Money Timer ahora es cada 0.5s, asi que multiplicar por 2 para obtener por segundo
-                                                totalRatePerSecond = totalRatePerSecond + (rate * 2)
+                                                -- Money Timer ahora es cada 0.25s, asi que multiplicar por 4 para obtener por segundo
+                                                totalRatePerSecond = totalRatePerSecond + (rate * 4)
                                         end
                                 end
                         end

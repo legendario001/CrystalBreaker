@@ -500,10 +500,11 @@ moneyLabel.Parent = moneyPanel
 
 -- ============================================
 -- Formato de dinero en cliente (sufijos español con tilde + plural)
--- Mil, Millón/Millones, Billón/Billones, Trillón/Trillones, Cuatrillón/Cuatrillones
+-- Mil, Millón/Millones, Billón/Billones, Trillón/Trillones, Cuatrillón/Cuatrillones, Quintillón/Quintillones
 -- Maximo 4 digitos + 3 decimales + sufijo
 -- ============================================
 local MONEY_SUFFIXES = {
+        {1e18, "Quintillón", "Quintillones", Color3.fromRGB(180, 100, 255), Color3.fromRGB(220, 180, 255)}, -- violeta
         {1e15, "Cuatrillón", "Cuatrillones", Color3.fromRGB(255, 215, 0),   Color3.fromRGB(255, 240, 150)}, -- dorado
         {1e12, "Trillón",   "Trillones",   Color3.fromRGB(255, 200, 60),   Color3.fromRGB(255, 230, 130)}, -- naranja-dorado
         {1e9,  "Billón",    "Billones",    Color3.fromRGB(255, 180, 80),   Color3.fromRGB(255, 220, 140)}, -- naranja
