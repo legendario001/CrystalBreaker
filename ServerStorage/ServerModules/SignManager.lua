@@ -79,27 +79,27 @@ function SignManager.createSign(player, base, investorCount)
         light.Color = signPart.Color
         light.Parent = signPart
 
-        -- BillboardGui con el texto (SIEMPRE tamano fijo en studs)
-        -- Usa BillboardGui en lugar de SurfaceGui para que el texto NO se estire
-        -- cuando el cartel crece en altura. El BillboardGui se ancla al fondo del
-        -- cartel y su tamano es fijo (no escala con el Part).
-        local billboard = Instance.new("BillboardGui")
-        billboard.Name = "SignGui"
-        billboard.Size = UDim2.new(0, 600, 0, 380)  -- tamano fijo en pixels
-        billboard.StudsOffset = Vector3.new(0, -initialHeight/2 + 2, 0)  -- anclado al fondo del cartel
-        billboard.MaxDistance = 200
-        billboard.AlwaysOnTop = false
-        billboard.LightInfluence = 0
-        billboard.Parent = signPart
+        -- SurfaceGui con el texto (NO rota, esta fijo en la cara Front del cartel)
+        -- CanvasSize FIJO: el contenido se mapea al Part, pero el fixedContainer
+        -- usa AnchorPoint + Size en Scale para ocupar siempre el mismo % del cartel.
+        -- Como el cartel crece en Y pero el fixedContainer mantiene su proporcion
+        -- (con UIAspectRatioConstraint), el texto NO se estira.
+        local surfaceGui = Instance.new("SurfaceGui")
+        surfaceGui.Name = "SignGui"
+        surfaceGui.Face = Enum.NormalId.Front
+        surfaceGui.CanvasSize = Vector2.new(1200, 1200)  -- canvas cuadrado
+        surfaceGui.LightInfluence = 0
+        surfaceGui.MaxDistance = 250
+        surfaceGui.Parent = signPart
 
-        -- Fondo del BillboardGui
+        -- Fondo del SurfaceGui (transparente para que se vea el neón del Part)
         local bg = Instance.new("Frame")
         bg.Name = "Background"
         bg.Size = UDim2.new(1, 0, 1, 0)
         bg.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
         bg.BackgroundTransparency = 0.2
         bg.BorderSizePixel = 0
-        bg.Parent = billboard
+        bg.Parent = surfaceGui
         Instance.new("UICorner", bg).CornerRadius = UDim.new(0, 12)
 
         -- UIStroke grueso del fondo (estilo moderno)
@@ -108,14 +108,20 @@ function SignManager.createSign(player, base, investorCount)
         bgStroke.Thickness = 8
         bgStroke.Transparency = 0.2
 
-        -- Padding interno
-        local padding = Instance.new("UIPadding", bg)
-        padding.PaddingLeft = UDim.new(0, 20)
-        padding.PaddingRight = UDim.new(0, 20)
-        padding.PaddingTop = UDim.new(0, 10)
-        padding.PaddingBottom = UDim.new(0, 10)
+        -- fixedContainer: anclado al fondo del cartel, tamaño FIJO en pixels
+        -- (NO escala con el Part). Para que no se estire cuando el Part crece,
+        -- usamos Size en Offset (pixels) y AnchorPoint al fondo.
+        -- El contenedor tiene altura fija de 380px y se posiciona al fondo.
+        local fixedContainer = Instance.new("Frame")
+        fixedContainer.Name = "FixedContainer"
+        fixedContainer.AnchorPoint = Vector2.new(0.5, 1)  -- anclado al centro-abajo
+        fixedContainer.Size = UDim2.new(1, -40, 0, 380)  -- ancho completo - padding, alto fijo 380px
+        fixedContainer.Position = UDim2.new(0.5, 0, 1, -10)  -- al fondo del SurfaceGui
+        fixedContainer.BackgroundTransparency = 1
+        fixedContainer.BorderSizePixel = 0
+        fixedContainer.Parent = bg
 
-        -- Titulo "INVERSIONISTAS" (arriba)
+        -- Titulo "INVERSIONISTAS" (arriba del contenedor)
         local titleLabel = Instance.new("TextLabel")
         titleLabel.Name = "TitleLabel"
         titleLabel.Size = UDim2.new(1, 0, 0, 50)
@@ -125,7 +131,7 @@ function SignManager.createSign(player, base, investorCount)
         titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
         titleLabel.TextScaled = true
         titleLabel.Font = Enum.Font.GothamBlack
-        titleLabel.Parent = bg
+        titleLabel.Parent = fixedContainer
 
         -- UIStroke grueso del titulo
         local titleStroke = Instance.new("UIStroke", titleLabel)
@@ -143,7 +149,7 @@ function SignManager.createSign(player, base, investorCount)
         investorsLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
         investorsLabel.TextScaled = true
         investorsLabel.Font = Enum.Font.GothamBlack
-        investorsLabel.Parent = bg
+        investorsLabel.Parent = fixedContainer
 
         -- UIStroke grueso del numero
         local investorsStroke = Instance.new("UIStroke", investorsLabel)
@@ -162,7 +168,7 @@ function SignManager.createSign(player, base, investorCount)
         levelLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
         levelLabel.TextScaled = true
         levelLabel.Font = Enum.Font.GothamBold
-        levelLabel.Parent = bg
+        levelLabel.Parent = fixedContainer
 
         -- UIStroke del nivel
         local levelStroke = Instance.new("UIStroke", levelLabel)
@@ -181,7 +187,7 @@ function SignManager.createSign(player, base, investorCount)
         multLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
         multLabel.TextScaled = true
         multLabel.Font = Enum.Font.GothamBold
-        multLabel.Parent = bg
+        multLabel.Parent = fixedContainer
 
         -- UIStroke del multiplicador
         local multStroke = Instance.new("UIStroke", multLabel)
@@ -199,7 +205,7 @@ function SignManager.createSign(player, base, investorCount)
         playerLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
         playerLabel.TextScaled = true
         playerLabel.Font = Enum.Font.GothamBold
-        playerLabel.Parent = bg
+        playerLabel.Parent = fixedContainer
 
         -- UIStroke del nombre
         local playerStroke = Instance.new("UIStroke", playerLabel)
@@ -211,7 +217,7 @@ function SignManager.createSign(player, base, investorCount)
         signs[userId] = {
                 folder = signFolder,
                 signPart = signPart,
-                billboard = billboard,
+                surfaceGui = surfaceGui,
                 investorsLabel = investorsLabel,
                 levelLabel = levelLabel,
                 multLabel = multLabel,
@@ -250,13 +256,7 @@ function SignManager.updateSign(userId, investorCount)
         -- Actualizar luz
         sign.light.Color = newColor
 
-        -- Actualizar StudsOffset del billboard para que siga anclado al fondo
-        -- del cartel (el cartel crece hacia arriba, el texto queda abajo)
-        if sign.billboard then
-                sign.billboard.StudsOffset = Vector3.new(0, -newHeight/2 + 2, 0)
-        end
-
-        -- Actualizar textos
+        -- Actualizar textos (el fixedContainer con AnchorPoint al fondo se ajusta solo)
         sign.investorsLabel.Text = tostring(investorCount)
         sign.levelLabel.Text = "Nivel " .. newLevel
         sign.multLabel.Text = "Multiplicador x" .. string.format("%.2f", newMult)
