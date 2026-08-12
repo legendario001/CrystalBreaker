@@ -11,7 +11,7 @@ local TweenService = game:GetService("TweenService")
 local SignManager = {}
 
 -- Configuracion visual
-local SIGN_WIDTH = 6
+local SIGN_WIDTH = 12
 local SIGN_DEPTH = 0.5
 local SIGN_OFFSET_Z = -10  -- 10 studs adelante del BaseSign (Z=29 -> Z=19)
 local SIGN_BASE_Y = 0.5  -- base del cartel a media altura del suelo
@@ -79,23 +79,27 @@ function SignManager.createSign(player, base, investorCount)
         light.Color = signPart.Color
         light.Parent = signPart
 
-        -- SurfaceGui con el texto (UIStroke grueso para estilo moderno)
-        local surfaceGui = Instance.new("SurfaceGui")
-        surfaceGui.Name = "SignGui"
-        surfaceGui.Face = Enum.NormalId.Front
-        surfaceGui.CanvasSize = Vector2.new(600, 800)
-        surfaceGui.LightInfluence = 0
-        surfaceGui.MaxDistance = 200
-        surfaceGui.Parent = signPart
+        -- BillboardGui con el texto (SIEMPRE tamano fijo en studs)
+        -- Usa BillboardGui en lugar de SurfaceGui para que el texto NO se estire
+        -- cuando el cartel crece en altura. El BillboardGui se ancla al fondo del
+        -- cartel y su tamano es fijo (no escala con el Part).
+        local billboard = Instance.new("BillboardGui")
+        billboard.Name = "SignGui"
+        billboard.Size = UDim2.new(0, 600, 0, 380)  -- tamano fijo en pixels
+        billboard.StudsOffset = Vector3.new(0, -initialHeight/2 + 2, 0)  -- anclado al fondo del cartel
+        billboard.MaxDistance = 200
+        billboard.AlwaysOnTop = false
+        billboard.LightInfluence = 0
+        billboard.Parent = signPart
 
-        -- Fondo del SurfaceGui (transparente para que se vea el neón)
+        -- Fondo del BillboardGui
         local bg = Instance.new("Frame")
         bg.Name = "Background"
         bg.Size = UDim2.new(1, 0, 1, 0)
         bg.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
         bg.BackgroundTransparency = 0.2
         bg.BorderSizePixel = 0
-        bg.Parent = surfaceGui
+        bg.Parent = billboard
         Instance.new("UICorner", bg).CornerRadius = UDim.new(0, 12)
 
         -- UIStroke grueso del fondo (estilo moderno)
@@ -108,13 +112,13 @@ function SignManager.createSign(player, base, investorCount)
         local padding = Instance.new("UIPadding", bg)
         padding.PaddingLeft = UDim.new(0, 20)
         padding.PaddingRight = UDim.new(0, 20)
-        padding.PaddingTop = UDim.new(0, 20)
-        padding.PaddingBottom = UDim.new(0, 20)
+        padding.PaddingTop = UDim.new(0, 10)
+        padding.PaddingBottom = UDim.new(0, 10)
 
-        -- Titulo "INVERSIONISTAS"
+        -- Titulo "INVERSIONISTAS" (arriba)
         local titleLabel = Instance.new("TextLabel")
         titleLabel.Name = "TitleLabel"
-        titleLabel.Size = UDim2.new(1, 0, 0, 80)
+        titleLabel.Size = UDim2.new(1, 0, 0, 50)
         titleLabel.Position = UDim2.new(0, 0, 0, 0)
         titleLabel.BackgroundTransparency = 1
         titleLabel.Text = "INVERSIONISTAS"
@@ -129,11 +133,11 @@ function SignManager.createSign(player, base, investorCount)
         titleStroke.Thickness = 6
         titleStroke.Transparency = 0
 
-        -- Numero de inversionistas (grande)
+        -- Numero de inversionistas (grande, debajo del titulo)
         local investorsLabel = Instance.new("TextLabel")
         investorsLabel.Name = "InvestorsLabel"
-        investorsLabel.Size = UDim2.new(1, 0, 0, 200)
-        investorsLabel.Position = UDim2.new(0, 0, 0, 100)
+        investorsLabel.Size = UDim2.new(1, 0, 0, 140)
+        investorsLabel.Position = UDim2.new(0, 0, 0, 60)
         investorsLabel.BackgroundTransparency = 1
         investorsLabel.Text = tostring(investorCount or 0)
         investorsLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
@@ -150,8 +154,8 @@ function SignManager.createSign(player, base, investorCount)
         -- Nivel del cartel
         local levelLabel = Instance.new("TextLabel")
         levelLabel.Name = "LevelLabel"
-        levelLabel.Size = UDim2.new(1, 0, 0, 60)
-        levelLabel.Position = UDim2.new(0, 0, 0, 320)
+        levelLabel.Size = UDim2.new(1, 0, 0, 40)
+        levelLabel.Position = UDim2.new(0, 0, 0, 210)
         levelLabel.BackgroundTransparency = 1
         local level = InvestorManager.getSignLevel(investorCount or 0)
         levelLabel.Text = "Nivel " .. level
@@ -169,8 +173,8 @@ function SignManager.createSign(player, base, investorCount)
         -- Multiplicador del cartel
         local multLabel = Instance.new("TextLabel")
         multLabel.Name = "MultLabel"
-        multLabel.Size = UDim2.new(1, 0, 0, 60)
-        multLabel.Position = UDim2.new(0, 0, 0, 390)
+        multLabel.Size = UDim2.new(1, 0, 0, 40)
+        multLabel.Position = UDim2.new(0, 0, 0, 255)
         multLabel.BackgroundTransparency = 1
         local mult = InvestorManager.getSignMultiplier(investorCount or 0)
         multLabel.Text = "Multiplicador x" .. string.format("%.2f", mult)
@@ -185,11 +189,11 @@ function SignManager.createSign(player, base, investorCount)
         multStroke.Thickness = 4
         multStroke.Transparency = 0
 
-        -- Nombre del jugador (abajo)
+        -- Nombre del jugador (abajo del todo)
         local playerLabel = Instance.new("TextLabel")
         playerLabel.Name = "PlayerLabel"
-        playerLabel.Size = UDim2.new(1, 0, 0, 50)
-        playerLabel.Position = UDim2.new(0, 0, 1, -60)
+        playerLabel.Size = UDim2.new(1, 0, 0, 40)
+        playerLabel.Position = UDim2.new(0, 0, 1, -40)
         playerLabel.BackgroundTransparency = 1
         playerLabel.Text = player.Name
         playerLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
@@ -207,7 +211,7 @@ function SignManager.createSign(player, base, investorCount)
         signs[userId] = {
                 folder = signFolder,
                 signPart = signPart,
-                surfaceGui = surfaceGui,
+                billboard = billboard,
                 investorsLabel = investorsLabel,
                 levelLabel = levelLabel,
                 multLabel = multLabel,
@@ -245,6 +249,12 @@ function SignManager.updateSign(userId, investorCount)
 
         -- Actualizar luz
         sign.light.Color = newColor
+
+        -- Actualizar StudsOffset del billboard para que siga anclado al fondo
+        -- del cartel (el cartel crece hacia arriba, el texto queda abajo)
+        if sign.billboard then
+                sign.billboard.StudsOffset = Vector3.new(0, -newHeight/2 + 2, 0)
+        end
 
         -- Actualizar textos
         sign.investorsLabel.Text = tostring(investorCount)
