@@ -177,27 +177,41 @@ function BuildManager.placeBlock(player, blockId, position, rotation)
                         end
 
                         -- FIX: Preservar la rotacion original del modelo
-                        -- Solo cambiar la posicion, mantener la orientacion del PrimaryPart
                         local originalCFrame = doorClone.PrimaryPart.CFrame
                         local originalRotation = originalCFrame - originalCFrame.Position
 
-                        -- Calcular la posicion objetivo: la base del modelo debe quedar en position.Y
-                        -- Buscar la Y minima del modelo para calcular el offset
+                        -- FIX: Calcular el offset Y correctamente para MeshParts
+                        -- La base del modelo = Y minima de (Position.Y - Size.Y/2) de todas las partes
+                        -- Pero algunos MeshParts tienen offset visual, asi que tambien consideramos
+                        -- el bounding box del modelo completo
                         local minY = math.huge
                         for _, p in ipairs(doorClone:GetDescendants()) do
                                 if p:IsA("BasePart") then
-                                        local partBottomY = p.Position.Y - p.Size.Y/2
+                                        local partBottomY = p.Position.Y - (p.Size.Y/2)
                                         if partBottomY < minY then
                                                 minY = partBottomY
                                         end
                                 end
                         end
 
-                        -- Posicion objetivo del PrimaryPart:
-                        -- position.Y es la base del bloque, queremos que la base del modelo quede ahi
-                        -- yOffset = position.Y - minY (cuanto mover el modelo en Y)
-                        -- targetPos = originalPrimaryPart.Position + (0, yOffset, 0)
-                        local yOffset = position.Y - minY
+                        -- Si el modelo tiene Model.FluidRatio o otros offsets, usar GetBoundingBox
+                        -- como fallback mas preciso
+                        local modelCFrame, modelSize = doorClone:GetBoundingBox()
+                        local modelBottomY = modelCFrame.Position.Y - (modelSize.Y/2)
+                        -- Usar el menor entre el calculo manual y el bounding box
+                        if modelBottomY < minY then
+                                minY = modelBottomY
+                        end
+
+                        -- yOffset = cuanto hay que mover el modelo en Y para que su base quede en position.Y
+                        -- position.Y es la base del bloque donde se coloca (parte de abajo del bloque)
+                        -- El bloque base invisible tiene Size = BLOCK_SIZE y Position = position (centro del bloque)
+                        -- Entonces la base del bloque = position.Y - BLOCK_SIZE/2
+                        -- Queremos que minY del modelo quede = position.Y - BLOCK_SIZE/2 (base del bloque)
+                        -- yOffset = (position.Y - BLOCK_SIZE/2) - minY
+                        local targetBaseY = position.Y - (ParcelManager.BLOCK_SIZE / 2)
+                        local yOffset = targetBaseY - minY
+
                         local targetPrimaryPos = originalCFrame.Position + Vector3.new(
                                 position.X - originalCFrame.Position.X,
                                 yOffset,
@@ -241,9 +255,9 @@ function BuildManager.placeBlock(player, blockId, position, rotation)
                                 originalTransparencies[p] = p.Transparency
                         end
 
-                        -- Sonido de puerta (sound ID valido de Roblox)
+                        -- Sonido de puerta (sound ID proporcionado por el usuario)
                         local doorSound = Instance.new("Sound")
-                        doorSound.SoundId = "rbxassetid://9046618260"
+                        doorSound.SoundId = "rbxassetid://75067614381932"
                         doorSound.Volume = 0.8
                         doorSound.Parent = doorClone
 
