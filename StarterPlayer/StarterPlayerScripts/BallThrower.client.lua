@@ -1295,17 +1295,16 @@ if isMobile then
                         end
 
                         -- 2. Verificar personajes soltados cerca (DropTimer)
+                        -- FIX: Cualquier jugador puede ver y recoger brainrots del suelo
+                        -- (no solo el que lo solto). Eliminado el check owner.Value == player.
                         if not showInteract and not isCarrying then
                                 for _, obj in ipairs(workspace:GetChildren()) do
                                         if obj.Name == "DropTimer" then
-                                                local owner = obj:FindFirstChild("Owner")
-                                                if owner and owner.Value == player then
-                                                        local d = (obj.Position - playerPos).Magnitude
-                                                        if d < 15 then
-                                                                showInteract = true
-                                                                interactScreenPos = camera:WorldToViewportPoint(obj.Position)
-                                                                break
-                                                        end
+                                                local d = (obj.Position - playerPos).Magnitude
+                                                if d < 15 then
+                                                        showInteract = true
+                                                        interactScreenPos = camera:WorldToViewportPoint(obj.Position)
+                                                        break
                                                 end
                                         end
                                 end
