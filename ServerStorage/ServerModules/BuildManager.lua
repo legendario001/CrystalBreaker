@@ -23,6 +23,7 @@ local BLOCK_TYPES = {
         { id = "diamante",  name = "Diamante",  color = Color3.fromRGB(135, 230, 255), material = Enum.Material.Glass,      cost = 100 },
         { id = "galaxia",   name = "Galaxia",   color = Color3.fromRGB(75, 0, 130),    material = Enum.Material.Neon,       cost = 500 },
         { id = "cristal",   name = "Cristal",   color = Color3.fromRGB(200, 240, 255), material = Enum.Material.Glass,      cost = 1000000, transparency = 0.3 },
+        { id = "puerta_madera", name = "Puerta Madera", color = Color3.fromRGB(140, 90, 45), material = Enum.Material.Wood, cost = 1000000, isDoor = true },
 }
 
 -- Mapa rapido: id -> config del bloque
@@ -147,6 +148,120 @@ function BuildManager.placeBlock(player, blockId, position, rotation)
         end
         block.Parent = blocksFolder
 
+        -- FIX: Si es una puerta, clonar el modelo de ServerStorage y agregar logica de apertura
+        if config.isDoor then
+                local ServerStorage = game:GetService("ServerStorage")
+                local puertaModel = ServerStorage:FindFirstChild("Puerta")
+                if puertaModel then
+                        local doorClone = puertaModel:Clone()
+                        -- Posicionar el modelo en la posicion del bloque (base abajo)
+                        -- Mover todo el modelo para que su base quede en 'position'
+                        doorClone:SetPrimaryPartCFrame(CFrame.new(position + Vector3.new(0, ParcelManager.BLOCK_SIZE, 0)))
+                        -- Si no tiene PrimaryPart, intentar mover todas las partes
+                        if not doorClone.PrimaryPart then
+                                local firstPart = doorClone:FindFirstChildWhichIsA("BasePart")
+                                if firstPart then
+                                        doorClone.PrimaryPart = firstPart
+                                        doorClone:SetPrimaryPartCFrame(CFrame.new(position + Vector3.new(0, ParcelManager.BLOCK_SIZE, 0)))
+                                end
+                        end
+                        doorClone.Parent = blocksFolder
+
+                        -- Hacer todas las partes Anchored y agruparlas para control de transparencia
+                        local doorParts = {}
+                        for _, p in ipairs(doorClone:GetDescendants()) do
+                                if p:IsA("BasePart") then
+                                        p.Anchored = true
+                                        table.insert(doorParts, p)
+                                end
+                        end
+
+                        -- Tag para identificarla como puerta
+                        local doorTag = Instance.new("StringValue")
+                        doorTag.Name = "DoorPart"
+                        doorTag.Value = "model"
+                        doorTag.Parent = doorClone
+
+                        -- Guardar transparencias originales para restaurar al cerrar
+                        local originalTransparencies = {}
+                        for _, p in ipairs(doorParts) do
+                                originalTransparencies[p] = p.Transparency
+                        end
+
+                        -- Crear Part de proximity para detectar jugadores cercanos
+                        local proximity = Instance.new("Part")
+                        proximity.Name = "DoorProximity"
+                        proximity.Size = Vector3.new(ParcelManager.BLOCK_SIZE + 8, ParcelManager.BLOCK_SIZE * 2.5, ParcelManager.BLOCK_SIZE + 8)
+                        proximity.Position = position + Vector3.new(0, ParcelManager.BLOCK_SIZE, 0)
+                        proximity.Anchored = true
+                        proximity.CanCollide = false
+                        proximity.Transparency = 1
+                        proximity.Parent = blocksFolder
+
+                        local proxIdTag = Instance.new("StringValue")
+                        proxIdTag.Name = "BlockId"
+                        proxIdTag.Value = blockId
+                        proxIdTag.Parent = proximity
+
+                        -- Sonido de puerta (sonido clasico de Roblox)
+                        local doorSound = Instance.new("Sound")
+                        doorSound.SoundId = "rbxassetid://1840336044"
+                        doorSound.Volume = 0.8
+                        doorSound.Parent = doorClone
+
+                        -- Estado de la puerta
+                        local isOpen = false
+                        local debounce = false
+
+                        -- Loop para detectar jugadores cercanos y abrir/cerrar
+                        task.spawn(function()
+                                local Players = game:GetService("Players")
+                                while doorClone and doorClone.Parent do
+                                        task.wait(0.3)
+                                        local someoneNear = false
+                                        for _, p in ipairs(Players:GetPlayers()) do
+                                                local char = p.Character
+                                                if char and char:FindFirstChild("HumanoidRootPart") then
+                                                        local hrp = char.HumanoidRootPart
+                                                        local dist = (hrp.Position - position).Magnitude
+                                                        if dist < (ParcelManager.BLOCK_SIZE + 4) then
+                                                                someoneNear = true
+                                                                break
+                                                        end
+                                                end
+                                        end
+                                        -- Abrir si alguien esta cerca y esta cerrada
+                                        if someoneNear and not isOpen then
+                                                isOpen = true
+                                                for _, p in ipairs(doorParts) do
+                                                        p.Transparency = 1
+                                                        p.CanCollide = false
+                                                end
+                                                if not debounce then
+                                                        debounce = true
+                                                        doorSound:Play()
+                                                        task.delay(1, function() debounce = false end)
+                                                end
+                                        -- Cerrar si nadie esta cerca y esta abierta
+                                        elseif not someoneNear and isOpen then
+                                                isOpen = false
+                                                for _, p in ipairs(doorParts) do
+                                                        p.Transparency = originalTransparencies[p] or 0
+                                                        p.CanCollide = true
+                                                end
+                                                if not debounce then
+                                                        debounce = true
+                                                        doorSound:Play()
+                                                        task.delay(1, function() debounce = false end)
+                                                end
+                                        end
+                                end
+                        end)
+                else
+                        warn("[BuildManager] No se encontro el modelo 'Puerta' en ServerStorage")
+                end
+        end
+
         -- Descontar 1 del inventario
         inv[blockId] = inv[blockId] - 1
         if inv[blockId] <= 0 then
@@ -182,6 +297,33 @@ function BuildManager.removeBlock(player, block, returnToInventory)
                                                 playerInventories[player.UserId] = {}
                                         end
                                         playerInventories[player.UserId][blockId] = (playerInventories[player.UserId][blockId] or 0) + 1
+                                end
+                        end
+                        -- FIX: Si es una puerta, eliminar tambien el modelo clonado y la proximity
+                        local blockIdTag = block:FindFirstChild("BlockId")
+                        local blockId = blockIdTag and blockIdTag.Value
+                        if blockId and BLOCK_MAP[blockId] and BLOCK_MAP[blockId].isDoor then
+                                local blockPos = block.Position
+                                local parent = block.Parent
+                                if parent then
+                                        for _, sibling in ipairs(parent:GetChildren()) do
+                                                if sibling ~= block then
+                                                        -- Eliminar modelo de puerta (DoorPart tag)
+                                                        if sibling:FindFirstChild("DoorPart") then
+                                                                local dist = (sibling:GetPrimaryPartCFrame().Position - blockPos).Magnitude
+                                                                if dist < ParcelManager.BLOCK_SIZE + 2 then
+                                                                        sibling:Destroy()
+                                                                end
+                                                        -- Eliminar DoorProximity
+                                                        elseif sibling.Name == "DoorProximity" then
+                                                                local proxPos = sibling.Position
+                                                                local dist = (proxPos - blockPos).Magnitude
+                                                                if dist < ParcelManager.BLOCK_SIZE + 2 then
+                                                                        sibling:Destroy()
+                                                                end
+                                                        end
+                                                end
+                                        end
                                 end
                         end
                         block:Destroy()

@@ -69,6 +69,7 @@ local BLOCK_TYPES_BUILD = {
         { id = "diamante",  name = "Diamante",  color = Color3.fromRGB(135, 230, 255), material = Enum.Material.Glass,      cost = 100 },
         { id = "galaxia",   name = "Galaxia",   color = Color3.fromRGB(75, 0, 130),    material = Enum.Material.Neon,       cost = 500 },
         { id = "cristal",   name = "Cristal",   color = Color3.fromRGB(200, 240, 255), material = Enum.Material.Glass,      cost = 1000000, transparency = 0.3 },
+        { id = "puerta_madera", name = "Puerta Madera", color = Color3.fromRGB(140, 90, 45), material = Enum.Material.Wood, cost = 1000000, isDoor = true },
 }
 
 -- Mapa rapido: id -> config
