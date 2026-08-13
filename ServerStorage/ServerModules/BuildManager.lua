@@ -109,6 +109,8 @@ function BuildManager.placeBlock(player, blockId, position, rotation)
         end
 
         -- Crear el bloque
+        -- FIX: Si es puerta, crear bloque base INVISIBLE (marcador) + modelo de puerta
+        -- Si no es puerta, crear bloque normal visible
         local block = Instance.new("Part")
         block.Name = "Block_" .. blockId
         block.Size = Vector3.new(ParcelManager.BLOCK_SIZE, ParcelManager.BLOCK_SIZE, ParcelManager.BLOCK_SIZE)
@@ -117,16 +119,23 @@ function BuildManager.placeBlock(player, blockId, position, rotation)
                 block.Orientation = rotation
         end
         block.Anchored = true
-        block.CanCollide = true
         block.Material = config.material
         block.Color = config.color
-        -- Transparencia para bloques como cristal
-        if config.transparency then
-                block.Transparency = config.transparency
-        end
         block.TopSurface = Enum.SurfaceType.Smooth
         block.BottomSurface = Enum.SurfaceType.Smooth
         block.CastShadow = true
+
+        -- Si es puerta, el bloque base es invisible y no colisiona (solo sirve como marcador)
+        if config.isDoor then
+                block.Transparency = 1
+                block.CanCollide = false
+        else
+                block.CanCollide = true
+                -- Transparencia para bloques como cristal
+                if config.transparency then
+                        block.Transparency = config.transparency
+                end
+        end
 
         -- Tag con el id del bloque (para identificarlo al quitar)
         local idTag = Instance.new("StringValue")
@@ -156,7 +165,6 @@ function BuildManager.placeBlock(player, blockId, position, rotation)
                         local doorClone = puertaModel:Clone()
 
                         -- FIX CRITICO: Asegurar PrimaryPart ANTES de posicionar
-                        -- Si el modelo no tiene PrimaryPart, buscar la primera BasePart y asignarla
                         if not doorClone.PrimaryPart then
                                 local firstPart = doorClone:FindFirstChildWhichIsA("BasePart")
                                 if firstPart then
@@ -168,29 +176,39 @@ function BuildManager.placeBlock(player, blockId, position, rotation)
                                 end
                         end
 
-                        -- Calcular offset: el PrimaryPart puede no estar en la base del modelo
-                        -- Queremos que la BASE del modelo quede en 'position' (base del bloque)
-                        -- La base del modelo = posicion Y minima de todas sus partes
-                        local minY = nil
+                        -- FIX: Preservar la rotacion original del modelo
+                        -- Solo cambiar la posicion, mantener la orientacion del PrimaryPart
+                        local originalCFrame = doorClone.PrimaryPart.CFrame
+                        local originalRotation = originalCFrame - originalCFrame.Position
+
+                        -- Calcular la posicion objetivo: la base del modelo debe quedar en position.Y
+                        -- Buscar la Y minima del modelo para calcular el offset
+                        local minY = math.huge
                         for _, p in ipairs(doorClone:GetDescendants()) do
                                 if p:IsA("BasePart") then
-                                        local partY = p.Position.Y - p.Size.Y/2
-                                        if not minY or partY < minY then
-                                                minY = partY
+                                        local partBottomY = p.Position.Y - p.Size.Y/2
+                                        if partBottomY < minY then
+                                                minY = partBottomY
                                         end
                                 end
                         end
-                        -- Offset en Y para que la base del modelo quede en position.Y
-                        local yOffset = 0
-                        if minY then
-                                yOffset = position.Y - minY
-                        end
 
-                        -- Ahora si posicionar el modelo
-                        doorClone:SetPrimaryPartCFrame(CFrame.new(position + Vector3.new(0, yOffset + doorClone.PrimaryPart.Size.Y/2, 0)))
+                        -- Posicion objetivo del PrimaryPart:
+                        -- position.Y es la base del bloque, queremos que la base del modelo quede ahi
+                        -- yOffset = position.Y - minY (cuanto mover el modelo en Y)
+                        -- targetPos = originalPrimaryPart.Position + (0, yOffset, 0)
+                        local yOffset = position.Y - minY
+                        local targetPrimaryPos = originalCFrame.Position + Vector3.new(
+                                position.X - originalCFrame.Position.X,
+                                yOffset,
+                                position.Z - originalCFrame.Position.Z
+                        )
+
+                        -- Posicionar preservando rotacion
+                        doorClone:SetPrimaryPartCFrame(CFrame.new(targetPrimaryPos) * originalRotation)
                         doorClone.Parent = blocksFolder
 
-                        -- Hacer todas las partes Anchored y agruparlas para control de transparencia
+                        -- Hacer todas las partes Anchored
                         local doorParts = {}
                         for _, p in ipairs(doorClone:GetDescendants()) do
                                 if p:IsA("BasePart") then
@@ -199,36 +217,33 @@ function BuildManager.placeBlock(player, blockId, position, rotation)
                                 end
                         end
 
-                        -- Tag para identificarla como puerta
+                        -- Tag para identificarla como puerta (en el modelo, no en el bloque base)
                         local doorTag = Instance.new("StringValue")
                         doorTag.Name = "DoorPart"
                         doorTag.Value = "model"
                         doorTag.Parent = doorClone
 
-                        -- Guardar transparencias originales para restaurar al cerrar
+                        -- Tag con el id del bloque en el modelo tambien (para eliminar)
+                        local doorIdTag = Instance.new("StringValue")
+                        doorIdTag.Name = "BlockId"
+                        doorIdTag.Value = blockId
+                        doorIdTag.Parent = doorClone
+
+                        -- Tag con el dueño en el modelo (para poder eliminarlo)
+                        local doorOwnerTag = Instance.new("ObjectValue")
+                        doorOwnerTag.Name = "Owner"
+                        doorOwnerTag.Value = player
+                        doorOwnerTag.Parent = doorClone
+
+                        -- Guardar transparencias originales
                         local originalTransparencies = {}
                         for _, p in ipairs(doorParts) do
                                 originalTransparencies[p] = p.Transparency
                         end
 
-                        -- Crear Part de proximity para detectar jugadores cercanos
-                        local proximity = Instance.new("Part")
-                        proximity.Name = "DoorProximity"
-                        proximity.Size = Vector3.new(ParcelManager.BLOCK_SIZE + 8, ParcelManager.BLOCK_SIZE * 2.5, ParcelManager.BLOCK_SIZE + 8)
-                        proximity.Position = position + Vector3.new(0, ParcelManager.BLOCK_SIZE, 0)
-                        proximity.Anchored = true
-                        proximity.CanCollide = false
-                        proximity.Transparency = 1
-                        proximity.Parent = blocksFolder
-
-                        local proxIdTag = Instance.new("StringValue")
-                        proxIdTag.Name = "BlockId"
-                        proxIdTag.Value = blockId
-                        proxIdTag.Parent = proximity
-
-                        -- Sonido de puerta (sonido clasico de Roblox)
+                        -- Sonido de puerta (sound ID valido de Roblox)
                         local doorSound = Instance.new("Sound")
-                        doorSound.SoundId = "rbxassetid://1840336044"
+                        doorSound.SoundId = "rbxassetid://9046618260"
                         doorSound.Volume = 0.8
                         doorSound.Parent = doorClone
 
@@ -253,7 +268,6 @@ function BuildManager.placeBlock(player, blockId, position, rotation)
                                                         end
                                                 end
                                         end
-                                        -- Abrir si alguien esta cerca y esta cerrada
                                         if someoneNear and not isOpen then
                                                 isOpen = true
                                                 for _, p in ipairs(doorParts) do
@@ -262,10 +276,9 @@ function BuildManager.placeBlock(player, blockId, position, rotation)
                                                 end
                                                 if not debounce then
                                                         debounce = true
-                                                        doorSound:Play()
+                                                        pcall(function() doorSound:Play() end)
                                                         task.delay(1, function() debounce = false end)
                                                 end
-                                        -- Cerrar si nadie esta cerca y esta abierta
                                         elseif not someoneNear and isOpen then
                                                 isOpen = false
                                                 for _, p in ipairs(doorParts) do
@@ -274,7 +287,7 @@ function BuildManager.placeBlock(player, blockId, position, rotation)
                                                 end
                                                 if not debounce then
                                                         debounce = true
-                                                        doorSound:Play()
+                                                        pcall(function() doorSound:Play() end)
                                                         task.delay(1, function() debounce = false end)
                                                 end
                                         end
@@ -322,7 +335,7 @@ function BuildManager.removeBlock(player, block, returnToInventory)
                                         playerInventories[player.UserId][blockId] = (playerInventories[player.UserId][blockId] or 0) + 1
                                 end
                         end
-                        -- FIX: Si es una puerta, eliminar tambien el modelo clonado y la proximity
+                        -- FIX: Si es una puerta, eliminar tambien el modelo clonado
                         local blockIdTag = block:FindFirstChild("BlockId")
                         local blockId = blockIdTag and blockIdTag.Value
                         if blockId and BLOCK_MAP[blockId] and BLOCK_MAP[blockId].isDoor then
@@ -332,17 +345,28 @@ function BuildManager.removeBlock(player, block, returnToInventory)
                                         for _, sibling in ipairs(parent:GetChildren()) do
                                                 if sibling ~= block then
                                                         -- Eliminar modelo de puerta (DoorPart tag)
-                                                        if sibling:FindFirstChild("DoorPart") then
-                                                                local dist = (sibling:GetPrimaryPartCFrame().Position - blockPos).Magnitude
-                                                                if dist < ParcelManager.BLOCK_SIZE + 2 then
-                                                                        sibling:Destroy()
+                                                        -- Buscar tanto en Models como en BaseParts
+                                                        local doorTag = sibling:FindFirstChild("DoorPart")
+                                                        if doorTag then
+                                                                -- Es un modelo de puerta, verificar cercania
+                                                                local siblingPos = nil
+                                                                if sibling:IsA("Model") then
+                                                                        if sibling.PrimaryPart then
+                                                                                siblingPos = sibling.PrimaryPart.Position
+                                                                        else
+                                                                                local firstPart = sibling:FindFirstChildWhichIsA("BasePart")
+                                                                                if firstPart then
+                                                                                        siblingPos = firstPart.Position
+                                                                                end
+                                                                        end
+                                                                elseif sibling:IsA("BasePart") then
+                                                                        siblingPos = sibling.Position
                                                                 end
-                                                        -- Eliminar DoorProximity
-                                                        elseif sibling.Name == "DoorProximity" then
-                                                                local proxPos = sibling.Position
-                                                                local dist = (proxPos - blockPos).Magnitude
-                                                                if dist < ParcelManager.BLOCK_SIZE + 2 then
-                                                                        sibling:Destroy()
+                                                                if siblingPos then
+                                                                        local dist = (siblingPos - blockPos).Magnitude
+                                                                        if dist < ParcelManager.BLOCK_SIZE + 4 then
+                                                                                sibling:Destroy()
+                                                                        end
                                                                 end
                                                         end
                                                 end
