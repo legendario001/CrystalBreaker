@@ -23,12 +23,15 @@ screenGui.DisplayOrder = 200 -- encima de todo (incluido InvestorSystem)
 screenGui.Parent = playerGui
 
 -- ============================================
--- Panel principal (modal) - RESPONSIVE
--- Mismo patrón que Shop/Rebirth/Investor (Scale + UISizeConstraint)
+-- Panel principal (modal) - TOTALMENTE RESPONSIVE
+-- Usa Scale para todo (tamaño del panel y alturas de elementos)
+-- asi se adapta a cualquier pantalla: movil, tablet horizontal, PC
+-- UIScale ajusta todo proporcionalmente segun el tamaño real del panel
 -- ============================================
 local panel = Instance.new("Frame")
 panel.Name = "TutorialPanel"
-panel.Size = UDim2.new(0.9, 0, 0.75, 0)
+-- Size en Scale: 88% ancho, 80% alto de la pantalla
+panel.Size = UDim2.new(0.88, 0, 0.8, 0)
 panel.Position = UDim2.new(0.5, 0, 0.5, 0)
 panel.AnchorPoint = Vector2.new(0.5, 0.5)
 panel.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
@@ -38,24 +41,38 @@ panel.Visible = false
 panel.Parent = screenGui
 Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 20)
 
-local sizeConstraint = Instance.new("UISizeConstraint", panel)
-sizeConstraint.MaxSize = Vector2.new(500, 600)
+-- Sin UISizeConstraint: el panel SIEMPRE ocupa 88%x80% de la pantalla
+-- (en tablet horizontal se adapta, en PC grande tambien)
 
 local panelStroke = Instance.new("UIStroke", panel)
 panelStroke.Color = Color3.fromRGB(100, 200, 255)  -- azul tutorial
 panelStroke.Thickness = 5
 
+-- UIAspectConstraint para mantener proporciones razonables en pantallas muy anchas
+-- (limita el aspect ratio del panel a max 1.2, evita que se vea demasiado ancho)
+local aspectConstraint = Instance.new("UIAspectRatioConstraint", panel)
+aspectConstraint.AspectRatio = 0.85  -- mas alto que ancho (0.85:1)
+aspectConstraint.AspectType = Enum.AspectType.ScaleWithParentSize
+aspectConstraint.DominantAxis = Enum.DominantAxis.Height
+
 -- ============================================
--- Boton cerrar (X) - SIEMPRE visible
+-- UIScale: escala todo el contenido proporcionalmente
+-- Se actualiza dinamicamente segun el tamaño real del panel
+-- ============================================
+local uiScale = Instance.new("UIScale", panel)
+uiScale.Scale = 1
+
+-- ============================================
+-- Boton cerrar (X) - SIEMPRE visible, altura en Scale
 -- ============================================
 local closeBtn = Instance.new("TextButton")
-closeBtn.Size = UDim2.new(0, 40, 0, 40)
+closeBtn.Size = UDim2.new(0.08, 0, 0.07, 0)
 closeBtn.AnchorPoint = Vector2.new(1, 0)
-closeBtn.Position = UDim2.new(1, -10, 0, 10)
+closeBtn.Position = UDim2.new(1, -0.02, 0, 0.02)
 closeBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
 closeBtn.Text = "X"
 closeBtn.Font = Enum.Font.GothamBold
-closeBtn.TextSize = 20
+closeBtn.TextScaled = true
 closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 closeBtn.BorderSizePixel = 0
 closeBtn.ZIndex = 10
@@ -63,17 +80,16 @@ closeBtn.Parent = panel
 Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 8)
 closeBtn.Active = true
 
--- UIStroke del botón X
 local closeStroke = Instance.new("UIStroke", closeBtn)
 closeStroke.Color = Color3.fromRGB(0, 0, 0)
 closeStroke.Thickness = 3
 
 -- ============================================
--- Indicador de página (arriba centro)
+-- Indicador de página (arriba centro) - altura en Scale
 -- ============================================
 local pageIndicator = Instance.new("TextLabel")
-pageIndicator.Size = UDim2.new(1, -60, 0, 30)
-pageIndicator.Position = UDim2.new(0, 30, 0, 12)
+pageIndicator.Size = UDim2.new(0.8, 0, 0.06, 0)
+pageIndicator.Position = UDim2.new(0.1, 0, 0.02, 0)
 pageIndicator.BackgroundTransparency = 1
 pageIndicator.Text = "1 / 8"
 pageIndicator.TextColor3 = Color3.fromRGB(180, 180, 200)
@@ -86,12 +102,12 @@ pageIndicatorStroke.Color = Color3.fromRGB(0, 0, 0)
 pageIndicatorStroke.Thickness = 3
 
 -- ============================================
--- Contenido de la página (icono + titulo + descripcion)
+-- Contenido de la página - TODO en Scale
 -- ============================================
--- Icono grande (emoji)
+-- Icono grande (emoji) - 22% de la altura del panel
 local iconLabel = Instance.new("TextLabel")
-iconLabel.Size = UDim2.new(1, -40, 0, 100)
-iconLabel.Position = UDim2.new(0, 20, 0, 55)
+iconLabel.Size = UDim2.new(0.9, 0, 0.22, 0)
+iconLabel.Position = UDim2.new(0.05, 0, 0.1, 0)
 iconLabel.BackgroundTransparency = 1
 iconLabel.Text = "🎯"
 iconLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -99,10 +115,10 @@ iconLabel.TextScaled = true
 iconLabel.Font = Enum.Font.GothamBlack
 iconLabel.Parent = panel
 
--- Título de la página
+-- Título de la página - 10% de la altura
 local titleLabel = Instance.new("TextLabel")
-titleLabel.Size = UDim2.new(1, -40, 0, 45)
-titleLabel.Position = UDim2.new(0, 20, 0, 165)
+titleLabel.Size = UDim2.new(0.9, 0, 0.1, 0)
+titleLabel.Position = UDim2.new(0.05, 0, 0.34, 0)
 titleLabel.BackgroundTransparency = 1
 titleLabel.Text = "Bienvenida"
 titleLabel.TextColor3 = Color3.fromRGB(100, 200, 255)
@@ -114,10 +130,10 @@ local titleStroke = Instance.new("UIStroke", titleLabel)
 titleStroke.Color = Color3.fromRGB(0, 0, 0)
 titleStroke.Thickness = 5
 
--- Descripción (texto largo, scrollable visualmente con TextWrapped)
+-- Descripción - 40% de la altura (texto largo)
 local descLabel = Instance.new("TextLabel")
-descLabel.Size = UDim2.new(1, -40, 0, 280)
-descLabel.Position = UDim2.new(0, 20, 0, 220)
+descLabel.Size = UDim2.new(0.9, 0, 0.4, 0)
+descLabel.Position = UDim2.new(0.05, 0, 0.46, 0)
 descLabel.BackgroundTransparency = 1
 descLabel.Text = ""
 descLabel.TextColor3 = Color3.fromRGB(230, 230, 240)
@@ -132,17 +148,17 @@ descStroke.Color = Color3.fromRGB(0, 0, 0)
 descStroke.Thickness = 2
 
 -- ============================================
--- Botones de navegación (abajo)
+-- Botones de navegación (abajo) - altura en Scale
 -- ============================================
 -- Botón Anterior (izquierda)
 local prevBtn = Instance.new("TextButton")
 prevBtn.Name = "PrevBtn"
-prevBtn.Size = UDim2.new(0.3, 0, 0, 45)
-prevBtn.Position = UDim2.new(0.05, 0, 1, -60)
+prevBtn.Size = UDim2.new(0.3, 0, 0.08, 0)
+prevBtn.Position = UDim2.new(0.04, 0, 0.9, 0)
 prevBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
 prevBtn.Text = "← Anterior"
 prevBtn.Font = Enum.Font.GothamBold
-prevBtn.TextSize = 18
+prevBtn.TextScaled = true
 prevBtn.TextColor3 = Color3.fromRGB(200, 200, 220)
 prevBtn.BorderSizePixel = 0
 prevBtn.Parent = panel
@@ -155,12 +171,12 @@ prevStroke.Thickness = 3
 -- Botón Saltar (centro)
 local skipBtn = Instance.new("TextButton")
 skipBtn.Name = "SkipBtn"
-skipBtn.Size = UDim2.new(0.2, 0, 0, 45)
-skipBtn.Position = UDim2.new(0.4, 0, 1, -60)
+skipBtn.Size = UDim2.new(0.25, 0, 0.08, 0)
+skipBtn.Position = UDim2.new(0.375, 0, 0.9, 0)
 skipBtn.BackgroundColor3 = Color3.fromRGB(60, 30, 30)
 skipBtn.Text = "Saltar"
 skipBtn.Font = Enum.Font.GothamBold
-skipBtn.TextSize = 16
+skipBtn.TextScaled = true
 skipBtn.TextColor3 = Color3.fromRGB(220, 180, 180)
 skipBtn.BorderSizePixel = 0
 skipBtn.Parent = panel
@@ -173,12 +189,12 @@ skipStroke.Thickness = 2
 -- Botón Siguiente / Entendido (derecha)
 local nextBtn = Instance.new("TextButton")
 nextBtn.Name = "NextBtn"
-nextBtn.Size = UDim2.new(0.3, 0, 0, 45)
-nextBtn.Position = UDim2.new(0.65, 0, 1, -60)
+nextBtn.Size = UDim2.new(0.3, 0, 0.08, 0)
+nextBtn.Position = UDim2.new(0.66, 0, 0.9, 0)
 nextBtn.BackgroundColor3 = Color3.fromRGB(100, 200, 255)
 nextBtn.Text = "Siguiente →"
 nextBtn.Font = Enum.Font.GothamBold
-nextBtn.TextSize = 18
+nextBtn.TextScaled = true
 nextBtn.TextColor3 = Color3.fromRGB(15, 15, 25)
 nextBtn.BorderSizePixel = 0
 nextBtn.Parent = panel
@@ -187,6 +203,25 @@ Instance.new("UICorner", nextBtn).CornerRadius = UDim.new(0, 10)
 local nextStroke = Instance.new("UIStroke", nextBtn)
 nextStroke.Color = Color3.fromRGB(0, 0, 0)
 nextStroke.Thickness = 3
+
+-- ============================================
+-- Actualizar UIScale dinamicamente segun el tamaño del panel
+-- Esto hace que en pantallas chicas todo se achique proporcionalmente
+-- ============================================
+local RunService = game:GetService("RunService")
+local lastScale = 1
+RunService.RenderStepped:Connect(function()
+        if not panel.Visible then return end
+        local absHeight = panel.AbsoluteSize.Y
+        -- Calcular escala: si la altura es menor a 500px, achicar proporcionalmente
+        -- 500px = escala 1, 300px = escala 0.6, 200px = escala 0.4
+        local newScale = math.min(1, absHeight / 500)
+        newScale = math.max(0.4, newScale) -- minimo 0.4 para que se siga viendo
+        if math.abs(newScale - lastScale) > 0.01 then
+                uiScale.Scale = newScale
+                lastScale = newScale
+        end
+end)
 
 -- ============================================
 -- Contenido del tutorial (8 páginas)
