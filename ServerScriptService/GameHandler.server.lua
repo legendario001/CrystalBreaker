@@ -908,15 +908,18 @@ Events.PickupDropped.OnServerEvent:Connect(function(player)
                 if not data or data.carrying then return end
 
                 local nearest, nearDist = nil, 15
+                local nearestKey = nil
                 local staleKeys = {}
                 for key, tp in pairs(droppedChars) do
                         if not tp or not tp.Parent then
                                 table.insert(staleKeys, key)
                         else
-                                local owner = tp:FindFirstChild("Owner")
-                                if owner and owner.Value == player then
-                                        local d = (tp.Position - root.Position).Magnitude
-                                        if d < nearDist then nearDist=d nearest=tp end
+                                -- FIX: Cualquier jugador puede recoger el brainrot (no solo el owner)
+                                local d = (tp.Position - root.Position).Magnitude
+                                if d < nearDist then
+                                        nearDist = d
+                                        nearest = tp
+                                        nearestKey = key
                                 end
                         end
                 end
@@ -925,25 +928,42 @@ Events.PickupDropped.OnServerEvent:Connect(function(player)
 
                 local charIndexObj = nearest:FindFirstChild("CharIndex")
                 local dropModelObj = nearest:FindFirstChild("DropModel")
+                local ownerObj = nearest:FindFirstChild("Owner")
                 if not charIndexObj or not dropModelObj then return end
 
-                local charIndex = charIndexObj.Value
+                local originalCharIndex = charIndexObj.Value
                 local dropModel = dropModelObj.Value
-                local charData = data.characters[charIndex]
+
+                -- FIX: Obtener el charData del dueno original (no del jugador que recoge)
+                local originalOwner = ownerObj and ownerObj.Value
+                local originalOwnerId = originalOwner and originalOwner.UserId
+                local charData = nil
+                if originalOwnerId and playerData[originalOwnerId] then
+                        charData = playerData[originalOwnerId].characters[originalCharIndex]
+                        -- Remover del dueno original
+                        playerData[originalOwnerId].characters[originalCharIndex] = nil
+                end
 
                 if not charData then
+                        -- No se encontro el charData (dueno original se fue o expiro)
                         if dropModel and dropModel.Parent then dropModel:Destroy() end
                         if nearest.Parent then nearest:Destroy() end
-                        droppedChars[player.UserId.."_"..charIndex] = nil
+                        droppedChars[nearestKey] = nil
                         return
                 end
 
-                data.carrying = charIndex
+                -- FIX: Agregar el brainrot al nuevo dueno con un nuevo indice
+                local newCharIndex = getNextCharIndex(data.characters)
+                data.characters[newCharIndex] = charData
+                data.carrying = newCharIndex
+
                 createCarryTool(player, charData.model)
                 if dropModel and dropModel.Parent then dropModel:Destroy() end
                 if nearest.Parent then nearest:Destroy() end
-                droppedChars[player.UserId.."_"..charIndex] = nil
-                print(player.Name.." recogio "..charData.name.." del suelo")
+                droppedChars[nearestKey] = nil
+
+                local originalName = originalOwner and originalOwner.Name or "desconocido"
+                print(player.Name.." recogio "..charData.name.." del suelo (era de "..originalName..")")
         end)
         if not ok then warn("Error PickupDropped: "..tostring(err)) end
 end)
