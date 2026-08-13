@@ -154,17 +154,40 @@ function BuildManager.placeBlock(player, blockId, position, rotation)
                 local puertaModel = ServerStorage:FindFirstChild("Puerta")
                 if puertaModel then
                         local doorClone = puertaModel:Clone()
-                        -- Posicionar el modelo en la posicion del bloque (base abajo)
-                        -- Mover todo el modelo para que su base quede en 'position'
-                        doorClone:SetPrimaryPartCFrame(CFrame.new(position + Vector3.new(0, ParcelManager.BLOCK_SIZE, 0)))
-                        -- Si no tiene PrimaryPart, intentar mover todas las partes
+
+                        -- FIX CRITICO: Asegurar PrimaryPart ANTES de posicionar
+                        -- Si el modelo no tiene PrimaryPart, buscar la primera BasePart y asignarla
                         if not doorClone.PrimaryPart then
                                 local firstPart = doorClone:FindFirstChildWhichIsA("BasePart")
                                 if firstPart then
                                         doorClone.PrimaryPart = firstPart
-                                        doorClone:SetPrimaryPartCFrame(CFrame.new(position + Vector3.new(0, ParcelManager.BLOCK_SIZE, 0)))
+                                else
+                                        warn("[BuildManager] El modelo Puerta no tiene BaseParts")
+                                        doorClone:Destroy()
+                                        return false, "Modelo de puerta invalido"
                                 end
                         end
+
+                        -- Calcular offset: el PrimaryPart puede no estar en la base del modelo
+                        -- Queremos que la BASE del modelo quede en 'position' (base del bloque)
+                        -- La base del modelo = posicion Y minima de todas sus partes
+                        local minY = nil
+                        for _, p in ipairs(doorClone:GetDescendants()) do
+                                if p:IsA("BasePart") then
+                                        local partY = p.Position.Y - p.Size.Y/2
+                                        if not minY or partY < minY then
+                                                minY = partY
+                                        end
+                                end
+                        end
+                        -- Offset en Y para que la base del modelo quede en position.Y
+                        local yOffset = 0
+                        if minY then
+                                yOffset = position.Y - minY
+                        end
+
+                        -- Ahora si posicionar el modelo
+                        doorClone:SetPrimaryPartCFrame(CFrame.new(position + Vector3.new(0, yOffset + doorClone.PrimaryPart.Size.Y/2, 0)))
                         doorClone.Parent = blocksFolder
 
                         -- Hacer todas las partes Anchored y agruparlas para control de transparencia
