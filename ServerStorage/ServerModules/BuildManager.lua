@@ -22,6 +22,8 @@ local BLOCK_TYPES = {
         { id = "oro",       name = "Oro",       color = Color3.fromRGB(255, 215, 0),   material = Enum.Material.Foil,       cost = 50 },
         { id = "diamante",  name = "Diamante",  color = Color3.fromRGB(135, 230, 255), material = Enum.Material.Glass,      cost = 100 },
         { id = "galaxia",   name = "Galaxia",   color = Color3.fromRGB(75, 0, 130),    material = Enum.Material.Neon,       cost = 500 },
+        { id = "cristal",   name = "Cristal",   color = Color3.fromRGB(200, 240, 255), material = Enum.Material.Glass,      cost = 1000000, transparency = 0.3 },
+        { id = "puerta_madera", name = "Puerta Madera", color = Color3.fromRGB(140, 90, 45), material = Enum.Material.Wood, cost = 1000000, isDoor = true },
 }
 
 -- Mapa rapido: id -> config del bloque
@@ -118,6 +120,10 @@ function BuildManager.placeBlock(player, blockId, position, rotation)
         block.CanCollide = true
         block.Material = config.material
         block.Color = config.color
+        -- Transparencia para bloques como cristal
+        if config.transparency then
+                block.Transparency = config.transparency
+        end
         block.TopSurface = Enum.SurfaceType.Smooth
         block.BottomSurface = Enum.SurfaceType.Smooth
         block.CastShadow = true
@@ -141,6 +147,126 @@ function BuildManager.placeBlock(player, blockId, position, rotation)
                 blocksFolder.Parent = parcel
         end
         block.Parent = blocksFolder
+
+        -- FIX: Si es una puerta, crear el segundo bloque arriba + logica de apertura automatica
+        if config.isDoor then
+                -- Crear bloque superior (2 bloques de altura como Minecraft)
+                local upperBlock = Instance.new("Part")
+                upperBlock.Name = "Block_" .. blockId .. "_Upper"
+                upperBlock.Size = Vector3.new(ParcelManager.BLOCK_SIZE, ParcelManager.BLOCK_SIZE, ParcelManager.BLOCK_SIZE)
+                upperBlock.Position = position + Vector3.new(0, ParcelManager.BLOCK_SIZE, 0)
+                upperBlock.Anchored = true
+                upperBlock.CanCollide = true
+                upperBlock.Material = config.material
+                upperBlock.Color = config.color
+                upperBlock.TopSurface = Enum.SurfaceType.Smooth
+                upperBlock.BottomSurface = Enum.SurfaceType.Smooth
+                upperBlock.CastShadow = true
+                upperBlock.Parent = blocksFolder
+
+                -- Tags para identificarla como puerta
+                local upperIdTag = Instance.new("StringValue")
+                upperIdTag.Name = "BlockId"
+                upperIdTag.Value = blockId
+                upperIdTag.Parent = upperBlock
+
+                local upperOwnerTag = Instance.new("ObjectValue")
+                upperOwnerTag.Name = "Owner"
+                upperOwnerTag.Value = player
+                upperOwnerTag.Parent = upperBlock
+
+                -- Tag DoorPart para identificarla en la logica de apertura
+                local doorTag = Instance.new("StringValue")
+                doorTag.Name = "DoorPart"
+                doorTag.Value = "upper"
+                doorTag.Parent = upperBlock
+                local doorTagLower = Instance.new("StringValue")
+                doorTagLower.Name = "DoorPart"
+                doorTagLower.Value = "lower"
+                doorTagLower.Parent = block
+
+                -- Marca visual en la puerta (panel frontal)
+                local billboard = Instance.new("BillboardGui")
+                billboard.Size = UDim2.new(4, 0, 4, 0)
+                billboard.StudsOffset = Vector3.new(0, 0, 0)
+                billboard.AlwaysOnTop = false
+                billboard.MaxDistance = 30
+                billboard.Parent = block
+
+                local doorLabel = Instance.new("TextLabel")
+                doorLabel.Size = UDim2.new(1, 0, 0.3, 0)
+                doorLabel.Position = UDim2.new(0, 0, 0.35, 0)
+                doorLabel.BackgroundTransparency = 1
+                doorLabel.Text = "🚪"
+                doorLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+                doorLabel.TextScaled = true
+                doorLabel.Font = Enum.Font.GothamBold
+                doorLabel.Parent = billboard
+
+                -- Logica de apertura automatica al pasar cerca
+                local isOpen = false
+                local debounce = false
+                local proximity = Instance.new("Part")
+                proximity.Name = "DoorProximity"
+                proximity.Size = Vector3.new(ParcelManager.BLOCK_SIZE + 6, ParcelManager.BLOCK_SIZE * 2.5, ParcelManager.BLOCK_SIZE + 6)
+                proximity.Position = position + Vector3.new(0, ParcelManager.BLOCK_SIZE / 2, 0)
+                proximity.Anchored = true
+                proximity.CanCollide = false
+                proximity.Transparency = 1
+                proximity.Parent = blocksFolder
+
+                local proxIdTag = Instance.new("StringValue")
+                proxIdTag.Name = "BlockId"
+                proxIdTag.Value = blockId
+                proxIdTag.Parent = proximity
+
+                proximity.Touched:Connect(function(hit)
+                        if debounce then return end
+                        local character = hit.Parent
+                        if not character then return end
+                        local humanoid = character:FindFirstChildOfClass("Humanoid")
+                        if not humanoid then return end
+                        debounce = true
+                        if not isOpen then
+                                isOpen = true
+                                block.CanCollide = false
+                                upperBlock.CanCollide = false
+                                block.Transparency = 0.7
+                                upperBlock.Transparency = 0.7
+                        end
+                        task.wait(0.5)
+                        debounce = false
+                end)
+
+                -- Loop para cerrar la puerta cuando no hay nadie cerca
+                task.spawn(function()
+                        local Players = game:GetService("Players")
+                        while block and block.Parent do
+                                task.wait(0.5)
+                                if isOpen then
+                                        local someoneNear = false
+                                        for _, p in ipairs(Players:GetPlayers()) do
+                                                local char = p.Character
+                                                if char and char:FindFirstChild("HumanoidRootPart") then
+                                                        local hrp = char.HumanoidRootPart
+                                                        local dist = (hrp.Position - block.Position).Magnitude
+                                                        if dist < (ParcelManager.BLOCK_SIZE + 4) then
+                                                                someoneNear = true
+                                                                break
+                                                        end
+                                                end
+                                        end
+                                        if not someoneNear then
+                                                isOpen = false
+                                                block.CanCollide = true
+                                                upperBlock.CanCollide = true
+                                                block.Transparency = 0
+                                                upperBlock.Transparency = 0
+                                        end
+                                end
+                        end
+                end)
+        end
 
         -- Descontar 1 del inventario
         inv[blockId] = inv[blockId] - 1
@@ -177,6 +303,40 @@ function BuildManager.removeBlock(player, block, returnToInventory)
                                                 playerInventories[player.UserId] = {}
                                         end
                                         playerInventories[player.UserId][blockId] = (playerInventories[player.UserId][blockId] or 0) + 1
+                                end
+                        end
+                        -- FIX: Si es una puerta, eliminar tambien el bloque superior y la proximity
+                        local doorTag = block:FindFirstChild("DoorPart")
+                        if doorTag then
+                                -- Buscar el bloque superior o inferior segun corresponda
+                                local blockPos = block.Position
+                                local parent = block.Parent
+                                if parent then
+                                        for _, sibling in ipairs(parent:GetChildren()) do
+                                                if sibling:IsA("BasePart") and sibling ~= block then
+                                                        local siblingDoorTag = sibling:FindFirstChild("DoorPart")
+                                                        local siblingIdTag = sibling:FindFirstChild("BlockId")
+                                                        local isProximity = sibling.Name == "DoorProximity"
+                                                        if siblingDoorTag or isProximity then
+                                                                -- Si es proximity o la otra mitad de la puerta, eliminar
+                                                                if isProximity then
+                                                                        sibling:Destroy()
+                                                                elseif doorTag.Value == "lower" and siblingDoorTag.Value == "upper" then
+                                                                        -- Es la mitad superior de esta puerta, eliminar
+                                                                        local dist = (sibling.Position - blockPos).Magnitude
+                                                                        if dist < ParcelManager.BLOCK_SIZE + 1 then
+                                                                                sibling:Destroy()
+                                                                        end
+                                                                elseif doorTag.Value == "upper" and siblingDoorTag.Value == "lower" then
+                                                                        -- Es la mitad inferior de esta puerta, eliminar
+                                                                        local dist = (sibling.Position - blockPos).Magnitude
+                                                                        if dist < ParcelManager.BLOCK_SIZE + 1 then
+                                                                                sibling:Destroy()
+                                                                        end
+                                                                end
+                                                        end
+                                                end
+                                        end
                                 end
                         end
                         block:Destroy()
